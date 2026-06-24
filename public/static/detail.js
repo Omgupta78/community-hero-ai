@@ -48,6 +48,7 @@
         <p class="text-sm text-on-surface">${esc(i.description) || 'No description provided.'}</p>
         <p class="text-xs text-on-surface-variant mt-3 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">location_on</span>${esc(i.address) || 'Unknown location'}</p>
         <p class="text-xs text-on-surface-variant mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">person</span>${i.anonymous ? 'Anonymous reporter' : esc(i.reporter_name || 'Citizen')} · ${timeAgo(i.created_at)}</p>
+        ${i.assignee_name ? `<p class="text-xs text-secondary font-bold mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">assignment_ind</span>Handled by ${esc(i.assignee_department || i.assignee_name)} authority</p>` : ''}
       </div>
 
       <div class="bg-primary-fixed rounded-xl p-md mb-4">

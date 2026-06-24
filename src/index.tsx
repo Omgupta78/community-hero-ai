@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { renderer } from './renderer'
 import api from './routes/api'
 import { TopBar, BottomNav } from './components/layout'
+import { getSessionUser } from './lib/auth'
 
 type Bindings = {
   DB: D1Database
@@ -363,9 +364,139 @@ app.get('/issue/:id', (c) => {
 })
 
 // =============================================================
-// ADMIN PORTAL
+// STAFF LOGIN
 // =============================================================
-app.get('/admin', (c) => {
+app.get('/login', async (c) => {
+  // Already logged in? Send to the right dashboard.
+  const user = await getSessionUser(c)
+  if (user) return c.redirect(user.role === 'admin' ? '/admin' : '/authority')
+
+  return c.render(
+    <div class="min-h-screen flex items-center justify-center px-container-margin py-12">
+      <main class="w-full max-w-sm">
+        <div class="text-center mb-lg">
+          <div class="w-16 h-16 mx-auto rounded-full bg-primary-container flex items-center justify-center mb-3">
+            <span class="material-symbols-outlined text-on-primary-container text-[34px]" style="font-variation-settings: 'FILL' 1;">shield_person</span>
+          </div>
+          <h1 class="text-[22px] font-bold text-on-surface">Staff Sign In</h1>
+          <p class="text-sm text-on-surface-variant mt-1">Admins &amp; department authorities only</p>
+        </div>
+
+        <form id="login-form" class="bg-surface-lowest border border-outline-variant rounded-xl p-lg space-y-md">
+          <div>
+            <label class="text-xs font-bold uppercase text-on-surface-variant">Email</label>
+            <input id="login-email" type="email" required autocomplete="username"
+              placeholder="admin@city.gov"
+              class="mt-1 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary" />
+          </div>
+          <div>
+            <label class="text-xs font-bold uppercase text-on-surface-variant">Password</label>
+            <input id="login-password" type="password" required autocomplete="current-password"
+              placeholder="••••••••"
+              class="mt-1 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary" />
+          </div>
+          <p id="login-error" class="hidden text-sm text-error font-medium"></p>
+          <button id="login-btn" type="submit"
+            class="w-full bg-primary text-on-primary rounded-lg py-3 font-bold active:scale-[0.98] transition flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined">login</span> Sign In
+          </button>
+        </form>
+
+        <div class="mt-md bg-surface-container-low rounded-xl p-md text-xs text-on-surface-variant">
+          <p class="font-bold text-on-surface mb-1">Demo accounts</p>
+          <p>Super Admin: <code>admin@city.gov</code> / <code>Admin@123</code></p>
+          <p>Roads Authority: <code>roads@city.gov</code> / <code>Roads@123</code></p>
+          <p>Water Authority: <code>water@city.gov</code> / <code>Water@123</code></p>
+        </div>
+
+        <a href="/" class="block text-center text-sm text-primary font-bold mt-md hover:underline">← Back to citizen app</a>
+      </main>
+      <script src="/static/login.js"></script>
+    </div>,
+    { title: 'Staff Sign In' }
+  )
+})
+
+// =============================================================
+// AUTHORITY (DEPARTMENT) DASHBOARD — sees only its assigned issues
+// =============================================================
+app.get('/authority', async (c) => {
+  const user = await getSessionUser(c)
+  if (!user) return c.redirect('/login')
+  if (user.role !== 'authority') return c.redirect('/admin')
+
+  return c.render(
+    <div class="pt-[80px] pb-[40px]">
+      <TopBar title="My Department" authority />
+      <main class="px-container-margin max-w-4xl mx-auto mt-lg space-y-lg">
+        <section class="bg-primary text-on-primary rounded-xl p-lg flex items-center gap-4">
+          <span class="material-symbols-outlined text-[40px]">badge</span>
+          <div>
+            <p class="text-xs uppercase font-bold opacity-80">Signed in as</p>
+            <h2 class="font-bold text-[20px]" id="auth-name">{user.name}</h2>
+            <p class="text-sm opacity-90"><span id="auth-dept">{user.department}</span> Department</p>
+          </div>
+        </section>
+
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-md">
+          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+            <p class="text-xs uppercase font-bold text-on-surface-variant">Assigned to me</p>
+            <p class="text-3xl font-bold text-on-surface mt-1" id="d-total">—</p>
+          </div>
+          <div class="bg-tertiary-fixed rounded-xl p-md">
+            <p class="text-xs uppercase font-bold text-on-tertiary-fixed">Open</p>
+            <p class="text-3xl font-bold text-on-tertiary-fixed mt-1" id="d-open">—</p>
+          </div>
+          <div class="bg-secondary-container rounded-xl p-md">
+            <p class="text-xs uppercase font-bold text-on-secondary-container">In Progress</p>
+            <p class="text-3xl font-bold text-on-secondary-container mt-1" id="d-progress">—</p>
+          </div>
+          <div class="bg-secondary rounded-xl p-md">
+            <p class="text-xs uppercase font-bold text-white">Resolved</p>
+            <p class="text-3xl font-bold text-white mt-1" id="d-resolved">—</p>
+          </div>
+        </section>
+
+        <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+          <h2 class="font-bold text-[18px] text-on-surface mb-3">Issues Assigned to Your Department</h2>
+          <div id="dept-issues" class="space-y-md">
+            <div class="text-center text-on-surface-variant py-8">Loading your issues…</div>
+          </div>
+        </section>
+      </main>
+
+      {/* Status update modal (authority — no department change, only status + message) */}
+      <div id="status-modal" class="hidden fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center p-4">
+        <div class="bg-surface-lowest rounded-xl p-lg max-w-md w-full">
+          <h3 class="font-bold text-[18px] text-on-surface mb-1">Update Issue <span id="modal-issue-id"></span></h3>
+          <p id="modal-issue-title" class="text-sm text-on-surface-variant mb-4"></p>
+          <label class="text-xs font-bold uppercase text-on-surface-variant">New Status</label>
+          <select id="modal-status" class="mt-1 mb-3 w-full bg-surface-container-low border-0 rounded-lg p-3">
+            <option>Assigned</option><option>In Progress</option><option>Resolved</option>
+          </select>
+          <label class="text-xs font-bold uppercase text-on-surface-variant">Update for citizens</label>
+          <textarea id="modal-message" rows={3} class="mt-1 mb-4 w-full bg-surface-container-low border-0 rounded-lg p-3 resize-none" placeholder="Progress message…"></textarea>
+          <div class="flex gap-2">
+            <button id="modal-cancel" class="flex-1 border border-outline-variant rounded-lg py-3 font-bold text-on-surface">Cancel</button>
+            <button id="modal-save" class="flex-1 bg-primary text-on-primary rounded-lg py-3 font-bold">Save Update</button>
+          </div>
+        </div>
+      </div>
+
+      <script src="/static/authority.js"></script>
+    </div>,
+    { title: 'Department Dashboard' }
+  )
+})
+
+// =============================================================
+// ADMIN PORTAL (super-admin — password protected)
+// =============================================================
+app.get('/admin', async (c) => {
+  const user = await getSessionUser(c)
+  if (!user) return c.redirect('/login')
+  if (user.role !== 'admin') return c.redirect('/authority')
+
   return c.render(
     <div class="pt-[80px] pb-[40px]">
       <TopBar title="Operations" admin />
@@ -411,6 +542,7 @@ app.get('/admin', (c) => {
                 <th class="py-2 px-2">Category</th>
                 <th class="py-2 px-2">Severity</th>
                 <th class="py-2 px-2">Status</th>
+                <th class="py-2 px-2">Assigned To</th>
                 <th class="py-2 pl-2">Action</th>
               </tr>
             </thead>
@@ -434,23 +566,26 @@ app.get('/admin', (c) => {
       {/* Status update modal */}
       <div id="status-modal" class="hidden fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center p-4">
         <div class="bg-surface-lowest rounded-xl p-lg max-w-md w-full">
-          <h3 class="font-bold text-[18px] text-on-surface mb-1">Update Issue <span id="modal-issue-id"></span></h3>
+          <h3 class="font-bold text-[18px] text-on-surface mb-1">Manage Issue <span id="modal-issue-id"></span></h3>
           <p id="modal-issue-title" class="text-sm text-on-surface-variant mb-4"></p>
-          <label class="text-xs font-bold uppercase text-on-surface-variant">New Status</label>
+
+          <label class="text-xs font-bold uppercase text-on-surface-variant">Assign to Authority</label>
+          <select id="modal-authority" class="mt-1 mb-1 w-full bg-surface-container-low border-0 rounded-lg p-3">
+            <option value="">— Select department authority —</option>
+          </select>
+          <p class="text-[11px] text-on-surface-variant mb-3">Assigning routes the issue to that department and marks it <b>Assigned</b>.</p>
+
+          <label class="text-xs font-bold uppercase text-on-surface-variant">Or change status directly</label>
           <select id="modal-status" class="mt-1 mb-3 w-full bg-surface-container-low border-0 rounded-lg p-3">
             <option>Reported</option><option>Verified</option><option>Assigned</option>
             <option>In Progress</option><option>Resolved</option>
           </select>
-          <label class="text-xs font-bold uppercase text-on-surface-variant">Department</label>
-          <select id="modal-dept" class="mt-1 mb-3 w-full bg-surface-container-low border-0 rounded-lg p-3">
-            <option>Road Maintenance</option><option>Sanitation</option><option>Electrical</option>
-            <option>Water Works</option><option>Parks &amp; Recreation</option><option>General Services</option>
-          </select>
-          <label class="text-xs font-bold uppercase text-on-surface-variant">Official Update</label>
+
+          <label class="text-xs font-bold uppercase text-on-surface-variant">Official Update / Note</label>
           <textarea id="modal-message" rows={3} class="mt-1 mb-4 w-full bg-surface-container-low border-0 rounded-lg p-3 resize-none" placeholder="Message to citizens…"></textarea>
           <div class="flex gap-2">
             <button id="modal-cancel" class="flex-1 border border-outline-variant rounded-lg py-3 font-bold text-on-surface">Cancel</button>
-            <button id="modal-save" class="flex-1 bg-primary text-on-primary rounded-lg py-3 font-bold">Save Update</button>
+            <button id="modal-save" class="flex-1 bg-primary text-on-primary rounded-lg py-3 font-bold">Save</button>
           </div>
         </div>
       </div>

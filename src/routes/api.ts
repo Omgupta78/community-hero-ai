@@ -1,6 +1,15 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { analyzeIssue, generateInsight, computePriority } from '../lib/gemini'
+import {
+  verifyPassword,
+  createSession,
+  destroySession,
+  getSessionUser,
+  sessionCookie,
+  clearCookie,
+  SESSION_COOKIE,
+} from '../lib/auth'
 
 type Bindings = {
   DB: D1Database
@@ -10,8 +19,67 @@ type Bindings = {
 const api = new Hono<{ Bindings: Bindings }>()
 api.use('/*', cors())
 
-// Demo "current user" — in production this comes from auth.
+// Demo "current citizen" — citizen-facing endpoints still use a fixed demo user.
 const CURRENT_USER_ID = 1
+
+// ---------------------------------------------------------------
+// AUTH (staff: admin + authorities)
+// ---------------------------------------------------------------
+api.post('/auth/login', async (c) => {
+  const { email, password } = await c.req.json().catch(() => ({}))
+  if (!email || !password) return c.json({ error: 'Email and password required' }, 400)
+
+  const user = await c.env.DB.prepare(
+    `SELECT id, name, email, role, department, password_hash FROM users WHERE email = ?`
+  ).bind(String(email).trim().toLowerCase()).first<any>()
+
+  // Only staff accounts (with a password) can log in here.
+  if (!user || !user.password_hash || (user.role !== 'admin' && user.role !== 'authority')) {
+    return c.json({ error: 'Invalid credentials' }, 401)
+  }
+
+  const ok = await verifyPassword(password, user.password_hash)
+  if (!ok) return c.json({ error: 'Invalid credentials' }, 401)
+
+  const token = await createSession(c.env.DB, user.id)
+  c.header('Set-Cookie', sessionCookie(token))
+  return c.json({
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, department: user.department },
+  })
+})
+
+api.post('/auth/logout', async (c) => {
+  const cookie = c.req.header('Cookie') || ''
+  const m = cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`))
+  if (m) await destroySession(c.env.DB, m[1])
+  c.header('Set-Cookie', clearCookie())
+  return c.json({ ok: true })
+})
+
+// Current logged-in staff member (used by admin/authority dashboards).
+api.get('/auth/me', async (c) => {
+  const user = await getSessionUser(c)
+  if (!user) return c.json({ authenticated: false }, 401)
+  return c.json({ authenticated: true, user })
+})
+
+// Guard middleware factory: requires a logged-in staff member with one of the roles.
+const requireRole = (...roles: string[]) =>
+  async (c: any, next: any) => {
+    const user = await getSessionUser(c)
+    if (!user) return c.json({ error: 'Unauthorized' }, 401)
+    if (roles.length && !roles.includes(user.role)) return c.json({ error: 'Forbidden' }, 403)
+    c.set('staff', user)
+    return next()
+  }
+
+// List of authorities (for the admin assignment dropdown).
+api.get('/authorities', requireRole('admin'), async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, name, email, department FROM users WHERE role = 'authority' ORDER BY department`
+  ).all()
+  return c.json({ authorities: results || [] })
+})
 
 // ---------------------------------------------------------------
 // AI ANALYSIS (real Gemini)
@@ -34,17 +102,29 @@ api.post('/analyze', async (c) => {
 
 // List issues with optional filters
 api.get('/issues', async (c) => {
-  const { status, category, mine, verify, limit } = c.req.query()
+  const { status, category, mine, verify, limit, assigned, unassigned } = c.req.query()
   const where: string[] = []
   const binds: any[] = []
 
-  if (status) { where.push('status = ?'); binds.push(status) }
-  if (category) { where.push('category = ?'); binds.push(category) }
-  if (mine === 'true') { where.push('reporter_id = ?'); binds.push(CURRENT_USER_ID) }
-  if (verify === 'true') { where.push("status IN ('Reported','Verified')") }
+  if (status) { where.push('i.status = ?'); binds.push(status) }
+  if (category) { where.push('i.category = ?'); binds.push(category) }
+  if (mine === 'true') { where.push('i.reporter_id = ?'); binds.push(CURRENT_USER_ID) }
+  if (verify === 'true') { where.push("i.status IN ('Reported','Verified')") }
 
-  const sql = `SELECT i.*, u.name AS reporter_name
-               FROM issues i LEFT JOIN users u ON i.reporter_id = u.id
+  // `assigned` scoping is only honoured for a logged-in authority and shows
+  // ONLY the issues assigned to that authority (or their department).
+  if (assigned === 'me') {
+    const staff = await getSessionUser(c)
+    if (!staff || staff.role !== 'authority') return c.json({ error: 'Unauthorized' }, 401)
+    where.push('(i.assigned_to = ? OR (i.assigned_to IS NULL AND i.department = ?))')
+    binds.push(staff.id, staff.department)
+  }
+  if (unassigned === 'true') { where.push('i.assigned_to IS NULL') }
+
+  const sql = `SELECT i.*, u.name AS reporter_name, a.name AS assignee_name, a.department AS assignee_department
+               FROM issues i
+               LEFT JOIN users u ON i.reporter_id = u.id
+               LEFT JOIN users a ON i.assigned_to = a.id
                ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
                ORDER BY i.priority_score DESC, i.created_at DESC
                LIMIT ?`
@@ -58,8 +138,11 @@ api.get('/issues', async (c) => {
 api.get('/issues/:id', async (c) => {
   const id = c.req.param('id')
   const issue = await c.env.DB.prepare(
-    `SELECT i.*, u.name AS reporter_name FROM issues i
-     LEFT JOIN users u ON i.reporter_id = u.id WHERE i.id = ?`
+    `SELECT i.*, u.name AS reporter_name, a.name AS assignee_name, a.department AS assignee_department
+     FROM issues i
+     LEFT JOIN users u ON i.reporter_id = u.id
+     LEFT JOIN users a ON i.assigned_to = a.id
+     WHERE i.id = ?`
   ).bind(id).first()
   if (!issue) return c.json({ error: 'Not found' }, 404)
 
@@ -169,22 +252,70 @@ api.post('/issues/:id/verify', async (c) => {
 })
 
 // ---------------------------------------------------------------
-// ADMIN: status updates
+// STAFF: status updates (admin = any issue, authority = own assigned issues)
 // ---------------------------------------------------------------
-api.patch('/issues/:id/status', async (c) => {
+api.patch('/issues/:id/status', requireRole('admin', 'authority'), async (c) => {
+  const staff = c.get('staff')
   const id = Number(c.req.param('id'))
   const { status, department, message } = await c.req.json().catch(() => ({}))
   if (!status) return c.json({ error: 'status required' }, 400)
+
+  const issue = await c.env.DB.prepare(`SELECT assigned_to, department FROM issues WHERE id = ?`)
+    .bind(id).first<any>()
+  if (!issue) return c.json({ error: 'Not found' }, 404)
+
+  // Authorities may only update issues assigned to them (or to their dept).
+  if (staff.role === 'authority') {
+    const ownsIt = issue.assigned_to === staff.id || (issue.assigned_to == null && issue.department === staff.department)
+    if (!ownsIt) return c.json({ error: 'This issue is not assigned to you' }, 403)
+  }
 
   await c.env.DB.prepare(
     `UPDATE issues SET status = ?, department = COALESCE(?, department), updated_at = CURRENT_TIMESTAMP WHERE id = ?`
   ).bind(status, department || null, id).run()
 
   await c.env.DB.prepare(
-    `INSERT INTO issue_updates (issue_id, status, department, message, author) VALUES (?, ?, ?, ?, 'City Operations')`
-  ).bind(id, status, department || null, message || `Status changed to ${status}.`).run()
+    `INSERT INTO issue_updates (issue_id, status, department, message, author) VALUES (?, ?, ?, ?, ?)`
+  ).bind(id, status, department || issue.department || null, message || `Status changed to ${status}.`, staff.name).run()
 
   return c.json({ ok: true, status })
+})
+
+// ---------------------------------------------------------------
+// ADMIN: assign an issue to an authority (department)
+// ---------------------------------------------------------------
+api.patch('/issues/:id/assign', requireRole('admin'), async (c) => {
+  const staff = c.get('staff')
+  const id = Number(c.req.param('id'))
+  const { authority_id, message } = await c.req.json().catch(() => ({}))
+  if (!authority_id) return c.json({ error: 'authority_id required' }, 400)
+
+  const authority = await c.env.DB.prepare(
+    `SELECT id, name, department FROM users WHERE id = ? AND role = 'authority'`
+  ).bind(Number(authority_id)).first<any>()
+  if (!authority) return c.json({ error: 'Authority not found' }, 404)
+
+  const issue = await c.env.DB.prepare(`SELECT status FROM issues WHERE id = ?`).bind(id).first<any>()
+  if (!issue) return c.json({ error: 'Not found' }, 404)
+
+  // Move to "Assigned" unless already further along in the workflow.
+  const newStatus = ['In Progress', 'Resolved'].includes(issue.status) ? issue.status : 'Assigned'
+
+  await c.env.DB.prepare(
+    `UPDATE issues SET assigned_to = ?, department = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).bind(authority.id, authority.department, newStatus, id).run()
+
+  await c.env.DB.prepare(
+    `INSERT INTO issue_updates (issue_id, status, department, message, author) VALUES (?, ?, ?, ?, ?)`
+  ).bind(
+    id,
+    newStatus,
+    authority.department,
+    message || `Assigned to ${authority.name} (${authority.department}).`,
+    staff.name
+  ).run()
+
+  return c.json({ ok: true, assigned_to: authority.id, department: authority.department, status: newStatus })
 })
 
 // ---------------------------------------------------------------

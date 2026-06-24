@@ -1,6 +1,7 @@
 // Shared layout components: TopBar and BottomNav
 
-export const TopBar = ({ title, admin }: { title?: string; admin?: boolean }) => {
+export const TopBar = ({ title, admin, authority }: { title?: string; admin?: boolean; authority?: boolean }) => {
+  const staff = admin || authority
   return (
     <header class="fixed top-0 left-0 right-0 z-[1000] bg-surface-lowest/90 backdrop-blur border-b border-outline-variant">
       <div class="max-w-5xl mx-auto h-[64px] flex items-center gap-3 px-container-margin">
@@ -16,13 +17,20 @@ export const TopBar = ({ title, admin }: { title?: string; admin?: boolean }) =>
           <span class="font-bold text-[18px] text-on-surface sm:hidden">Community Hero AI</span>
         )}
         <div class="ml-auto flex items-center gap-1">
-          {admin ? (
-            <a href="/" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
-              <span class="material-symbols-outlined text-[18px]">public</span> Citizen View
-            </a>
+          {staff ? (
+            <>
+              <a href="/" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
+                <span class="material-symbols-outlined text-[18px]">public</span>
+                <span class="hidden sm:inline">Citizen View</span>
+              </a>
+              <button id="logout-btn" class="text-xs font-bold text-error px-3 py-1.5 rounded-full hover:bg-error-container flex items-center gap-1">
+                <span class="material-symbols-outlined text-[18px]">logout</span>
+                <span class="hidden sm:inline">Logout</span>
+              </button>
+            </>
           ) : (
-            <a href="/admin" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
-              <span class="material-symbols-outlined text-[18px]">shield_person</span> Admin
+            <a href="/login" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px]">shield_person</span> Staff Login
             </a>
           )}
           <span id="live-dot" class="flex items-center gap-1 text-[10px] font-bold uppercase text-secondary px-2">

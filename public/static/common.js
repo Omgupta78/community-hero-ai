@@ -69,5 +69,16 @@ window.CH = (function () {
     document.body.appendChild(t)
     setTimeout(() => t.remove(), 2600)
   }
+  // Wire up the staff logout button if present on the page.
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('logout-btn')
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        try { await api.post('/auth/logout') } catch (e) {}
+        window.location.href = '/login'
+      })
+    }
+  })
+
   return { api, CAT_ICON, STATUS_COLOR, severityBadge, timeAgo, esc, issueCard, toast }
 })()

@@ -3,8 +3,38 @@
   const { api, CAT_ICON, STATUS_COLOR, severityBadge, esc } = window.CH
   let catChart, statusChart
   let currentIssueId = null
+  let authoritiesLoaded = false
 
   const $ = (id) => document.getElementById(id)
+
+  async function guard() {
+    try {
+      const { data } = await api.get('/auth/me')
+      if (!data.authenticated || data.user.role !== 'admin') {
+        window.location.href = data.authenticated ? '/authority' : '/login'
+        return false
+      }
+      return true
+    } catch (e) {
+      window.location.href = '/login'
+      return false
+    }
+  }
+
+  async function loadAuthorities() {
+    if (authoritiesLoaded) return
+    try {
+      const { data } = await api.get('/authorities')
+      const sel = $('modal-authority')
+      data.authorities.forEach((a) => {
+        const opt = document.createElement('option')
+        opt.value = a.id
+        opt.textContent = `${a.department} — ${a.name}`
+        sel.appendChild(opt)
+      })
+      authoritiesLoaded = true
+    } catch (e) { /* ignore */ }
+  }
 
   async function loadStats() {
     const { data } = await api.get('/stats')
@@ -39,15 +69,19 @@
     const { data } = await api.get('/issues', { params: { limit: 50 } })
     $('issue-table').innerHTML = data.issues.map((i) => {
       const [scls, slabel] = severityBadge(i.severity)
+      const assignee = i.assignee_name
+        ? `<span class="text-on-surface">${esc(i.assignee_department || i.assignee_name)}</span>`
+        : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-error-container text-on-error-container">Unassigned</span>'
       return `
         <tr class="border-b border-outline-variant">
           <td class="py-2 pr-2"><a href="/issue/${i.id}" class="font-medium text-on-surface hover:text-primary">#${i.id} ${esc(i.title)}</a></td>
           <td class="py-2 px-2 text-on-surface-variant">${i.category}</td>
           <td class="py-2 px-2"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${scls}">${slabel}</span></td>
           <td class="py-2 px-2"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLOR[i.status] || ''}">${i.status}</span></td>
+          <td class="py-2 px-2 text-xs">${assignee}</td>
           <td class="py-2 pl-2">
             <button class="manage-btn text-primary font-bold text-xs flex items-center gap-1"
-              data-id="${i.id}" data-title="${esc(i.title)}" data-status="${i.status}" data-dept="${esc(i.department || '')}">
+              data-id="${i.id}" data-title="${esc(i.title)}" data-status="${i.status}" data-assigned="${i.assigned_to || ''}">
               <span class="material-symbols-outlined text-[16px]">edit</span> Manage
             </button>
           </td>
@@ -81,12 +115,13 @@
     })
   }
 
-  function openModal(d) {
+  async function openModal(d) {
+    await loadAuthorities()
     currentIssueId = d.id
     $('modal-issue-id').textContent = '#' + d.id
     $('modal-issue-title').textContent = d.title
     $('modal-status').value = d.status
-    if (d.dept) $('modal-dept').value = d.dept
+    $('modal-authority').value = d.assigned || ''
     $('modal-message').value = ''
     $('status-modal').classList.remove('hidden')
   }
@@ -97,20 +132,34 @@
     if (!currentIssueId) return
     const btn = $('modal-save')
     btn.disabled = true
+    const authorityId = $('modal-authority').value
+    const message = $('modal-message').value
     try {
-      await api.patch(`/issues/${currentIssueId}/status`, {
-        status: $('modal-status').value,
-        department: $('modal-dept').value,
-        message: $('modal-message').value,
-      })
-      window.CH.toast('Issue updated')
+      if (authorityId) {
+        // Assign (or re-assign) to a department authority.
+        await api.patch(`/issues/${currentIssueId}/assign`, { authority_id: Number(authorityId), message })
+        window.CH.toast('Issue assigned to authority')
+      } else {
+        // Plain status change without assignment.
+        await api.patch(`/issues/${currentIssueId}/status`, {
+          status: $('modal-status').value,
+          message,
+        })
+        window.CH.toast('Issue updated')
+      }
       closeModal()
       refresh()
-    } catch (e) { window.CH.toast('Update failed', false) }
-    finally { btn.disabled = false }
+    } catch (e) {
+      window.CH.toast(e?.response?.data?.error || 'Update failed', false)
+      if (e?.response?.status === 401) window.location.href = '/login'
+    } finally { btn.disabled = false }
   })
 
   function refresh() { loadStats(); loadQueue(); loadTable() }
-  refresh()
-  setInterval(refresh, 6000) // real-time admin dashboard
+
+  ;(async function init() {
+    if (!(await guard())) return
+    refresh()
+    setInterval(refresh, 6000) // real-time admin dashboard
+  })()
 })()

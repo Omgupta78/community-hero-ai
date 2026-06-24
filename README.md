@@ -18,6 +18,32 @@ all backed by a **real Cloudflare D1 database** with **live polling** (not a dem
   - Gamification: community score points for reporting (+10) and verifying (+5)
   - Admin **AI priority queue**, issue queue table, status workflow modal, live Chart.js analytics
   - **Gemini-generated** weekly impact insight (with deterministic fallback)
+  - **🔐 Password-protected staff portal** (PBKDF2 hashing + D1 session cookies)
+  - **Role-based access**: `admin` (super-admin) vs `authority` (department)
+  - **Issue assignment to authorities** — admin routes each issue to a department;
+    that department logs in and sees **only the issues assigned to it**
+
+## 🔐 Staff Authentication & Roles
+
+The `/admin` and `/authority` portals are now **locked behind a login** (`/login`).
+Citizen pages remain public.
+
+| Role | What they can do |
+|------|------------------|
+| **admin** (City Operations) | Full admin console: triage AI priority queue, change any status, **assign issues to the right department authority** |
+| **authority** (department) | Sees **only the issues assigned to their department**, can advance their status (Assigned → In Progress → Resolved) |
+
+### Demo accounts (seeded)
+| Email | Password | Role | Department |
+|-------|----------|------|------------|
+| `admin@city.gov` | `Admin@123` | admin | — |
+| `roads@city.gov` | `Roads@123` | authority | Road Maintenance |
+| `sanitation@city.gov` | `Sanitation@123` | authority | Sanitation |
+| `electrical@city.gov` | `Electric@123` | authority | Electrical |
+| `water@city.gov` | `Water@123` | authority | Water Works |
+| `parks@city.gov` | `Parks@123` | authority | Parks & Recreation |
+
+> Passwords are stored as PBKDF2-SHA256 hashes (`salt:hash`, 100k iterations) using the Web Crypto API — never in plaintext. Sessions are random 256-bit tokens stored in D1 with a 12-hour expiry, delivered as an `HttpOnly` cookie.
 
 ## Functional Entry URIs
 
@@ -30,29 +56,37 @@ all backed by a **real Cloudflare D1 database** with **live polling** (not a dem
 | `/verify` | Community verification feed (confirm / reject) |
 | `/impact` | Citizen impact dashboard (AI insight + charts) |
 | `/profile` | User profile, community score, my reports |
-| `/issue/:id` | Issue detail with AI analysis + official timeline |
-| `/admin` | Municipal operations console (priority queue, table, analytics) |
+| `/issue/:id` | Issue detail with AI analysis + official timeline (+ assigned authority) |
+| `/login` | **Staff sign-in** (admin & authorities) |
+| `/admin` | Municipal operations console — **requires `admin` login** |
+| `/authority` | Department dashboard — **requires `authority` login**, shows only its assigned issues |
 
 ### API (Hono + D1)
 | Method | Path | Description |
 |--------|------|-------------|
+| POST | `/api/auth/login` | Staff login `{email, password}` → sets session cookie |
+| POST | `/api/auth/logout` | Destroy session |
+| GET | `/api/auth/me` | Current logged-in staff member (401 if none) |
+| GET | `/api/authorities` | **(admin)** list department authorities (for assignment) |
 | POST | `/api/analyze` | Run Gemini analysis on `{description, category?, imageBase64?, mimeType?}` |
-| GET | `/api/issues?status=&category=&mine=&verify=&limit=` | List issues |
-| GET | `/api/issues/:id` | Single issue + update timeline |
+| GET | `/api/issues?status=&category=&mine=&verify=&assigned=me&unassigned=&limit=` | List issues (`assigned=me` = authority's own queue) |
+| GET | `/api/issues/:id` | Single issue + update timeline + assignee |
 | POST | `/api/issues` | Create issue (auto-analyzes if `ai` not provided) |
 | POST | `/api/issues/:id/verify` | Community verification `{vote: confirm|reject}` |
-| PATCH | `/api/issues/:id/status` | Admin status update `{status, department?, message?}` |
+| PATCH | `/api/issues/:id/status` | **(admin/authority)** status update `{status, department?, message?}` |
+| PATCH | `/api/issues/:id/assign` | **(admin)** assign to authority `{authority_id, message?}` |
 | GET | `/api/stats` | Aggregate dashboard stats + category/status breakdowns |
 | GET | `/api/insight` | Gemini weekly community insight |
-| GET | `/api/me` | Current user profile + report count |
+| GET | `/api/me` | Current citizen profile + report count |
 
 ## Data Architecture
 - **Storage**: Cloudflare **D1** (SQLite at the edge). Local dev uses an automatic local SQLite mirror.
 - **Tables**:
-  - `users` — citizens/admins, community `score`
-  - `issues` — report content, AI fields (`category`, `severity`, `priority_score`, `ai_summary`, `ai_source`), geo (`lat`/`lng`), `status`, `verify_count`
+  - `users` — citizens + staff. Staff have `role` (`admin`/`authority`), `department`, and `password_hash`
+  - `issues` — report content, AI fields, geo, `status`, `verify_count`, **`assigned_to`** (authority user id)
   - `verifications` — one vote per user per issue (unique constraint)
-  - `issue_updates` — official status-change timeline
+  - `issue_updates` — official status-change timeline (author = the staff member)
+  - `sessions` — login session tokens (`token`, `user_id`, `expires_at`)
 - **AI**: Google Gemini (`gemini-2.5-flash`) via REST `fetch` (`src/lib/gemini.ts`). When `GEMINI_API_KEY`
   is not set, a deterministic keyword/severity **heuristic fallback** keeps the app fully functional
   (responses are tagged `source: "gemini"` or `"heuristic"` and shown in the UI).
@@ -85,8 +119,8 @@ pm2 start ecosystem.config.cjs   # serves on http://localhost:3000
 - **Platform**: Cloudflare Pages (+ D1)
 - **Status**: ✅ Running locally in sandbox with **live Gemini AI enabled** / ⚠️ Not yet deployed to production
 - **Tech Stack**: Hono + TypeScript (JSX SSR) + Cloudflare D1 + TailwindCSS (CDN) + Leaflet + Chart.js + Gemini (`gemini-2.5-flash`)
-- **Sandbox URL**: https://3000-ijok9ylao3b7gi3uhdwq3-5185f4aa.sandbox.novita.ai
-- **Last Updated**: 2026-06-24
+- **Sandbox URL**: https://3000-i2746obs5fb86efxebhdc-82b888ba.sandbox.novita.ai (try `/login`)
+- **Last Updated**: 2026-06-24 (added password-protected admin + authority assignment)
 
 ### Production deploy (after configuring Cloudflare)
 ```bash
@@ -96,7 +130,8 @@ npm run deploy
 ```
 
 ## Not Yet Implemented / Next Steps
-- Real authentication (currently a fixed demo user `id=1`); wire up Google OAuth.
+- **Citizen** authentication (citizen pages still use a fixed demo user `id=1`); staff auth is fully implemented. Wire up Google OAuth for citizens.
+- Admin UI to create/manage authority accounts & reset passwords (currently seeded).
 - WebSocket/SSE push instead of polling for true server-push real-time (needs Durable Objects).
 - Image storage in R2 (photos are currently stored as base64 data URLs in D1).
 - Push/email notifications when an issue's status changes.
