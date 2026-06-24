@@ -1,12 +1,18 @@
 {
-  "name": "webapp",
+  "name": "community-hero-ai",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:sandbox": "wrangler pages dev dist --d1=DB --local --ip 0.0.0.0 --port 3000",
     "build": "vite build",
-    "preview": "wrangler pages dev",
-    "deploy": "npm run build && wrangler pages deploy",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+    "preview": "wrangler pages dev dist",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name community-hero-ai",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "db:migrate:local": "wrangler d1 migrations apply community-hero-ai-production --local",
+    "db:migrate:prod": "wrangler d1 migrations apply community-hero-ai-production",
+    "db:seed": "wrangler d1 execute community-hero-ai-production --local --file=./seed.sql",
+    "db:reset": "rm -rf .wrangler/state/v3/d1 && npm run db:migrate:local && npm run db:seed",
+    "clean-port": "fuser -k 3000/tcp 2>/dev/null || true"
   },
   "dependencies": {
     "hono": "^4.12.26"
