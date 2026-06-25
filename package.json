@@ -11,11 +11,16 @@
     "db:migrate:local": "wrangler d1 migrations apply community-hero-ai-production --local",
     "db:migrate:prod": "wrangler d1 migrations apply community-hero-ai-production",
     "db:seed": "wrangler d1 execute community-hero-ai-production --local --file=./seed.sql",
-    "db:reset": "rm -rf .wrangler/state/v3/d1 && npm run db:migrate:local && npm run db:seed",
-    "clean-port": "fuser -k 3000/tcp 2>/dev/null || true"
+    "db:setup": "npm run db:migrate:local && npm run db:seed",
+    "db:reset": "node -e \"require('fs').rmSync('.wrangler/state/v3/d1',{recursive:true,force:true})\" && npm run db:migrate:local && npm run db:seed",
+    "setup": "npm install && npm run build && npm run db:setup",
+    "start": "node scripts/start.mjs",
+    "start:node": "tsx src/server.node.ts"
   },
   "dependencies": {
-    "hono": "^4.12.26"
+    "@hono/node-server": "^2.0.6",
+    "hono": "^4.12.26",
+    "tsx": "^4.22.4"
   },
   "devDependencies": {
     "@hono/vite-build": "^1.2.0",

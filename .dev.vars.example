@@ -1,0 +1,9 @@
+# Copy this file to `.dev.vars` and fill in your own values.
+#   cp .dev.vars.example .dev.vars      (mac/linux)
+#   Copy-Item .dev.vars.example .dev.vars   (windows powershell)
+
+# Google Gemini API key — https://aistudio.google.com/apikey
+GEMINI_API_KEY=your_gemini_key_here
+
+# Firebase project id — must match public/static/firebase-config.js
+FIREBASE_PROJECT_ID=your_firebase_project_id

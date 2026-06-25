@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { analyzeIssue, generateInsight, computePriority } from '../lib/gemini'
+import { analyzeIssue, generateInsight, generateResolutionPlan, chatReply, predictTrends, computePriority } from '../lib/gemini'
+import { runTriageAgent } from '../lib/agent'
 import {
   verifyPassword,
   createSession,
@@ -15,6 +16,7 @@ import { getFirebaseUser, getOrCreateCitizen } from '../lib/firebase'
 type Bindings = {
   DB: D1Database
   GEMINI_API_KEY?: string
+  FIREBASE_PROJECT_ID?: string
 }
 
 const api = new Hono<{ Bindings: Bindings }>()
@@ -231,7 +233,16 @@ api.post('/issues', async (c) => {
   // reward the reporter
   await c.env.DB.prepare(`UPDATE users SET score = score + 10 WHERE id = ?`).bind(reporterId).run()
 
-  return c.json({ id: issueId, ...analysis }, 201)
+  // Autonomous triage agent processes the new report immediately:
+  // de-duplicates, prioritizes, auto-routes to a department, and drafts a plan.
+  let agent: { ok: boolean; steps: number; conclusion: string } | null = null
+  try {
+    agent = await runTriageAgent(c.env, issueId as number)
+  } catch (e) {
+    console.error('Triage agent error:', (e as Error).message)
+  }
+
+  return c.json({ id: issueId, ...analysis, agent }, 201)
 })
 
 // ---------------------------------------------------------------
@@ -344,6 +355,89 @@ api.patch('/issues/:id/assign', requireRole('admin'), async (c) => {
   ).run()
 
   return c.json({ ok: true, assigned_to: authority.id, department: authority.department, status: newStatus })
+})
+
+// AI-generated resolution action plan for a single issue (real-time Gemini).
+// Public so citizens see transparency on how their issue will be fixed.
+api.get('/issues/:id/plan', async (c) => {
+  const id = c.req.param('id')
+  const issue = await c.env.DB.prepare(
+    `SELECT title, description, category, severity, address, department FROM issues WHERE id = ?`
+  ).bind(id).first<any>()
+  if (!issue) return c.json({ error: 'Not found' }, 404)
+
+  const plan = await generateResolutionPlan(c.env.GEMINI_API_KEY, issue)
+  return c.json(plan)
+})
+
+// Autonomous triage agent — reasoning + action trace for an issue (public, read-only).
+api.get('/issues/:id/agent', async (c) => {
+  const id = c.req.param('id')
+  const { results } = await c.env.DB.prepare(
+    `SELECT step, tool, thought, action, result, created_at FROM agent_actions WHERE issue_id = ? ORDER BY step ASC`
+  ).bind(id).all()
+  return c.json({ actions: results || [] })
+})
+
+// Manually (re-)run the autonomous triage agent on an issue (admin only).
+api.post('/issues/:id/agent/run', requireRole('admin'), async (c) => {
+  const id = Number(c.req.param('id'))
+  const result = await runTriageAgent(c.env, id)
+  return c.json(result)
+})
+
+// Predictive insights — Gemini forecasts emerging hotspots & rising categories.
+api.get('/predict', async (c) => {
+  const total = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues`).first<{ n: number }>()
+  const resolved = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE status = 'Resolved'`).first<{ n: number }>()
+  const { results: byCategory } = await c.env.DB.prepare(
+    `SELECT category, COUNT(*) AS n FROM issues GROUP BY category ORDER BY n DESC`
+  ).all()
+  const hotspot = await c.env.DB.prepare(
+    `SELECT address, COUNT(*) AS n FROM issues WHERE address != '' GROUP BY address ORDER BY n DESC LIMIT 1`
+  ).first<{ address: string }>()
+  const { results: recent } = await c.env.DB.prepare(
+    `SELECT category, address FROM issues ORDER BY created_at DESC LIMIT 12`
+  ).all()
+
+  const prediction = await predictTrends(c.env.GEMINI_API_KEY, {
+    byCategory: (byCategory as any[]) || [],
+    hotspot: hotspot?.address || 'city-wide',
+    total: total?.n || 0,
+    resolved: resolved?.n || 0,
+    recent: (recent as any[]) || [],
+  })
+  return c.json(prediction)
+})
+
+// ---------------------------------------------------------------
+// AI CHATBOT — "Hero Assistant" (real-time Gemini, grounded with live stats)
+// ---------------------------------------------------------------
+api.post('/chat', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const messages = Array.isArray(body.messages) ? body.messages : []
+  if (!messages.length) return c.json({ error: 'messages required' }, 400)
+
+  // Basic sanitation + bound the payload.
+  const clean = messages
+    .filter((m: any) => m && typeof m.content === 'string' && m.content.trim())
+    .slice(-12)
+    .map((m: any) => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: String(m.content).slice(0, 1000),
+    }))
+  if (!clean.length) return c.json({ error: 'messages required' }, 400)
+
+  const total = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues`).first<{ n: number }>()
+  const resolved = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE status = 'Resolved'`).first<{ n: number }>()
+  const ctx = {
+    total: total?.n || 0,
+    resolved: resolved?.n || 0,
+    open: (total?.n || 0) - (resolved?.n || 0),
+  }
+
+  const result = await chatReply(c.env.GEMINI_API_KEY, clean, ctx)
+  return c.json(result)
 })
 
 // ---------------------------------------------------------------

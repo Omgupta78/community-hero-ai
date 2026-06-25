@@ -11,7 +11,9 @@
 
 import type { Context } from 'hono'
 
-// Your Firebase project id — must match the `aud`/`iss` of incoming tokens.
+// Default Firebase project id — used when the `FIREBASE_PROJECT_ID` binding is
+// not set. Must match the `aud`/`iss` of incoming tokens and the projectId in
+// public/static/firebase-config.js.
 export const FIREBASE_PROJECT_ID = 'community-hero-64e49'
 
 export type FirebaseUser = {
@@ -75,7 +77,12 @@ async function getKeys(): Promise<Record<string, CryptoKey>> {
 }
 
 // Verifies a Firebase ID token. Returns the user or null when invalid.
-export async function verifyFirebaseToken(token: string): Promise<FirebaseUser | null> {
+// `projectId` defaults to the built-in constant but can be overridden via the
+// FIREBASE_PROJECT_ID environment binding so you can use your own project.
+export async function verifyFirebaseToken(
+  token: string,
+  projectId: string = FIREBASE_PROJECT_ID
+): Promise<FirebaseUser | null> {
   try {
     const parts = token.split('.')
     if (parts.length !== 3) return null
@@ -89,8 +96,8 @@ export async function verifyFirebaseToken(token: string): Promise<FirebaseUser |
     // Claim checks
     const now = Math.floor(Date.now() / 1000)
     const skew = 60 // allow small clock skew
-    if (payload.aud !== FIREBASE_PROJECT_ID) return null
-    if (payload.iss !== `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`) return null
+    if (payload.aud !== projectId) return null
+    if (payload.iss !== `https://securetoken.google.com/${projectId}`) return null
     if (typeof payload.exp !== 'number' || payload.exp < now - skew) return null
     if (typeof payload.iat !== 'number' || payload.iat > now + skew) return null
     if (!payload.sub) return null
@@ -118,11 +125,13 @@ export async function verifyFirebaseToken(token: string): Promise<FirebaseUser |
 }
 
 // Reads the Bearer token from the request and verifies it.
+// Uses the FIREBASE_PROJECT_ID env binding when present.
 export async function getFirebaseUser(c: Context): Promise<FirebaseUser | null> {
   const auth = c.req.header('Authorization') || ''
   const m = auth.match(/^Bearer\s+(.+)$/i)
   if (!m) return null
-  return verifyFirebaseToken(m[1])
+  const projectId = (c.env?.FIREBASE_PROJECT_ID as string) || FIREBASE_PROJECT_ID
+  return verifyFirebaseToken(m[1], projectId)
 }
 
 // Finds (or creates) the citizen `users` row linked to this Firebase account,

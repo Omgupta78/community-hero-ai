@@ -7,6 +7,7 @@ import { getSessionUser } from './lib/auth'
 type Bindings = {
   DB: D1Database
   GEMINI_API_KEY?: string
+  FIREBASE_PROJECT_ID?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -268,6 +269,30 @@ app.get('/impact', (c) => {
             <span id="insight-source" class="ml-auto text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-white/20"></span>
           </div>
           <p id="insight-text" class="text-sm text-primary-fixed leading-relaxed">Generating insights…</p>
+        </section>
+
+        {/* Predictive insights (Gemini forecast) */}
+        <section id="predict-box" class="bg-tertiary-container rounded-xl p-lg border border-tertiary-fixed">
+          <div class="flex items-center gap-2 mb-2 text-on-tertiary-container">
+            <span class="material-symbols-outlined">trending_up</span>
+            <h2 class="font-bold text-[18px]">AI Predictive Insights</h2>
+            <span id="predict-source" class="ml-auto text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-white/40 text-on-tertiary-container">Forecast</span>
+          </div>
+          <p id="predict-forecast" class="text-sm text-on-tertiary-container leading-relaxed mb-3">Forecasting trends…</p>
+          <div class="grid grid-cols-2 gap-sm">
+            <div class="bg-surface-lowest/70 rounded-lg p-2">
+              <p class="text-[10px] uppercase font-bold text-on-surface-variant">Emerging Hotspot</p>
+              <p id="predict-hotspot" class="text-sm font-bold text-on-surface">—</p>
+            </div>
+            <div class="bg-surface-lowest/70 rounded-lg p-2">
+              <p class="text-[10px] uppercase font-bold text-on-surface-variant">Likely to Rise</p>
+              <p id="predict-category" class="text-sm font-bold text-on-surface">—</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-start gap-2 bg-surface-lowest/70 rounded-lg p-2">
+            <span class="material-symbols-outlined text-[18px] text-secondary">lightbulb</span>
+            <p id="predict-reco" class="text-sm text-on-surface">—</p>
+          </div>
         </section>
 
         <section class="grid grid-cols-3 gap-sm">

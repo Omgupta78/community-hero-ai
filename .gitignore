@@ -15,6 +15,9 @@ dist/
 node_modules/
 .wrangler
 
+# node server local db
+data/
+
 # env
 .env
 .env.production

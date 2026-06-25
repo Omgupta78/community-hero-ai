@@ -1,0 +1,9 @@
+# Files NOT uploaded to Cloud Build. Keep source, migrations, seed & static.
+node_modules
+.wrangler
+dist
+data
+.git
+.dev.vars
+.dev.vars.example
+*.log

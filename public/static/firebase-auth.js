@@ -38,8 +38,13 @@ onAuthStateChanged(auth, (user) => {
 })
 
 // axios interceptor — adds a fresh ID token to every API request when signed in.
-if (window.axios) {
-  window.axios.interceptors.request.use(async (config) => {
+// IMPORTANT: this must be attached to EVERY axios instance the app uses. The
+// pages talk to the API through the dedicated `window.CH.api` instance created
+// in common.js via axios.create(), which does NOT inherit interceptors added to
+// the global `window.axios`. So we attach to both.
+function attachAuthInterceptor(instance) {
+  if (!instance || !instance.interceptors) return
+  instance.interceptors.request.use(async (config) => {
     const url = config.url || ''
     const isApi = (config.baseURL || '').includes('/api') || url.startsWith('/api')
     if (isApi && auth.currentUser) {
@@ -52,6 +57,10 @@ if (window.axios) {
     return config
   })
 }
+
+attachAuthInterceptor(window.axios)
+// common.js runs before this module, so window.CH.api is already available.
+if (window.CH && window.CH.api) attachAuthInterceptor(window.CH.api)
 
 const CHAuth = {
   auth,

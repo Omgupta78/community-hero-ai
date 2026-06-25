@@ -44,7 +44,21 @@
     } catch (e) { console.error(e) }
   }
 
+  async function loadPredict() {
+    const el = document.getElementById('predict-box')
+    if (!el) return
+    try {
+      const { data } = await api.get('/predict')
+      document.getElementById('predict-forecast').textContent = data.forecast
+      document.getElementById('predict-hotspot').textContent = data.emerging_hotspot
+      document.getElementById('predict-category').textContent = data.rising_category
+      document.getElementById('predict-reco').textContent = data.recommendation
+      document.getElementById('predict-source').textContent = data.source === 'gemini' ? 'Gemini Forecast' : 'Smart Forecast'
+    } catch (e) { console.error(e) }
+  }
+
   loadInsight()
+  loadPredict()
   loadCharts()
   setInterval(loadCharts, 8000)
 })()

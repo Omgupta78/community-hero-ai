@@ -1,0 +1,15 @@
+node_modules
+.wrangler
+dist
+data
+.git
+.gitignore
+.dev.vars
+.dev.vars.example
+*.log
+npm-debug.log*
+README.md
+HACKATHON_SETUP.md
+DEPLOY_GOOGLE_CLOUD.md
+.vscode
+.idea
