@@ -10,6 +10,7 @@ import {
   clearCookie,
   SESSION_COOKIE,
 } from '../lib/auth'
+import { getFirebaseUser, getOrCreateCitizen } from '../lib/firebase'
 
 type Bindings = {
   DB: D1Database
@@ -19,8 +20,32 @@ type Bindings = {
 const api = new Hono<{ Bindings: Bindings }>()
 api.use('/*', cors())
 
-// Demo "current citizen" — citizen-facing endpoints still use a fixed demo user.
-const CURRENT_USER_ID = 1
+// Fallback "current citizen" used only when a request arrives without a valid
+// Firebase token (e.g. anonymous browsing). Real signed-in citizens are
+// resolved from their Firebase ID token.
+const DEMO_USER_ID = 1
+
+// Resolves the numeric users.id for the request's citizen.
+//  - If a valid Firebase ID token is present, finds/creates that citizen.
+//  - Otherwise falls back to the seeded demo citizen (id=1) so the app still
+//    works for anonymous visitors.
+async function currentCitizenId(c: any): Promise<number> {
+  const fb = await getFirebaseUser(c)
+  if (fb) {
+    const citizen = await getOrCreateCitizen(c.env.DB, fb)
+    return citizen.id
+  }
+  return DEMO_USER_ID
+}
+
+// Like above but returns null (not the demo user) when not signed in — for
+// endpoints that should require a real Firebase login.
+async function requireCitizen(c: any): Promise<number | null> {
+  const fb = await getFirebaseUser(c)
+  if (!fb) return null
+  const citizen = await getOrCreateCitizen(c.env.DB, fb)
+  return citizen.id
+}
 
 // ---------------------------------------------------------------
 // AUTH (staff: admin + authorities)
@@ -108,7 +133,7 @@ api.get('/issues', async (c) => {
 
   if (status) { where.push('i.status = ?'); binds.push(status) }
   if (category) { where.push('i.category = ?'); binds.push(category) }
-  if (mine === 'true') { where.push('i.reporter_id = ?'); binds.push(CURRENT_USER_ID) }
+  if (mine === 'true') { where.push('i.reporter_id = ?'); binds.push(await currentCitizenId(c)) }
   if (verify === 'true') { where.push("i.status IN ('Reported','Verified')") }
 
   // `assigned` scoping is only honoured for a logged-in authority and shows
@@ -169,6 +194,8 @@ api.post('/issues', async (c) => {
     ai, // optionally pass pre-computed analysis from /analyze
   } = body
 
+  const reporterId = await currentCitizenId(c)
+
   const analysis = ai && ai.category
     ? ai
     : await analyzeIssue(c.env.GEMINI_API_KEY, { description, category, imageBase64, mimeType })
@@ -192,7 +219,7 @@ api.post('/issues', async (c) => {
     analysis.summary,
     analysis.source,
     anonymous ? 1 : 0,
-    CURRENT_USER_ID
+    reporterId
   ).run()
 
   const issueId = res.meta.last_row_id
@@ -202,7 +229,7 @@ api.post('/issues', async (c) => {
   ).bind(issueId, 'Issue reported and analyzed by AI.').run()
 
   // reward the reporter
-  await c.env.DB.prepare(`UPDATE users SET score = score + 10 WHERE id = ?`).bind(CURRENT_USER_ID).run()
+  await c.env.DB.prepare(`UPDATE users SET score = score + 10 WHERE id = ?`).bind(reporterId).run()
 
   return c.json({ id: issueId, ...analysis }, 201)
 })
@@ -214,11 +241,12 @@ api.post('/issues/:id/verify', async (c) => {
   const id = Number(c.req.param('id'))
   const body = await c.req.json().catch(() => ({}))
   const vote = body.vote === 'reject' ? 'reject' : 'confirm'
+  const voterId = await currentCitizenId(c)
 
   try {
     await c.env.DB.prepare(
       `INSERT INTO verifications (issue_id, user_id, vote) VALUES (?, ?, ?)`
-    ).bind(id, CURRENT_USER_ID, vote).run()
+    ).bind(id, voterId, vote).run()
   } catch (e) {
     return c.json({ error: 'Already verified by you' }, 409)
   }
@@ -246,7 +274,7 @@ api.post('/issues/:id/verify', async (c) => {
   ).bind(confirms, newPriority, newStatus, id).run()
 
   // reward verifier
-  await c.env.DB.prepare(`UPDATE users SET score = score + 5 WHERE id = ?`).bind(CURRENT_USER_ID).run()
+  await c.env.DB.prepare(`UPDATE users SET score = score + 5 WHERE id = ?`).bind(voterId).run()
 
   return c.json({ verify_count: confirms, status: newStatus, priority_score: newPriority })
 })
@@ -327,8 +355,9 @@ api.get('/stats', async (c) => {
   const open = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE status != 'Resolved'`).first<{ n: number }>()
   const critical = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE severity >= 5 AND status != 'Resolved'`).first<{ n: number }>()
   const pending = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE status IN ('Reported','Verified')`).first<{ n: number }>()
-  const mine = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE reporter_id = ?`).bind(CURRENT_USER_ID).first<{ n: number }>()
-  const user = await c.env.DB.prepare(`SELECT score FROM users WHERE id = ?`).bind(CURRENT_USER_ID).first<{ score: number }>()
+  const citizenId = await currentCitizenId(c)
+  const mine = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE reporter_id = ?`).bind(citizenId).first<{ n: number }>()
+  const user = await c.env.DB.prepare(`SELECT score FROM users WHERE id = ?`).bind(citizenId).first<{ score: number }>()
 
   const { results: byCategory } = await c.env.DB.prepare(
     `SELECT category, COUNT(*) AS n FROM issues GROUP BY category ORDER BY n DESC`
@@ -384,11 +413,15 @@ api.get('/insight', async (c) => {
 // PROFILE
 // ---------------------------------------------------------------
 api.get('/me', async (c) => {
-  const user = await c.env.DB.prepare(`SELECT id, name, email, role, score FROM users WHERE id = ?`)
-    .bind(CURRENT_USER_ID).first()
+  const fb = await getFirebaseUser(c)
+  const authenticated = !!fb
+  const citizenId = await currentCitizenId(c)
+
+  const user = await c.env.DB.prepare(`SELECT id, name, email, role, score, photo_url FROM users WHERE id = ?`)
+    .bind(citizenId).first<any>()
   const reports = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE reporter_id = ?`)
-    .bind(CURRENT_USER_ID).first<{ n: number }>()
-  return c.json({ ...user, reports: reports?.n || 0 })
+    .bind(citizenId).first<{ n: number }>()
+  return c.json({ ...user, reports: reports?.n || 0, authenticated })
 })
 
 export default api

@@ -308,36 +308,72 @@ app.get('/profile', (c) => {
     <div class="pt-[80px] pb-[100px]">
       <TopBar title="My Profile" />
       <main class="px-container-margin max-w-2xl mx-auto mt-lg space-y-lg">
-        <section class="bg-surface-lowest border border-outline-variant rounded-xl p-lg flex items-center gap-4">
-          <div class="w-16 h-16 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
-            <span class="material-symbols-outlined text-[36px]">person</span>
-          </div>
-          <div>
-            <h2 class="font-bold text-[20px] text-on-surface" id="p-name">Demo Citizen</h2>
-            <p class="text-sm text-on-surface-variant" id="p-email">demo@communityhero.ai</p>
+        {/* Signed-OUT view */}
+        <section id="signed-out" class="hidden">
+          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-lg text-center">
+            <div class="w-16 h-16 mx-auto rounded-full bg-primary-container text-on-primary-container flex items-center justify-center mb-3">
+              <span class="material-symbols-outlined text-[36px]">account_circle</span>
+            </div>
+            <h2 class="font-bold text-[20px] text-on-surface">Sign in to Community Hero</h2>
+            <p class="text-sm text-on-surface-variant mt-1 mb-lg">Track your reports, earn community points, and verify neighbors' issues.</p>
+
+            <button id="google-signin" class="w-full bg-surface-lowest border border-outline-variant rounded-lg py-3 font-bold text-on-surface flex items-center justify-center gap-3 hover:bg-surface-container transition mb-md">
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="" />
+              Continue with Google
+            </button>
+
+            <div class="flex items-center gap-3 my-md">
+              <span class="flex-1 h-px bg-outline-variant"></span>
+              <span class="text-xs text-on-surface-variant">or use email</span>
+              <span class="flex-1 h-px bg-outline-variant"></span>
+            </div>
+
+            <form id="email-form" class="space-y-sm text-left">
+              <input id="reg-name" type="text" placeholder="Name (for sign up)" autocomplete="name"
+                class="w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary" />
+              <input id="email-input" type="email" required placeholder="you@example.com" autocomplete="email"
+                class="w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary" />
+              <input id="password-input" type="password" required placeholder="Password (min 6 chars)" autocomplete="current-password"
+                class="w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary" />
+              <p id="auth-error" class="hidden text-sm text-error font-medium"></p>
+              <div class="flex gap-2 pt-1">
+                <button type="submit" id="email-signin" class="flex-1 bg-primary text-on-primary rounded-lg py-3 font-bold active:scale-[0.98] transition">Sign In</button>
+                <button type="button" id="email-register" class="flex-1 border border-primary text-primary rounded-lg py-3 font-bold active:scale-[0.98] transition">Sign Up</button>
+              </div>
+            </form>
           </div>
         </section>
-        <section class="grid grid-cols-2 gap-md">
-          <div class="bg-primary-fixed rounded-xl p-md text-center">
-            <p class="text-3xl font-bold text-primary" id="p-score">—</p>
-            <p class="text-xs font-bold uppercase text-on-surface-variant mt-1">Community Score</p>
-          </div>
-          <div class="bg-secondary-container rounded-xl p-md text-center">
-            <p class="text-3xl font-bold text-on-secondary-container" id="p-reports">—</p>
-            <p class="text-xs font-bold uppercase text-on-surface-variant mt-1">Reports Filed</p>
-          </div>
-        </section>
-        <section>
-          <h3 class="text-[18px] font-semibold text-on-surface mb-md">My Reports</h3>
-          <div id="my-reports" class="space-y-md">
-            <div class="text-center text-on-surface-variant py-8">Loading…</div>
-          </div>
-        </section>
-        <div class="bg-surface-container-low rounded-xl p-md text-center">
-          <p class="text-sm text-on-surface-variant flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">login</span>
-            Signed in with Google (demo mode)
-          </p>
+
+        {/* Signed-IN view */}
+        <div id="signed-in" class="hidden space-y-lg">
+          <section class="bg-surface-lowest border border-outline-variant rounded-xl p-lg flex items-center gap-4">
+            <div id="p-avatar" class="w-16 h-16 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center overflow-hidden shrink-0">
+              <span class="material-symbols-outlined text-[36px]">person</span>
+            </div>
+            <div class="min-w-0">
+              <h2 class="font-bold text-[20px] text-on-surface truncate" id="p-name">Citizen</h2>
+              <p class="text-sm text-on-surface-variant truncate" id="p-email">—</p>
+            </div>
+          </section>
+          <section class="grid grid-cols-2 gap-md">
+            <div class="bg-primary-fixed rounded-xl p-md text-center">
+              <p class="text-3xl font-bold text-primary" id="p-score">—</p>
+              <p class="text-xs font-bold uppercase text-on-surface-variant mt-1">Community Score</p>
+            </div>
+            <div class="bg-secondary-container rounded-xl p-md text-center">
+              <p class="text-3xl font-bold text-on-secondary-container" id="p-reports">—</p>
+              <p class="text-xs font-bold uppercase text-on-surface-variant mt-1">Reports Filed</p>
+            </div>
+          </section>
+          <section>
+            <h3 class="text-[18px] font-semibold text-on-surface mb-md">My Reports</h3>
+            <div id="my-reports" class="space-y-md">
+              <div class="text-center text-on-surface-variant py-8">Loading…</div>
+            </div>
+          </section>
+          <button id="firebase-signout" class="w-full bg-error-container text-on-error-container rounded-xl py-3 font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition">
+            <span class="material-symbols-outlined text-[20px]">logout</span> Sign Out
+          </button>
         </div>
       </main>
       <BottomNav active="profile" />

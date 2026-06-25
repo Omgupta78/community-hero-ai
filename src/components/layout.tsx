@@ -29,9 +29,19 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
               </button>
             </>
           ) : (
-            <a href="/login" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
-              <span class="material-symbols-outlined text-[18px]">shield_person</span> Staff Login
-            </a>
+            <>
+              {/* Citizen auth chip — updated client-side by Firebase auth state */}
+              <a href="/profile" id="citizen-auth-chip" class="hidden items-center gap-1 px-2 py-1 rounded-full hover:bg-surface-container">
+                <span id="citizen-avatar" class="w-7 h-7 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center overflow-hidden">
+                  <span class="material-symbols-outlined text-[18px]">person</span>
+                </span>
+                <span id="citizen-name" class="text-xs font-bold text-on-surface hidden sm:inline max-w-[100px] truncate"></span>
+              </a>
+              <a href="/login" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
+                <span class="material-symbols-outlined text-[18px]">shield_person</span>
+                <span class="hidden sm:inline">Staff Login</span>
+              </a>
+            </>
           )}
           <span id="live-dot" class="flex items-center gap-1 text-[10px] font-bold uppercase text-secondary px-2">
             <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span> Live

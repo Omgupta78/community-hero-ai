@@ -80,5 +80,25 @@ window.CH = (function () {
     }
   })
 
+  // Reflect the Firebase citizen auth state in the TopBar chip.
+  function updateCitizenChip(user) {
+    const chip = document.getElementById('citizen-auth-chip')
+    if (!chip) return
+    if (user) {
+      chip.classList.remove('hidden')
+      chip.classList.add('flex')
+      const nameEl = document.getElementById('citizen-name')
+      if (nameEl) nameEl.textContent = user.displayName || (user.email ? user.email.split('@')[0] : 'You')
+      const av = document.getElementById('citizen-avatar')
+      if (av && user.photoURL) {
+        av.innerHTML = `<img src="${user.photoURL}" class="w-full h-full object-cover" alt="" referrerpolicy="no-referrer" />`
+      }
+    } else {
+      chip.classList.add('hidden')
+      chip.classList.remove('flex')
+    }
+  }
+  document.addEventListener('ch-auth-changed', (e) => updateCitizenChip(e.detail && e.detail.user))
+
   return { api, CAT_ICON, STATUS_COLOR, severityBadge, timeAgo, esc, issueCard, toast }
 })()

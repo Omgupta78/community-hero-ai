@@ -23,7 +23,9 @@ export const renderer = jsxRenderer(({ children, title }) => {
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script dangerouslySetInnerHTML={{ __html: tailwindConfig }} />
         <link href="/static/style.css" rel="stylesheet" />
+        <script src="/static/firebase-config.js"></script>
         <script src="/static/common.js"></script>
+        <script type="module" src="/static/firebase-auth.js"></script>
       </head>
       <body class="bg-background text-on-background min-h-screen antialiased">
         {children}
