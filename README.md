@@ -129,8 +129,36 @@ npm run db:migrate:prod
 npm run deploy
 ```
 
+## 👤 Citizen Authentication (Firebase) — NEW
+
+Citizens now sign in with **Firebase Authentication** (Google + Email/Password) on the
+`/profile` page. This replaces the old fixed demo user for signed-in citizens.
+
+- **Client**: `public/static/firebase-config.js` (project config) + `public/static/firebase-auth.js`
+  (Firebase JS SDK v10, loaded as an ES module). It exposes `window.CHAuth` and an axios
+  interceptor that automatically attaches the Firebase **ID token** (`Authorization: Bearer …`)
+  to every `/api` request.
+- **Server**: `src/lib/firebase.ts` verifies the Firebase ID token **on the Cloudflare Workers
+  runtime** (no `firebase-admin`) — it validates the RS256 JWT signature against Google's public
+  JWKs (cached per-isolate) plus the standard `iss`/`aud`/`exp`/`iat` claims, then
+  finds-or-creates the matching citizen in D1 (`getOrCreateCitizen`).
+- **Graceful fallback**: anonymous visitors (no token) still use the seeded demo citizen `id=1`,
+  so the app remains fully usable without signing in.
+- All citizen endpoints (`/api/me`, `/api/issues?mine`, `POST /api/issues`,
+  `POST /api/issues/:id/verify`, `/api/stats`) now resolve the real signed-in citizen from the token.
+- `users` table gained `firebase_uid` (unique) and `photo_url` columns (migration `0003`).
+
+> The Firebase **web API key is not a secret** — it only identifies the project to Google's
+> public auth endpoints; access is governed by Firebase Auth + security rules.
+
+### Firebase console setup (one-time)
+For Google sign-in / email-password to work in the browser you must, in the
+[Firebase console](https://console.firebase.google.com/project/community-hero-64e49):
+1. **Authentication → Sign-in method**: enable **Google** and **Email/Password**.
+2. **Authentication → Settings → Authorized domains**: add your dev sandbox domain and your
+   production `*.pages.dev` (and any custom) domain so the sign-in popup is allowed.
+
 ## Not Yet Implemented / Next Steps
-- **Citizen** authentication (citizen pages still use a fixed demo user `id=1`); staff auth is fully implemented. Wire up Google OAuth for citizens.
 - Admin UI to create/manage authority accounts & reset passwords (currently seeded).
 - WebSocket/SSE push instead of polling for true server-push real-time (needs Durable Objects).
 - Image storage in R2 (photos are currently stored as base64 data URLs in D1).
