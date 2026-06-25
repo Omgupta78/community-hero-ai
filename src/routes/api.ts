@@ -177,6 +177,19 @@ api.get('/issues/:id', async (c) => {
     `SELECT * FROM issue_updates WHERE issue_id = ? ORDER BY created_at ASC`
   ).bind(id).all()
 
+  // Trust breakdown for community verification.
+  const trust = await c.env.DB.prepare(
+    `SELECT COALESCE(SUM(on_site),0) AS on_site_count,
+            COALESCE(SUM(CASE WHEN vote='confirm' THEN 1 ELSE 0 END),0) AS confirms,
+            COALESCE(SUM(CASE WHEN on_site=1 THEN 2 ELSE 1 END),0) AS trust_weight
+     FROM verifications WHERE issue_id = ? AND vote='confirm'`
+  ).bind(id).first<any>()
+  if (issue && trust) {
+    ;(issue as any).on_site_count = trust.on_site_count || 0
+    ;(issue as any).remote_count = (trust.confirms || 0) - (trust.on_site_count || 0)
+    ;(issue as any).trust_weight = trust.trust_weight || 0
+  }
+
   return c.json({ issue, updates: updates || [] })
 })
 
@@ -246,48 +259,100 @@ api.post('/issues', async (c) => {
 })
 
 // ---------------------------------------------------------------
-// VERIFICATION (community)
+// VERIFICATION (community) — proof-of-presence, trust-weighted
 // ---------------------------------------------------------------
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLng = toRad(lng2 - lng1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(a))
+}
+
+const ON_SITE_RADIUS_M = 1000 // within 1km counts as an on-site (trusted) verification
+const PROMOTE_WEIGHT = 4 // weighted confirmations needed to auto-promote to "Verified"
+
 api.post('/issues/:id/verify', async (c) => {
   const id = Number(c.req.param('id'))
   const body = await c.req.json().catch(() => ({}))
   const vote = body.vote === 'reject' ? 'reject' : 'confirm'
   const voterId = await currentCitizenId(c)
 
+  const issue = await c.env.DB.prepare(
+    `SELECT severity, status, lat, lng, reporter_id FROM issues WHERE id = ?`
+  ).bind(id).first<any>()
+  if (!issue) return c.json({ error: 'Not found' }, 404)
+
+  // Can't verify your own report (removes the obvious self-farming exploit).
+  if (issue.reporter_id != null && Number(issue.reporter_id) === Number(voterId)) {
+    return c.json({ error: "You can't verify your own report" }, 403)
+  }
+
+  // Proof-of-presence: how close was the verifier to the issue?
+  const vLat = typeof body.lat === 'number' ? body.lat : null
+  const vLng = typeof body.lng === 'number' ? body.lng : null
+  let distance: number | null = null
+  if (vLat != null && vLng != null && issue.lat != null && issue.lng != null) {
+    distance = haversineMeters(issue.lat, issue.lng, vLat, vLng)
+  }
+  const onSite = distance != null && distance <= ON_SITE_RADIUS_M
+
   try {
     await c.env.DB.prepare(
-      `INSERT INTO verifications (issue_id, user_id, vote) VALUES (?, ?, ?)`
-    ).bind(id, voterId, vote).run()
+      `INSERT INTO verifications (issue_id, user_id, vote, on_site, distance_m) VALUES (?, ?, ?, ?, ?)`
+    ).bind(id, voterId, vote, onSite ? 1 : 0, distance).run()
   } catch (e) {
     return c.json({ error: 'Already verified by you' }, 409)
   }
 
-  // recount confirms
-  const row = await c.env.DB.prepare(
-    `SELECT COUNT(*) AS cnt FROM verifications WHERE issue_id = ? AND vote = 'confirm'`
-  ).bind(id).first<{ cnt: number }>()
-  const confirms = row?.cnt || 0
+  // Recount confirmations and compute a TRUST WEIGHT (on-site = 2, remote = 1).
+  const agg = await c.env.DB.prepare(
+    `SELECT
+       COUNT(*) AS confirms,
+       COALESCE(SUM(on_site), 0) AS on_site_count,
+       COALESCE(SUM(CASE WHEN on_site = 1 THEN 2 ELSE 1 END), 0) AS weight
+     FROM verifications WHERE issue_id = ? AND vote = 'confirm'`
+  ).bind(id).first<{ confirms: number; on_site_count: number; weight: number }>()
+  const confirms = agg?.confirms || 0
+  const onSiteCount = agg?.on_site_count || 0
+  const remoteCount = confirms - onSiteCount
+  const weight = agg?.weight || 0
 
-  const issue = await c.env.DB.prepare(`SELECT severity, status FROM issues i WHERE id = ?`).bind(id).first<any>()
-  const newPriority = computePriority(issue?.severity || 3, confirms)
+  const newPriority = computePriority(issue.severity || 3, weight)
 
-  // auto-promote to Verified after 3 community confirmations
-  let newStatus = issue?.status
-  if (confirms >= 3 && issue?.status === 'Reported') {
+  // Auto-promote to Verified only when TRUST WEIGHT is high enough — so a few
+  // random remote clicks can't validate a bogus report.
+  let newStatus = issue.status
+  if (weight >= PROMOTE_WEIGHT && issue.status === 'Reported') {
     newStatus = 'Verified'
     await c.env.DB.prepare(
       `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'Verified', ?, 'System')`
-    ).bind(id, `Confirmed by ${confirms} community members.`).run()
+    ).bind(id, `Community-verified (trust weight ${weight}: ${onSiteCount} on-site, ${remoteCount} remote).`).run()
   }
 
   await c.env.DB.prepare(
     `UPDATE issues SET verify_count = ?, priority_score = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
   ).bind(confirms, newPriority, newStatus, id).run()
 
-  // reward verifier
-  await c.env.DB.prepare(`UPDATE users SET score = score + 5 WHERE id = ?`).bind(voterId).run()
+  // Reward by trust: on-site verification (real presence) earns more than a
+  // remote review. This makes meaningless random clicks nearly worthless.
+  const points = onSite ? 5 : 1
+  await c.env.DB.prepare(`UPDATE users SET score = score + ? WHERE id = ?`).bind(points, voterId).run()
 
-  return c.json({ verify_count: confirms, status: newStatus, priority_score: newPriority })
+  return c.json({
+    verify_count: confirms,
+    on_site_count: onSiteCount,
+    remote_count: remoteCount,
+    trust_weight: weight,
+    on_site: onSite,
+    distance_m: distance != null ? Math.round(distance) : null,
+    points_awarded: points,
+    status: newStatus,
+    priority_score: newPriority,
+  })
 })
 
 // ---------------------------------------------------------------

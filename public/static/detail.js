@@ -147,6 +147,11 @@
         <p class="text-xs text-on-surface-variant mt-3 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">location_on</span>${esc(i.address) || 'Unknown location'}</p>
         <p class="text-xs text-on-surface-variant mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">person</span>${i.anonymous ? 'Anonymous reporter' : esc(i.reporter_name || 'Citizen')} · ${timeAgo(i.created_at)}</p>
         ${i.assignee_name ? `<p class="text-xs text-secondary font-bold mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">assignment_ind</span>Handled by ${esc(i.assignee_department || i.assignee_name)} authority</p>` : ''}
+        <div class="flex items-center gap-3 mt-2 text-xs">
+          <span class="flex items-center gap-1 text-secondary font-bold"><span class="material-symbols-outlined text-[15px]">person_pin_circle</span>${i.on_site_count || 0} on-site</span>
+          <span class="flex items-center gap-1 text-on-surface-variant"><span class="material-symbols-outlined text-[15px]">public</span>${i.remote_count || 0} remote</span>
+          <span class="flex items-center gap-1 text-primary font-bold ml-auto"><span class="material-symbols-outlined text-[15px]">verified_user</span>trust ${i.trust_weight || 0}</span>
+        </div>
       </div>
 
       <div class="bg-primary-fixed rounded-xl p-md mb-4">
@@ -166,7 +171,7 @@
       </div>
 
       <button id="verify-btn" class="w-full bg-secondary text-white rounded-xl py-3.5 font-bold flex items-center justify-center gap-2 mb-6">
-        <span class="material-symbols-outlined">verified</span> Verify This Issue (+5 pts)
+        <span class="material-symbols-outlined">verified</span> Verify This Issue
       </button>
 
       <h3 class="font-semibold text-on-surface mb-3">Timeline</h3>
@@ -177,14 +182,19 @@
     document.getElementById('verify-btn').addEventListener('click', async (e) => {
       const btn = e.currentTarget
       btn.disabled = true
+      btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Checking your location…'
+      const loc = window.CH.getLocation ? await window.CH.getLocation() : null
       try {
-        await api.post(`/issues/${id}/verify`, { vote: 'confirm' })
-        toast('Verified! +5 points')
+        const { data } = await api.post(`/issues/${id}/verify`, { vote: 'confirm', lat: loc && loc.lat, lng: loc && loc.lng })
+        toast(data.on_site ? `On-site verified ✓ +${data.points_awarded} pts` : `Remote review recorded +${data.points_awarded} pt`)
         load()
       } catch (err) {
-        if (err.response && err.response.status === 409) toast('Already verified by you', false)
+        const s = err.response && err.response.status
+        if (s === 409) toast('Already verified by you', false)
+        else if (s === 403) toast((err.response.data && err.response.data.error) || "You can't verify this", false)
         else toast('Verify failed', false)
         btn.disabled = false
+        btn.innerHTML = '<span class="material-symbols-outlined">verified</span> Verify This Issue'
       }
     })
 

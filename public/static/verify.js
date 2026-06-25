@@ -1,6 +1,6 @@
-// Verify page — real community verification voting
+// Verify page — proof-of-presence, trust-weighted community verification
 (function () {
-  const { api, CAT_ICON, severityBadge, esc, timeAgo, toast } = window.CH
+  const { api, CAT_ICON, severityBadge, esc, timeAgo, toast, getLocation } = window.CH
 
   async function load() {
     try {
@@ -30,6 +30,10 @@
         </div>
         <p class="text-sm text-on-surface-variant">${esc(i.description) || i.ai_summary || ''}</p>
         <p class="text-xs text-on-surface-variant mt-1">${esc(i.address)} · ${timeAgo(i.created_at)} · ${i.verify_count || 0} confirms</p>
+        <div class="flex items-center gap-1 mt-2 text-[11px] text-on-surface-variant">
+          <span class="material-symbols-outlined text-[14px] text-primary">my_location</span>
+          Verifying shares your location — confirming on-site counts as trusted proof.
+        </div>
         <div class="flex gap-2 mt-3">
           <button class="confirm-btn flex-1 bg-secondary text-white rounded-lg py-2.5 font-bold flex items-center justify-center gap-1">
             <span class="material-symbols-outlined text-[18px]">check_circle</span> Confirm
@@ -51,13 +55,21 @@
 
   async function vote(id, v, node) {
     node.querySelectorAll('button').forEach((b) => (b.disabled = true))
+    const loc = await getLocation()
     try {
-      const { data } = await api.post(`/issues/${id}/verify`, { vote: v })
-      toast(v === 'confirm' ? `Confirmed! +5 points (${data.verify_count} total)` : 'Marked as not valid. +5 points')
+      const { data } = await api.post(`/issues/${id}/verify`, { vote: v, lat: loc && loc.lat, lng: loc && loc.lng })
+      if (v === 'confirm') {
+        const tag = data.on_site ? `on-site ✓ (+${data.points_awarded} pts)` : `remote review (+${data.points_awarded} pt)`
+        toast(`Confirmed ${tag}`)
+      } else {
+        toast(`Marked not valid (+${data.points_awarded} pt)`)
+      }
       node.style.opacity = '0.4'
       setTimeout(load, 1200)
     } catch (e) {
-      if (e.response && e.response.status === 409) toast('You already verified this', false)
+      const s = e.response && e.response.status
+      if (s === 409) toast('You already verified this', false)
+      else if (s === 403) toast(e.response.data.error || "You can't verify this", false)
       else toast('Vote failed', false)
       node.querySelectorAll('button').forEach((b) => (b.disabled = false))
     }

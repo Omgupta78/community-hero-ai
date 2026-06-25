@@ -69,6 +69,18 @@ window.CH = (function () {
     document.body.appendChild(t)
     setTimeout(() => t.remove(), 2600)
   }
+  // Best-effort current location for proof-of-presence verification.
+  // Resolves to {lat, lng} or null (never rejects), with a short timeout.
+  function getLocation() {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null)
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
+      )
+    })
+  }
   // Wire up the staff logout button if present on the page.
   document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('logout-btn')
@@ -100,5 +112,5 @@ window.CH = (function () {
   }
   document.addEventListener('ch-auth-changed', (e) => updateCitizenChip(e.detail && e.detail.user))
 
-  return { api, CAT_ICON, STATUS_COLOR, severityBadge, timeAgo, esc, issueCard, toast }
+  return { api, CAT_ICON, STATUS_COLOR, severityBadge, timeAgo, esc, issueCard, toast, getLocation }
 })()

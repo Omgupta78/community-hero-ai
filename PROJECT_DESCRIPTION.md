@@ -41,8 +41,11 @@ resolution.
   available on every page.
 - **Predictive Insights** — Gemini forecasts rising issue categories and emerging hotspots
   with a preventive recommendation.
-- **Community verification & gamification** — citizens confirm reports (+5 pts), reporting
-  earns +10 pts; 3 confirmations auto-promote a report to "Verified".
+- **Community verification & gamification** — citizens confirm reports; reporting earns
+  community points. Verification uses a **proof-of-presence trust model**: confirming an
+  issue while physically near it ("on-site") is worth more and counts double toward
+  promotion, while remote reviews count less — so a report is only auto-promoted to
+  "Verified" once it reaches enough *trusted* confirmations. You can't verify your own report.
 - **Live interactive map** — Leaflet with severity-colored, auto-refreshing markers + GPS.
 - **Role-based municipal dashboards** — a super-admin assigns issues; department authorities
   see only their assigned queue and advance status; citizens see official updates instantly.

@@ -40,3 +40,24 @@ INSERT OR IGNORE INTO issue_updates (issue_id, status, department, message, auth
   (1, 'In Progress', 'Road Maintenance', 'Crew dispatched, repair scheduled today.', 'City Operations'),
   (4, 'Assigned', 'Water Works', 'Assigned to water works team.', 'City Operations'),
   (5, 'Resolved', 'Parks & Recreation', 'Wall repainted and cleaned.', 'City Operations');
+
+-- Trust-weighted community verifications (proof-of-presence demo data).
+-- on_site = verified physically near the issue (counts double); reporters never self-verify.
+INSERT OR IGNORE INTO verifications (issue_id, user_id, vote, on_site, distance_m) VALUES
+  (1, 2, 'confirm', 1, 140),
+  (1, 3, 'confirm', 1, 90),
+  (1, 5, 'confirm', 0, NULL),
+  (2, 1, 'confirm', 1, 210),
+  (2, 3, 'confirm', 1, 60),
+  (3, 1, 'confirm', 0, NULL),
+  (3, 2, 'confirm', 1, 175),
+  (4, 2, 'confirm', 1, 45),
+  (4, 3, 'confirm', 1, 130),
+  (4, 6, 'confirm', 0, NULL),
+  (5, 1, 'confirm', 1, 220),
+  (5, 3, 'confirm', 0, NULL);
+
+-- Keep each issue's verify_count consistent with the actual confirm rows.
+UPDATE issues
+SET verify_count = (SELECT COUNT(*) FROM verifications v WHERE v.issue_id = issues.id AND v.vote = 'confirm')
+WHERE id IN (1, 2, 3, 4, 5);
