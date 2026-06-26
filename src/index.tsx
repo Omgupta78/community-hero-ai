@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { renderer } from './renderer'
+import { renderer, ASSET_VER } from './renderer'
 import api from './routes/api'
 import { TopBar, BottomNav } from './components/layout'
 import { getSessionUser } from './lib/auth'
@@ -32,7 +32,14 @@ app.get('/', (c) => {
           AI-powered hyperlocal civic issue resolution platform — <b class="text-on-surface">one autonomous agent runs the whole loop, from a citizen's photo to a verified fix.</b>
         </p>
 
-        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-10 mb-4">Log in as</p>
+        <a href="/tour" class="group inline-flex items-center gap-2 mt-10 bg-on-surface text-surface-lowest rounded-full pl-5 pr-4 py-3 font-bold text-sm hover:shadow-lg transition active:scale-95">
+          <span class="material-symbols-outlined text-[20px]">play_circle</span>
+          Take the Guided Tour
+          <span class="text-[11px] font-medium opacity-70 hidden sm:inline">— see the full loop in ~90s</span>
+          <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+        </a>
+
+        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-8 mb-4">Or log in as</p>
         <div class="grid md:grid-cols-3 gap-md text-left">
           <a href="/home" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-primary hover:shadow-lg transition active:scale-[0.98]">
             <div class="w-12 h-12 rounded-lg bg-primary text-on-primary flex items-center justify-center mb-3">
@@ -68,6 +75,37 @@ app.get('/', (c) => {
       </main>
     </div>,
     { title: 'TrustLens AI — See. Verify. Solve.' }
+  )
+})
+
+// =============================================================
+// GUIDED TOUR — interactive walkthrough of the full civic loop
+// =============================================================
+app.get('/tour', (c) => {
+  return c.render(
+    <div class="tour-scope" id="tour-root">
+      <header class="tour-top">
+        <a href="/" class="tour-brand">
+          <img src="/static/logo.svg" class="w-7 h-7" alt="" />
+          <span><b>Trust</b>Lens<span class="tour-badge">AI</span></span>
+        </a>
+        <a href="/" class="tour-skip">Skip tour <span class="material-symbols-outlined">close</span></a>
+      </header>
+
+      <div class="tour-progress"><div id="tour-bar" class="tour-bar"></div></div>
+
+      <main class="tour-main">
+        <div id="tour-stage" class="tour-stage"></div>
+        <div class="tour-controls">
+          <button id="tour-prev" class="tour-btn tour-btn-line"><span class="material-symbols-outlined">arrow_back</span> Back</button>
+          <div id="tour-dots" class="tour-dots"></div>
+          <button id="tour-next" class="tour-btn tour-btn-primary">Next <span class="material-symbols-outlined">arrow_forward</span></button>
+        </div>
+      </main>
+
+      <script src={`/static/tour.js?v=${ASSET_VER}`}></script>
+    </div>,
+    { title: 'Guided Tour · TrustLens AI' }
   )
 })
 
@@ -885,7 +923,7 @@ app.get('/contractor', async (c) => {
         </div>
       </div>
 
-      <script src="/static/contractor.js"></script>
+      <script src={`/static/contractor.js?v=${ASSET_VER}`}></script>
     </div>,
     { title: 'Field Ops · TrustLens AI Responder' }
   )
@@ -1140,7 +1178,7 @@ app.get('/command', async (c) => {
         </div>
       </div>
 
-      <script src="/static/command.js"></script>
+      <script src={`/static/command.js?v=${ASSET_VER}`}></script>
     </div>,
     { title: 'Municipal AI Command Center · TrustLens AI' }
   )

@@ -1,5 +1,9 @@
 import { jsxRenderer } from 'hono/jsx-renderer'
 
+// Bump this whenever static CSS/JS changes so browsers fetch the latest assets
+// (prevents the "old styling cached" problem where pages look unchanged).
+export const ASSET_VER = '8'
+
 export const renderer = jsxRenderer(({ children, title }) => {
   return (
     <html lang="en">
@@ -29,12 +33,12 @@ export const renderer = jsxRenderer(({ children, title }) => {
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script dangerouslySetInnerHTML={{ __html: tailwindConfig }} />
-        <link href="/static/style.css" rel="stylesheet" />
+        <link href={`/static/style.css?v=${ASSET_VER}`} rel="stylesheet" />
         <script src="/static/firebase-config.js"></script>
-        <script src="/static/common.js"></script>
-        <script src="/static/chat.js"></script>
-        <script src="/static/notifications.js"></script>
-        <script type="module" src="/static/firebase-auth.js"></script>
+        <script src={`/static/common.js?v=${ASSET_VER}`}></script>
+        <script src={`/static/chat.js?v=${ASSET_VER}`}></script>
+        <script src={`/static/notifications.js?v=${ASSET_VER}`}></script>
+        <script type="module" src={`/static/firebase-auth.js?v=${ASSET_VER}`}></script>
       </head>
       <body class="bg-background text-on-background min-h-screen antialiased">
         {children}
