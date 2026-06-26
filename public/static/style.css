@@ -352,3 +352,68 @@ main button[class*="rounded-xl"]:hover {
   .cc-card, .cc-contractor, .cc-btn { transition: none; }
   .cc-skel-list, .cc-spin { animation: none; }
 }
+
+/* ===================== Command Center — view router + new sections ===================== */
+.cc-scope .cc-view { display: flex; flex-direction: column; gap: 20px; animation: cc-fade .35s ease; }
+@keyframes cc-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.cc-view-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.cc-view-head h1 { font-size: 22px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 10px; }
+.cc-view-head h1 .material-symbols-outlined { color: var(--cc-primary); font-size: 26px; }
+.cc-link { background: none; border: none; color: var(--cc-primary); font-weight: 700; font-size: 12px; cursor: pointer; }
+.cc-link:hover { text-decoration: underline; }
+.cc-btn-ghost-line { background: transparent; border: 1px solid var(--cc-line); color: var(--cc-ink); }
+.cc-btn-ghost-line:hover { background: rgba(37,99,235,0.06); border-color: var(--cc-primary); color: var(--cc-primary); }
+
+/* Active nav glow on click */
+.cc-nav-item { cursor: pointer; }
+
+/* Tall map for the dedicated map view */
+.cc-map-tall { height: calc(100vh - 230px); min-height: 460px; }
+
+/* Filters */
+.cc-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.cc-filter { border: 1px solid var(--cc-line); background: var(--cc-surface); color: var(--cc-muted); border-radius: 999px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .18s; }
+.cc-filter:hover { border-color: var(--cc-primary); color: var(--cc-primary); }
+.cc-filter.active { background: var(--cc-primary); color: #fff; border-color: var(--cc-primary); }
+
+/* Issue table */
+.cc-table-wrap { overflow-x: auto; }
+.cc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cc-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--cc-muted); padding: 10px 12px; border-bottom: 1px solid var(--cc-line); }
+.cc-table td { padding: 12px; border-bottom: 1px solid var(--cc-line); vertical-align: middle; }
+.cc-table tbody tr:hover { background: rgba(37,99,235,0.04); }
+.cc-table td b { font-size: 13px; display: block; }
+.cc-table td small { font-size: 11px; color: var(--cc-muted); }
+.cc-sev { display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; border-radius: 8px; font-weight: 800; font-size: 12px; }
+.cc-status { font-size: 11px; }
+
+/* Departments grid */
+.cc-dept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.cc-dept-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.cc-dept-icon { width: 42px; height: 42px; border-radius: 12px; background: rgba(37,99,235,0.12); color: var(--cc-primary); display: flex; align-items: center; justify-content: center; }
+.cc-dept-top b { font-size: 14px; display: block; }
+.cc-dept-top small { font-size: 11px; color: var(--cc-muted); }
+.cc-dept-stat { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin: 10px 0 4px; }
+.cc-dept-meta { font-size: 11px; color: var(--cc-muted); margin-top: 8px; }
+
+/* Contractor Gemini-pick flag */
+.cc-c-flag { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--cc-primary), #3b82f6); padding: 3px 9px; border-radius: 999px; margin-bottom: 10px; }
+.cc-c-flag .material-symbols-outlined { font-size: 13px; }
+
+/* Budget approvals list */
+.cc-approvals-list { display: flex; flex-direction: column; gap: 8px; max-height: 360px; }
+.cc-appr { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--cc-line); border-radius: 12px; }
+.cc-appr b { font-size: 13px; display: block; }
+.cc-appr small { font-size: 11px; color: var(--cc-muted); }
+.cc-appr-cost { font-weight: 800; color: var(--cc-primary); text-align: right; font-size: 14px; }
+.cc-appr-cost small { display: block; color: var(--cc-muted); font-weight: 600; }
+
+/* Manage modal form */
+.cc-manage-sub { font-size: 13px; color: var(--cc-muted); margin: 0 0 16px; }
+.cc-field-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--cc-muted); font-weight: 700; margin: 12px 0 6px; }
+.cc-input { width: 100%; border: 1px solid var(--cc-line); background: var(--cc-bg); color: var(--cc-ink); border-radius: 12px; padding: 11px 14px; font-size: 14px; font-family: inherit; outline: none; }
+.cc-input:focus { border-color: var(--cc-primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+.cc-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+/* Single-column summary cards inside dashboard view stay 4-up on wide screens */
+@media (min-width: 1281px) { .cc-cards { grid-template-columns: repeat(4, 1fr); } }
