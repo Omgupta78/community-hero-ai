@@ -169,19 +169,13 @@ app.get('/report', (c) => {
         {/* Description */}
         <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md space-y-md">
           <div>
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Description</label>
-              <button id="voice-btn" type="button" class="hidden text-xs font-bold text-primary flex items-center gap-1 hover:underline">
-                <span class="material-symbols-outlined text-[18px]">mic</span> Speak
-              </button>
-            </div>
+            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Description</label>
             <textarea
               id="description"
               rows={4}
               placeholder="Provide more details about the issue…"
               class="mt-2 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary resize-none"
             ></textarea>
-            <p id="voice-status" class="hidden text-xs text-primary mt-1"></p>
           </div>
 
           <div>

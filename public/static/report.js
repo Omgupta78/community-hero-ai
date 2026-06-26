@@ -230,41 +230,6 @@
     $('ai-result').classList.remove('hidden')
   }
 
-  // Voice-based reporting (Web Speech API — browser-native, no key)
-  ;(function setupVoice() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    const btn = $('voice-btn')
-    if (!SR || !btn) return // unsupported → keep button hidden
-    btn.classList.remove('hidden')
-    const rec = new SR()
-    rec.lang = 'en-IN'
-    rec.interimResults = true
-    rec.continuous = false
-    let listening = false
-    let baseText = ''
-
-    rec.onresult = (e) => {
-      let transcript = ''
-      for (let i = 0; i < e.results.length; i++) transcript += e.results[i][0].transcript
-      $('description').value = (baseText ? baseText + ' ' : '') + transcript
-    }
-    rec.onerror = () => { $('voice-status').textContent = 'Could not hear you — try again.'; }
-    rec.onend = () => {
-      listening = false
-      btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">mic</span> Speak'
-      $('voice-status').classList.add('hidden')
-    }
-
-    btn.addEventListener('click', () => {
-      if (listening) { rec.stop(); return }
-      baseText = $('description').value.trim()
-      try { rec.start() } catch (e) { return }
-      listening = true
-      btn.innerHTML = '<span class="material-symbols-outlined text-[18px] text-error animate-pulse">mic</span> Listening… tap to stop'
-      const st = $('voice-status'); st.textContent = 'Listening… speak the issue, e.g. "Broken streetlight near PEC gate".'; st.classList.remove('hidden')
-    })
-  })()
-
   // Submit to D1
   $('submit-btn').addEventListener('click', async () => {
     const btn = $('submit-btn')
