@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { renderer, ASSET_VER } from './renderer'
 import api from './routes/api'
 import { TopBar, BottomNav } from './components/layout'
-import { getSessionUser } from './lib/auth'
+import { getSessionUser, clearCookie } from './lib/auth'
 
 type Bindings = {
   DB: D1Database
@@ -49,7 +49,7 @@ app.get('/', (c) => {
             <p class="text-sm text-on-surface-variant mt-1 mb-3">Report a problem and watch it get fixed.</p>
             <span class="text-sm font-bold text-primary flex items-center gap-1">Log in as Citizen <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
           </a>
-          <a href="/login" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-on-surface hover:shadow-lg transition active:scale-[0.98]">
+          <a href="/login?as=municipal" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-on-surface hover:shadow-lg transition active:scale-[0.98]">
             <div class="w-12 h-12 rounded-lg bg-on-surface text-surface-lowest flex items-center justify-center mb-3">
               <span class="material-symbols-outlined text-[26px]">apartment</span>
             </div>
@@ -57,7 +57,7 @@ app.get('/', (c) => {
             <p class="text-sm text-on-surface-variant mt-1 mb-3">Command the agent and clear the backlog.</p>
             <span class="text-sm font-bold text-primary flex items-center gap-1">Log in as Official <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
           </a>
-          <a href="/login" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-secondary hover:shadow-lg transition active:scale-[0.98]">
+          <a href="/login?as=contractor" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-secondary hover:shadow-lg transition active:scale-[0.98]">
             <div class="w-12 h-12 rounded-lg bg-secondary text-white flex items-center justify-center mb-3">
               <span class="material-symbols-outlined text-[26px]">construction</span>
             </div>
@@ -665,58 +665,83 @@ app.get('/issue/:id', (c) => {
 // STAFF LOGIN
 // =============================================================
 app.get('/login', async (c) => {
-  // Already logged in? Send to the right dashboard.
+  // Role hint from the landing cards: ?as=municipal | contractor
+  const as = c.req.query('as') || ''
+  const expected: Record<string, string[]> = { municipal: ['admin', 'authority'], contractor: ['contractor'] }
+  const wantRoles = expected[as]
+
   const user = await getSessionUser(c)
-  if (user) return c.redirect(user.role === 'admin' ? '/admin' : user.role === 'contractor' ? '/contractor' : '/authority')
+  if (user) {
+    const dest = user.role === 'admin' ? '/admin' : user.role === 'contractor' ? '/contractor' : '/authority'
+    // If they asked for a portal that doesn't match their current session, sign
+    // them out so they can log in with the correct account (this is why both
+    // role cards used to land on the same dashboard).
+    if (wantRoles && !wantRoles.includes(user.role)) {
+      c.header('Set-Cookie', clearCookie())
+    } else {
+      return c.redirect(dest)
+    }
+  }
+
+  const isContractor = as === 'contractor'
+  const accent = isContractor ? 'secondary' : 'primary'
+  const heading = isContractor ? 'Contractor Sign In' : as === 'municipal' ? 'Municipal Sign In' : 'Staff Sign In'
+  const sub = isContractor ? 'Responders & contractors' : as === 'municipal' ? 'Commissioner & department authorities' : 'Admins & department authorities'
 
   return c.render(
     <div class="min-h-screen flex items-center justify-center px-container-margin py-12">
       <main class="w-full max-w-sm">
         <div class="text-center mb-lg">
-          <div class="w-16 h-16 mx-auto rounded-full bg-primary-container flex items-center justify-center mb-3">
-            <span class="material-symbols-outlined text-on-primary-container text-[34px]" style="font-variation-settings: 'FILL' 1;">shield_person</span>
+          <div class={`w-16 h-16 mx-auto rounded-full ${isContractor ? 'bg-secondary-container' : 'bg-primary-container'} flex items-center justify-center mb-3`}>
+            <span class={`material-symbols-outlined ${isContractor ? 'text-on-secondary-container' : 'text-on-primary-container'} text-[34px]`} style="font-variation-settings: 'FILL' 1;">{isContractor ? 'construction' : 'shield_person'}</span>
           </div>
-          <h1 class="text-[22px] font-bold text-on-surface">Staff Sign In</h1>
-          <p class="text-sm text-on-surface-variant mt-1">Admins &amp; department authorities only</p>
+          <h1 class="text-[22px] font-bold text-on-surface">{heading}</h1>
+          <p class="text-sm text-on-surface-variant mt-1">{sub}</p>
         </div>
 
         <form id="login-form" class="bg-surface-lowest border border-outline-variant rounded-xl p-lg space-y-md">
           <div>
             <label class="text-xs font-bold uppercase text-on-surface-variant">Email</label>
             <input id="login-email" type="email" required autocomplete="username"
-              placeholder="admin@city.gov"
-              class="mt-1 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary" />
+              placeholder={isContractor ? 'builder@city.gov' : 'admin@city.gov'}
+              class={`mt-1 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-${accent}`} />
           </div>
           <div>
             <label class="text-xs font-bold uppercase text-on-surface-variant">Password</label>
             <input id="login-password" type="password" required autocomplete="current-password"
               placeholder="••••••••"
-              class="mt-1 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary" />
+              class={`mt-1 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-${accent}`} />
           </div>
           <p id="login-error" class="hidden text-sm text-error font-medium"></p>
           <button id="login-btn" type="submit"
-            class="w-full bg-primary text-on-primary rounded-lg py-3 font-bold active:scale-[0.98] transition flex items-center justify-center gap-2">
+            class={`w-full ${isContractor ? 'bg-secondary text-white' : 'bg-primary text-on-primary'} rounded-lg py-3 font-bold active:scale-[0.98] transition flex items-center justify-center gap-2`}>
             <span class="material-symbols-outlined">login</span> Sign In
           </button>
         </form>
 
         <div class="mt-md bg-surface-container-low rounded-xl p-md text-xs text-on-surface-variant">
           <p class="font-bold text-on-surface mb-1">Demo accounts</p>
-          <p>Super Admin: <code>admin@city.gov</code> / <code>Admin@123</code></p>
-          <p>Roads Authority: <code>roads@city.gov</code> / <code>Roads@123</code></p>
-          <p>Responder: <code>builder@city.gov</code> / <code>Build@123</code></p>
+          {isContractor ? (
+            <p>Responder: <code>builder@city.gov</code> / <code>Build@123</code></p>
+          ) : (
+            <>
+              <p>Super Admin: <code>admin@city.gov</code> / <code>Admin@123</code></p>
+              <p>Roads Authority: <code>roads@city.gov</code> / <code>Roads@123</code></p>
+              <p>Responder: <code>builder@city.gov</code> / <code>Build@123</code></p>
+            </>
+          )}
         </div>
 
         {/* Open responder registration — any contractor can connect */}
-        <div class="mt-md bg-surface-lowest border border-secondary/40 rounded-xl p-md">
+        <div class={`mt-md bg-surface-lowest border ${isContractor ? 'border-secondary' : 'border-secondary/40'} rounded-xl p-md`}>
           <button id="reg-toggle" class="w-full flex items-center justify-between text-left">
             <span class="flex items-center gap-2 font-bold text-on-surface text-sm">
               <span class="material-symbols-outlined text-secondary text-[20px]">construction</span>
               New responder? Join the network
             </span>
-            <span id="reg-chevron" class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+            <span id="reg-chevron" class="material-symbols-outlined text-on-surface-variant">{isContractor ? 'expand_less' : 'expand_more'}</span>
           </button>
-          <form id="register-form" class="hidden space-y-sm mt-3">
+          <form id="register-form" class={isContractor ? 'space-y-sm mt-3' : 'hidden space-y-sm mt-3'}>
             <input id="reg-name" type="text" required placeholder="Your name or company"
               class="w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-secondary" />
             <input id="reg-email" type="email" required autocomplete="email" placeholder="you@example.com"
@@ -730,12 +755,19 @@ app.get('/login', async (c) => {
           </form>
         </div>
 
-        <a href="/home" class="block text-center text-sm text-primary font-bold mt-md hover:underline">← Back to citizen app</a>
+        <a href="/" class="block text-center text-sm text-primary font-bold mt-md hover:underline">← Back to role selection</a>
       </main>
-      <script src="/static/login.js"></script>
+      <script src={`/static/login.js?v=${ASSET_VER}`}></script>
     </div>,
-    { title: 'Staff Sign In' }
+    { title: heading }
   )
+})
+
+// Logout (GET) — clears the session cookie and returns to role selection.
+// Used by every "Switch role" link so you can move between portals cleanly.
+app.get('/logout', (c) => {
+  c.header('Set-Cookie', clearCookie())
+  return c.redirect('/')
 })
 
 // =============================================================
@@ -838,7 +870,7 @@ app.get('/contractor', async (c) => {
           <button id="ctr-ai-btn" class="ctr-chip"><span class="material-symbols-outlined">support_agent</span> Help</button>
           <div class="ctr-profile"><div class="ctr-avatar">{(user.name || 'C')[0]}</div>
             <div class="ctr-profile-meta"><b>{user.name}</b><small>Civic Responder</small></div></div>
-          <a href="/login" class="ctr-switch" title="Switch role"><span class="material-symbols-outlined">logout</span></a>
+          <a href="/logout" class="ctr-switch" title="Switch role"><span class="material-symbols-outlined">logout</span></a>
         </div>
       </header>
 
@@ -978,7 +1010,7 @@ app.get('/command', async (c) => {
               <b>{user.name}</b>
               <small>Municipal Commissioner</small>
             </div>
-            <a href="/login" title="Switch role" class="cc-logout"><span class="material-symbols-outlined">logout</span></a>
+            <a href="/logout" title="Switch role" class="cc-logout"><span class="material-symbols-outlined">logout</span></a>
           </div>
         </div>
       </aside>
