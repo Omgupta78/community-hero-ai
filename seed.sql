@@ -88,3 +88,40 @@ INSERT OR IGNORE INTO users (id, name, email, role, password_hash) VALUES
 
 -- Bounties on open issues (reward a responder earns for a verified fix).
 UPDATE issues SET bounty = severity * 500 WHERE id IN (1, 2, 3, 4, 5);
+
+-- =====================================================================
+-- 0009 — Municipal AI Command Center seed data
+-- Contractor profiles (RADAR), extra contractors, and SIMULATED budgets.
+-- Coordinates are real Chandigarh sectors so the RADAR distance is meaningful.
+-- =====================================================================
+
+-- Two additional contractors (reuse the Build@123 hash so they're loginable for demos).
+INSERT OR IGNORE INTO users (id, name, email, role, password_hash) VALUES
+  (21, 'RoadCare Infra', 'roadcare@city.gov', 'contractor',
+   '3d89ef0f080e6a433a0cdf4ef1db0510:3284753195d462f98f548b51e624d162e64b7f549b5f43301904aff43a20efdf'),
+  (22, 'AquaFix Services', 'aquafix@city.gov', 'contractor',
+   '3d89ef0f080e6a433a0cdf4ef1db0510:3284753195d462f98f548b51e624d162e64b7f549b5f43301904aff43a20efdf'),
+  (23, 'BrightVolt Electricals', 'brightvolt@city.gov', 'contractor',
+   '3d89ef0f080e6a433a0cdf4ef1db0510:3284753195d462f98f548b51e624d162e64b7f549b5f43301904aff43a20efdf');
+
+-- Contractor RADAR profiles (skills/rating/availability are SIMULATED demo data).
+INSERT OR IGNORE INTO contractors (user_id, company, skills, rating, jobs_completed, availability, active_tasks, lat, lng, base_address) VALUES
+  (20, 'FixIt Civic Works',      'Pothole,Graffiti,Other',     4.6, 128, 'available', 2, 30.7410, 76.7820, 'Sector 17, Chandigarh'),
+  (21, 'RoadCare Infra',         'Pothole,Water Leak',         4.8, 96,  'available', 1, 30.7280, 76.7600, 'Sector 35, Chandigarh'),
+  (22, 'AquaFix Services',       'Water Leak,Streetlight',     4.3, 54,  'busy',      4, 30.7490, 76.7980, 'Sector 8, Chandigarh'),
+  (23, 'BrightVolt Electricals', 'Streetlight,Other',          4.5, 73,  'available', 0, 30.7330, 76.7790, 'Sector 34, Chandigarh');
+
+-- Simulated departmental budgets (FY 2024-25, INR).
+INSERT OR IGNORE INTO budgets (department, fiscal_year, allocated, spent, committed) VALUES
+  ('Road Maintenance',    '2024-25', 5000000, 1850000, 320000),
+  ('Sanitation',          '2024-25', 3000000, 1200000, 0),
+  ('Electrical',          '2024-25', 2000000,  640000, 80000),
+  ('Water Works',         '2024-25', 4000000, 2100000, 150000),
+  ('Parks & Recreation',  '2024-25', 1500000,  410000, 0),
+  ('General Services',    '2024-25', 1000000,  220000, 0);
+
+-- A few sample quotations on issue #2 (illegal dumping) so the comparison panel is populated.
+INSERT OR IGNORE INTO quotations (id, issue_id, contractor_id, est_cost, est_days, past_rating, status) VALUES
+  (1, 2, 20, 18000, 1.5, 4.6, 'submitted'),
+  (2, 2, 21, 16000, 3.0, 4.8, 'submitted'),
+  (3, 2, 23, 24000, 2.0, 4.5, 'submitted');

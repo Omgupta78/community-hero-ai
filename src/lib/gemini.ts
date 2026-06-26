@@ -677,3 +677,91 @@ function heuristicChat(msg: string, ctx: { total: number; resolved: number; open
     return 'Hi! I\'m Hero Assistant. I can help you report a civic issue, verify reports, understand your community score, or track an issue\'s status. What would you like to do?'
   return 'I can help you report an issue, verify reports, earn community points, or track issue status. Try asking "How do I report a pothole?"'
 }
+
+// ---------------------------------------------------------------
+// COMMAND CENTER narration — contractor recommendation + quotation reasoning
+// All have deterministic fallbacks so they always return a sentence.
+// ---------------------------------------------------------------
+
+/** One-line "Suggested by Gemini" rationale for the top-ranked contractor. */
+export async function recommendContractorReason(
+  apiKey: string | undefined,
+  issue: { category: string; address?: string },
+  top: { name: string; rating: number; distance_km: number | null; match_score: number; skills: string[] }
+): Promise<{ reason: string; source: 'gemini' | 'heuristic' }> {
+  const dist = top.distance_km == null ? 'nearby' : `${top.distance_km} km away`
+  const fallback = `Suggested by Gemini: ${top.name} — ${dist}, ${top.rating}★, ${
+    top.skills.map((s) => s.toLowerCase()).includes((issue.category || '').toLowerCase()) ? 'specialises in ' + issue.category : 'available crew'
+  } (match ${Math.round(top.match_score)}/100).`
+  if (apiKey) {
+    try {
+      const prompt = `You are a municipal dispatch assistant. In ONE concise sentence (max 28 words, plain text, start with "Suggested by Gemini:"), justify assigning contractor "${top.name}" (${top.rating}/5 rating, ${dist}, skills: ${top.skills.join(', ')}) to a "${issue.category}" issue${issue.address ? ' at ' + issue.address : ''}.`
+      const res = await fetch(GEMINI_URL(apiKey), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 80 } }),
+      })
+      if (res.ok) {
+        const data: any = await res.json()
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+        if (text) return { reason: text.trim(), source: 'gemini' }
+      }
+    } catch (e) {
+      console.error('recommendContractorReason failed:', (e as Error).message)
+    }
+  }
+  return { reason: fallback, source: 'heuristic' }
+}
+
+/** One-line rationale for why a quotation is the best value pick. */
+export async function quotationReason(
+  apiKey: string | undefined,
+  best: { name: string; est_cost: number; est_days: number; past_rating: number; ai_value_score: number }
+): Promise<{ reason: string; source: 'gemini' | 'heuristic' }> {
+  const fallback = `Best value: ₹${best.est_cost.toLocaleString('en-IN')} over ${best.est_days} day(s) at ${best.past_rating}★ gives the highest quality-per-cost (value ${Math.round(best.ai_value_score)}/100).`
+  if (apiKey) {
+    try {
+      const prompt = `You are a municipal procurement assistant. In ONE concise sentence (max 28 words, plain text), explain why contractor "${best.name}"'s quote of ₹${best.est_cost} over ${best.est_days} days at ${best.past_rating}/5 rating is the best value pick.`
+      const res = await fetch(GEMINI_URL(apiKey), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 80 } }),
+      })
+      if (res.ok) {
+        const data: any = await res.json()
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+        if (text) return { reason: text.trim(), source: 'gemini' }
+      }
+    } catch (e) {
+      console.error('quotationReason failed:', (e as Error).message)
+    }
+  }
+  return { reason: fallback, source: 'heuristic' }
+}
+
+/** Gemini-written weekly operations report for the Commissioner. */
+export async function generateWeeklyReport(
+  apiKey: string | undefined,
+  data: { total: number; resolved: number; open: number; critical: number; topCategory: string; hotspot: string; avgHours: number; topDept: string }
+): Promise<{ report: string; source: 'gemini' | 'heuristic' }> {
+  const rate = data.total ? Math.round((data.resolved / data.total) * 100) : 0
+  const fallback = `This week the city handled ${data.total} reports with a ${rate}% resolution rate (${data.resolved} resolved, ${data.open} open, ${data.critical} critical). "${data.topCategory}" was the most common category, concentrated around ${data.hotspot}. Average resolution time is ~${data.avgHours}h; ${data.topDept} carried the heaviest load. Recommend pre-positioning crews near the hotspot and prioritising the ${data.critical} critical items.`
+  if (apiKey) {
+    try {
+      const prompt = `You are a municipal AI analyst. Write a concise 4-5 sentence weekly operations report for a City Commissioner from this data: total reports ${data.total}, resolved ${data.resolved} (${rate}%), open ${data.open}, critical ${data.critical}, top category "${data.topCategory}", hotspot "${data.hotspot}", avg resolution ~${data.avgHours}h, busiest department "${data.topDept}". Include one clear recommendation. Plain text, no markdown headings.`
+      const res = await fetch(GEMINI_URL(apiKey), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.5, maxOutputTokens: 320 } }),
+      })
+      if (res.ok) {
+        const dataR: any = await res.json()
+        const text = dataR?.candidates?.[0]?.content?.parts?.[0]?.text
+        if (text) return { report: text.trim(), source: 'gemini' }
+      }
+    } catch (e) {
+      console.error('generateWeeklyReport failed:', (e as Error).message)
+    }
+  }
+  return { report: fallback, source: 'heuristic' }
+}

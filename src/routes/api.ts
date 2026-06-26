@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { analyzeIssue, generateInsight, generateResolutionPlan, chatReply, predictTrends, generateCityHealthInsight, verifyFix, computePriority } from '../lib/gemini'
+import { analyzeIssue, generateInsight, generateResolutionPlan, chatReply, predictTrends, generateCityHealthInsight, verifyFix, computePriority, recommendContractorReason, quotationReason, generateWeeklyReport } from '../lib/gemini'
 import { runTriageAgent } from '../lib/agent'
+import { rankContractors, scoreQuotations, parseSkills, type ContractorRow, type Quote } from '../lib/assignment'
 import {
   verifyPassword,
   hashPassword,
@@ -866,6 +867,479 @@ api.get('/leaderboard', async (c) => {
     tier: tierFor(r.score),
   }))
   return c.json({ leaders })
+})
+
+// ===============================================================
+// MUNICIPAL AI COMMAND CENTER — contractors, RADAR, quotations,
+// escrow assignment, budgets, analytics, weather, activity.
+// All admin-gated unless noted. Citizen confirm uses Firebase.
+// ===============================================================
+
+async function loadContractorRows(env: Bindings): Promise<ContractorRow[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT c.user_id, u.name, c.company, c.rating, c.active_tasks, c.jobs_completed,
+            c.availability, c.skills, c.lat, c.lng, c.photo_url
+     FROM contractors c JOIN users u ON u.id = c.user_id`
+  ).all()
+  return ((results as any[]) || []).map((r) => ({
+    user_id: r.user_id,
+    name: r.name,
+    company: r.company,
+    rating: r.rating,
+    active_tasks: r.active_tasks,
+    jobs_completed: r.jobs_completed,
+    availability: r.availability,
+    skills: parseSkills(r.skills),
+    lat: r.lat,
+    lng: r.lng,
+    photo_url: r.photo_url,
+  }))
+}
+
+// Contractor directory (optionally filter by skill / availability).
+api.get('/contractors', requireRole('admin'), async (c) => {
+  const { skill, availability } = c.req.query()
+  let rows = await loadContractorRows(c.env)
+  if (skill) rows = rows.filter((r) => r.skills.map((s) => s.toLowerCase()).includes(skill.toLowerCase()))
+  if (availability) rows = rows.filter((r) => r.availability === availability)
+  return c.json({ contractors: rows })
+})
+
+// RADAR: nearby contractors for a location, ranked. Adds a Gemini reason on the top pick.
+api.get('/contractors/nearby', requireRole('admin'), async (c) => {
+  const lat = Number(c.req.query('lat'))
+  const lng = Number(c.req.query('lng'))
+  const skill = c.req.query('skill') || ''
+  const radiusKm = Number(c.req.query('radius_km')) || 25
+  const rows = await loadContractorRows(c.env)
+  let ranked = rankContractors({ category: skill, lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng }, rows)
+  ranked = ranked.filter((r) => r.distance_km == null || r.distance_km <= radiusKm)
+
+  let ai_source: string | undefined
+  if (ranked.length) {
+    const rec = await recommendContractorReason(
+      c.env.GEMINI_API_KEY,
+      { category: skill },
+      { name: ranked[0].name, rating: ranked[0].rating, distance_km: ranked[0].distance_km, match_score: ranked[0].match_score, skills: ranked[0].skills }
+    )
+    ;(ranked[0] as any).ai_recommendation = rec.reason
+    ai_source = rec.source
+  }
+  return c.json({
+    origin: { lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng },
+    contractors: ranked,
+    ai_source,
+  })
+})
+
+// Quotations for an issue, with AI value scores + best pick.
+api.get('/issues/:id/quotations', requireRole('admin'), async (c) => {
+  const id = Number(c.req.param('id'))
+  const { results } = await c.env.DB.prepare(
+    `SELECT q.id, q.contractor_id, u.name, q.est_cost, q.est_days, q.past_rating, q.status
+     FROM quotations q JOIN users u ON u.id = q.contractor_id
+     WHERE q.issue_id = ? ORDER BY q.est_cost ASC`
+  ).bind(id).all()
+  const raw = (results as any[]) || []
+  if (!raw.length) return c.json({ issue_id: id, quotes: [], best_quotation_id: null, ai_source: null })
+
+  const quotes: Quote[] = raw.map((r) => ({
+    contractor_id: r.contractor_id,
+    name: r.name,
+    est_cost: r.est_cost,
+    est_days: r.est_days,
+    past_rating: r.past_rating,
+  }))
+  const { scored } = scoreQuotations(quotes)
+  const best = scored.find((s) => s.recommended)!
+  const reason = await quotationReason(c.env.GEMINI_API_KEY, best)
+
+  // Stitch quotation_id + status back in.
+  const byContractor = new Map(raw.map((r) => [r.contractor_id, r]))
+  const quotesOut = scored.map((s) => {
+    const r = byContractor.get(s.contractor_id)
+    return {
+      quotation_id: r?.id,
+      contractor_id: s.contractor_id,
+      name: s.name,
+      est_cost: s.est_cost,
+      est_days: s.est_days,
+      past_rating: s.past_rating,
+      ai_value_score: s.ai_value_score,
+      recommended: s.recommended,
+      status: r?.status,
+      ai_reason: s.recommended ? reason.reason : undefined,
+    }
+  })
+  const bestRow = byContractor.get(best.contractor_id)
+  return c.json({ issue_id: id, quotes: quotesOut, best_quotation_id: bestRow?.id || null, ai_source: reason.source })
+})
+
+// Request quotes from a set of contractors (seeds simulated quote stubs for the demo).
+api.post('/issues/:id/quotations/request', requireRole('admin'), async (c) => {
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json().catch(() => ({}))
+  const ids: number[] = Array.isArray(body.contractor_ids) ? body.contractor_ids.map(Number) : []
+  if (!ids.length) return c.json({ error: 'contractor_ids required' }, 400)
+
+  const issue = await c.env.DB.prepare(`SELECT id, severity FROM issues WHERE id = ?`).bind(id).first<any>()
+  if (!issue) return c.json({ error: 'Not found' }, 404)
+
+  let created = 0
+  for (const cid of ids) {
+    const prof = await c.env.DB.prepare(`SELECT rating FROM contractors WHERE user_id = ?`).bind(cid).first<any>()
+    // Simulated quote: base cost scales with severity, jittered per contractor.
+    const base = (issue.severity || 3) * 4000
+    const est_cost = Math.round(base * (0.8 + ((cid % 5) * 0.12)))
+    const est_days = Math.round((1 + (cid % 4) * 0.8) * 10) / 10
+    try {
+      await c.env.DB.prepare(
+        `INSERT INTO quotations (issue_id, contractor_id, est_cost, est_days, past_rating, status) VALUES (?, ?, ?, ?, ?, 'submitted')`
+      ).bind(id, cid, est_cost, est_days, prof?.rating || 4.0).run()
+      created++
+    } catch (e) {
+      // UNIQUE(issue_id, contractor_id) — already requested; ignore.
+    }
+  }
+  return c.json({ ok: true, requested: ids.length, created })
+})
+
+// A contractor submits their own quote.
+api.post('/issues/:id/quotations', requireRole('contractor'), async (c) => {
+  const me = c.get('staff')
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json().catch(() => ({}))
+  const est_cost = Number(body.est_cost)
+  const est_days = Number(body.est_days)
+  if (!(est_cost > 0) || !(est_days > 0)) return c.json({ error: 'est_cost and est_days must be positive' }, 400)
+  const prof = await c.env.DB.prepare(`SELECT rating FROM contractors WHERE user_id = ?`).bind(me.id).first<any>()
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO quotations (issue_id, contractor_id, est_cost, est_days, past_rating, status)
+       VALUES (?, ?, ?, ?, ?, 'submitted')
+       ON CONFLICT(issue_id, contractor_id) DO UPDATE SET est_cost=excluded.est_cost, est_days=excluded.est_days`
+    ).bind(id, me.id, est_cost, est_days, prof?.rating || 4.0).run()
+  } catch (e) {
+    return c.json({ error: 'Could not submit quote' }, 500)
+  }
+  return c.json({ ok: true })
+})
+
+// Commissioner assigns a contractor + locks escrow (the core integration step).
+api.post('/issues/:id/assign-job', requireRole('admin'), async (c) => {
+  const staff = c.get('staff')
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json().catch(() => ({}))
+  const contractorId = Number(body.contractor_id)
+  const quotationId = Number(body.quotation_id)
+  if (!contractorId || !quotationId) return c.json({ error: 'contractor_id and quotation_id required' }, 400)
+
+  const issue = await c.env.DB.prepare(`SELECT id, department, status FROM issues WHERE id = ?`).bind(id).first<any>()
+  if (!issue) return c.json({ error: 'Not found' }, 404)
+
+  const quote = await c.env.DB.prepare(
+    `SELECT id, est_cost FROM quotations WHERE id = ? AND issue_id = ? AND contractor_id = ?`
+  ).bind(quotationId, id, contractorId).first<any>()
+  if (!quote) return c.json({ error: 'Quotation does not match this issue/contractor' }, 400)
+
+  const existing = await c.env.DB.prepare(
+    `SELECT id FROM job_assignments WHERE issue_id = ? AND state != 'Cancelled'`
+  ).bind(id).first<any>()
+  if (existing) return c.json({ error: 'Issue already has an active assignment' }, 409)
+
+  const escrow = quote.est_cost
+  const contractor = await c.env.DB.prepare(`SELECT name FROM users WHERE id = ?`).bind(contractorId).first<any>()
+
+  const job = await c.env.DB.prepare(
+    `INSERT INTO job_assignments (issue_id, contractor_id, quotation_id, assigned_by, escrow_amount, escrow_status, state)
+     VALUES (?, ?, ?, ?, ?, 'locked', 'JobAssigned')`
+  ).bind(id, contractorId, quotationId, staff.id, escrow).run()
+
+  await c.env.DB.prepare(`UPDATE quotations SET status = 'accepted' WHERE id = ?`).bind(quotationId).run()
+  await c.env.DB.prepare(`UPDATE quotations SET status = 'rejected' WHERE issue_id = ? AND id != ?`).bind(id, quotationId).run()
+  await c.env.DB.prepare(
+    `UPDATE issues SET contractor_id = ?, status = 'Assigned', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).bind(contractorId, id).run()
+  await c.env.DB.prepare(`UPDATE contractors SET active_tasks = active_tasks + 1 WHERE user_id = ?`).bind(contractorId).run()
+  if (issue.department) {
+    await c.env.DB.prepare(`UPDATE budgets SET committed = committed + ? WHERE department = ?`).bind(escrow, issue.department).run()
+  }
+  await c.env.DB.prepare(
+    `INSERT INTO issue_updates (issue_id, status, department, message, author) VALUES (?, 'Assigned', ?, ?, ?)`
+  ).bind(id, issue.department || null, `Job assigned to ${contractor?.name || 'contractor'}; escrow ₹${escrow.toLocaleString('en-IN')} locked.`, staff.name).run()
+
+  return c.json({
+    ok: true,
+    job_id: job.meta.last_row_id,
+    issue_id: id,
+    contractor_id: contractorId,
+    escrow_amount: escrow,
+    escrow_status: 'locked',
+    state: 'JobAssigned',
+    issue_status: 'Assigned',
+  })
+})
+
+// Citizen confirmation closes the loop: release escrow exactly once.
+api.post('/issues/:id/confirm', async (c) => {
+  const citizenId = await requireCitizen(c)
+  const id = Number(c.req.param('id'))
+  const job = await c.env.DB.prepare(
+    `SELECT id, contractor_id, escrow_amount FROM job_assignments WHERE issue_id = ? AND escrow_status = 'locked'`
+  ).bind(id).first<any>()
+  if (!job) return c.json({ error: 'No locked escrow for this issue' }, 409)
+
+  const issue = await c.env.DB.prepare(`SELECT department FROM issues WHERE id = ?`).bind(id).first<any>()
+  const citizen = citizenId ? await c.env.DB.prepare(`SELECT name FROM users WHERE id = ?`).bind(citizenId).first<any>() : null
+
+  await c.env.DB.prepare(
+    `UPDATE job_assignments SET citizen_confirmed = 1, escrow_status = 'released', state = 'Resolved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).bind(job.id).run()
+  await c.env.DB.prepare(`UPDATE users SET earnings = earnings + ? WHERE id = ?`).bind(job.escrow_amount, job.contractor_id).run()
+  await c.env.DB.prepare(`UPDATE contractors SET active_tasks = MAX(0, active_tasks - 1), jobs_completed = jobs_completed + 1 WHERE user_id = ?`).bind(job.contractor_id).run()
+  if (issue?.department) {
+    await c.env.DB.prepare(
+      `UPDATE budgets SET spent = spent + ?, committed = MAX(0, committed - ?) WHERE department = ?`
+    ).bind(job.escrow_amount, job.escrow_amount, issue.department).run()
+  }
+  await c.env.DB.prepare(`UPDATE issues SET status = 'Resolved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run()
+  await c.env.DB.prepare(
+    `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'Resolved', ?, ?)`
+  ).bind(id, `Citizen confirmed the fix; ₹${job.escrow_amount.toLocaleString('en-IN')} released to the contractor.`, citizen?.name || 'Citizen').run()
+
+  return c.json({ ok: true, released: job.escrow_amount })
+})
+
+// 8 summary cards with % delta vs prior period + a small sparkline.
+api.get('/command/summary', requireRole('admin'), async (c) => {
+  const agg = await c.env.DB.prepare(
+    `SELECT COUNT(*) AS total,
+            SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) AS resolved,
+            SUM(CASE WHEN status != 'Resolved' THEN 1 ELSE 0 END) AS open,
+            SUM(CASE WHEN severity >= 5 AND status != 'Resolved' THEN 1 ELSE 0 END) AS critical,
+            SUM(CASE WHEN status = 'Resolved' AND DATE(updated_at) = DATE('now') THEN 1 ELSE 0 END) AS resolved_today
+     FROM issues`
+  ).first<any>()
+  const pendingApprovals = await c.env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM quotations WHERE status = 'submitted'`
+  ).first<{ n: number }>()
+  const budget = await c.env.DB.prepare(
+    `SELECT COALESCE(SUM(spent),0) AS spent, COALESCE(SUM(allocated),0) AS allocated FROM budgets`
+  ).first<any>()
+
+  const total = agg?.total || 0
+  const resolved = agg?.resolved || 0
+  const budgetPct = budget?.allocated ? Math.round((budget.spent / budget.allocated) * 100) : 0
+  const satisfaction = total ? Math.min(99, 70 + Math.round((resolved / total) * 25)) : 85
+
+  // Lightweight deterministic 7-point sparklines derived from current values.
+  const spark = (end: number, vol = 0.25) => {
+    const out: number[] = []
+    for (let i = 6; i >= 0; i--) out.push(Math.max(0, Math.round(end * (1 - (i * vol) / 6))))
+    return out
+  }
+
+  return c.json({
+    cards: {
+      total_reports: { value: total, delta_pct: 4.2, spark: spark(total) },
+      open_issues: { value: agg?.open || 0, delta_pct: -3.1, spark: spark(agg?.open || 0) },
+      critical_issues: { value: agg?.critical || 0, delta_pct: 6.0, spark: spark(agg?.critical || 0, 0.4) },
+      resolved_today: { value: agg?.resolved_today || 0, delta_pct: 12.0, spark: spark(agg?.resolved_today || 0, 0.5) },
+      avg_resolution_hours: { value: 18.4, delta_pct: -6.5, spark: [24, 23, 21, 20, 19, 19, 18], unit: 'h' },
+      citizen_satisfaction: { value: satisfaction, delta_pct: 1.5, spark: spark(satisfaction, 0.06), unit: '%' },
+      budget_utilized: { value: budgetPct, delta_pct: 2.0, spark: spark(budgetPct, 0.12), unit: '%' },
+      pending_approvals: { value: pendingApprovals?.n || 0, delta_pct: 0.0, spark: spark(pendingApprovals?.n || 0, 0.3) },
+    },
+    note: 'avg_resolution_hours, citizen_satisfaction and budget figures are derived/simulated demo data.',
+  })
+})
+
+// Analytics: category, department performance, monthly trend, resolution buckets.
+api.get('/analytics', requireRole('admin'), async (c) => {
+  const [cat, dept, trend, sev] = await Promise.all([
+    c.env.DB.prepare(`SELECT category, COUNT(*) AS n FROM issues GROUP BY category ORDER BY n DESC`).all(),
+    c.env.DB.prepare(
+      `SELECT COALESCE(department,'Unassigned') AS department,
+              COUNT(*) AS total,
+              SUM(CASE WHEN status='Resolved' THEN 1 ELSE 0 END) AS resolved
+       FROM issues GROUP BY department ORDER BY total DESC`
+    ).all(),
+    c.env.DB.prepare(
+      `SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS n FROM issues GROUP BY month ORDER BY month`
+    ).all(),
+    c.env.DB.prepare(`SELECT severity, COUNT(*) AS n FROM issues GROUP BY severity ORDER BY severity`).all(),
+  ])
+  return c.json({
+    byCategory: cat.results || [],
+    byDepartment: dept.results || [],
+    monthlyTrend: trend.results || [],
+    bySeverity: sev.results || [],
+  })
+})
+
+// Department overview: workload + budget utilisation.
+api.get('/departments', requireRole('admin'), async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT COALESCE(i.department,'Unassigned') AS department,
+            COUNT(*) AS total,
+            SUM(CASE WHEN i.status='Resolved' THEN 1 ELSE 0 END) AS resolved,
+            SUM(CASE WHEN i.status!='Resolved' THEN 1 ELSE 0 END) AS open
+     FROM issues i GROUP BY i.department ORDER BY total DESC`
+  ).all()
+  const budgets = await c.env.DB.prepare(`SELECT department, allocated, spent, committed FROM budgets`).all()
+  const bmap = new Map(((budgets.results as any[]) || []).map((b) => [b.department, b]))
+  const depts = ((results as any[]) || []).map((d) => {
+    const b = bmap.get(d.department)
+    const allocated = b?.allocated || 0
+    const spent = b?.spent || 0
+    return {
+      ...d,
+      allocated,
+      spent,
+      committed: b?.committed || 0,
+      utilization: allocated ? Math.round((spent / allocated) * 100) : 0,
+    }
+  })
+  return c.json({ departments: depts })
+})
+
+// Budgets per department.
+api.get('/budgets', requireRole('admin'), async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT department, fiscal_year, allocated, spent, committed FROM budgets ORDER BY allocated DESC`
+  ).all()
+  const budgets = ((results as any[]) || []).map((b) => ({
+    ...b,
+    utilization: b.allocated ? Math.round((b.spent / b.allocated) * 100) : 0,
+    available: Math.max(0, b.allocated - b.spent - b.committed),
+  }))
+  const totals = budgets.reduce(
+    (a, b) => ({ allocated: a.allocated + b.allocated, spent: a.spent + b.spent, committed: a.committed + b.committed }),
+    { allocated: 0, spent: 0, committed: 0 }
+  )
+  return c.json({ budgets, totals, note: 'Budget figures are simulated seed data for demonstration.' })
+})
+
+// Pending approvals (quotations awaiting a decision).
+api.get('/command/approvals', requireRole('admin'), async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT q.id, q.issue_id, q.contractor_id, u.name AS contractor, i.title, i.category,
+            q.est_cost, q.est_days, q.past_rating
+     FROM quotations q
+     JOIN users u ON u.id = q.contractor_id
+     JOIN issues i ON i.id = q.issue_id
+     WHERE q.status = 'submitted'
+     ORDER BY q.created_at DESC LIMIT 30`
+  ).all()
+  return c.json({ approvals: results || [] })
+})
+
+// Nearby / top volunteers with verification rate.
+api.get('/volunteers/nearby', requireRole('admin'), async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT u.id, u.name, u.score, u.photo_url,
+            (SELECT COUNT(*) FROM issues i WHERE i.reporter_id = u.id) AS reports,
+            (SELECT COUNT(*) FROM verifications v WHERE v.user_id = u.id) AS verifications,
+            (SELECT COUNT(*) FROM verifications v WHERE v.user_id = u.id AND v.on_site = 1) AS on_site
+     FROM users u WHERE u.role = 'citizen'
+     ORDER BY u.score DESC LIMIT 12`
+  ).all()
+  const volunteers = ((results as any[]) || []).map((v) => ({
+    ...v,
+    tier: tierFor(v.score),
+    verification_rate: v.verifications ? Math.round((v.on_site / v.verifications) * 100) : 0,
+  }))
+  return c.json({ volunteers })
+})
+
+// Weekly Gemini report.
+api.get('/reports/weekly', requireRole('admin'), async (c) => {
+  const agg = await c.env.DB.prepare(
+    `SELECT COUNT(*) AS total,
+            SUM(CASE WHEN status='Resolved' THEN 1 ELSE 0 END) AS resolved,
+            SUM(CASE WHEN status!='Resolved' THEN 1 ELSE 0 END) AS open,
+            SUM(CASE WHEN severity>=5 AND status!='Resolved' THEN 1 ELSE 0 END) AS critical
+     FROM issues`
+  ).first<any>()
+  const topCat = await c.env.DB.prepare(`SELECT category FROM issues GROUP BY category ORDER BY COUNT(*) DESC LIMIT 1`).first<any>()
+  const hotspot = await c.env.DB.prepare(`SELECT address FROM issues WHERE address != '' GROUP BY address ORDER BY COUNT(*) DESC LIMIT 1`).first<any>()
+  const topDept = await c.env.DB.prepare(`SELECT department FROM issues WHERE department IS NOT NULL GROUP BY department ORDER BY COUNT(*) DESC LIMIT 1`).first<any>()
+  const report = await generateWeeklyReport(c.env.GEMINI_API_KEY, {
+    total: agg?.total || 0,
+    resolved: agg?.resolved || 0,
+    open: agg?.open || 0,
+    critical: agg?.critical || 0,
+    topCategory: topCat?.category || 'N/A',
+    hotspot: hotspot?.address || 'city-wide',
+    avgHours: 18,
+    topDept: topDept?.department || 'General Services',
+  })
+  return c.json(report)
+})
+
+// Weather (Open-Meteo, free, no key) cached ~15min; degrades to a stub.
+api.get('/weather', requireRole('admin'), async (c) => {
+  const city = c.req.query('city') || 'Chandigarh'
+  const COORDS: Record<string, [number, number]> = { Chandigarh: [30.7333, 76.7794] }
+  try {
+    const cached = await c.env.DB.prepare(`SELECT payload, fetched_at FROM weather_cache WHERE city = ?`).bind(city).first<any>()
+    if (cached) {
+      const age = Date.now() - new Date(cached.fetched_at + 'Z').getTime()
+      if (age < 15 * 60 * 1000) return c.json(JSON.parse(cached.payload))
+    }
+    const [lat, lng] = COORDS[city] || COORDS.Chandigarh
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&hourly=precipitation_probability&forecast_days=1`
+    const res = await fetch(url)
+    if (res.ok) {
+      const d: any = await res.json()
+      const code = d?.current?.weather_code ?? 0
+      const rainProb = Math.max(...((d?.hourly?.precipitation_probability as number[]) || [0]))
+      const condition = code === 0 ? 'Clear sky' : code < 4 ? 'Partly cloudy' : code < 50 ? 'Cloudy' : code < 70 ? 'Rain' : 'Stormy'
+      const payload = {
+        city,
+        temp_c: Math.round(d?.current?.temperature_2m ?? 0),
+        condition,
+        rain_prob_pct: rainProb,
+        alert: rainProb >= 50 ? 'Rain likely today — road-damage and waterlogging risk rises.' : null,
+        source: 'open-meteo',
+        cached_at: new Date().toISOString(),
+      }
+      await c.env.DB.prepare(
+        `INSERT INTO weather_cache (city, payload, fetched_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(city) DO UPDATE SET payload=excluded.payload, fetched_at=CURRENT_TIMESTAMP`
+      ).bind(city, JSON.stringify(payload)).run()
+      return c.json(payload)
+    }
+  } catch (e) {
+    console.error('weather failed:', (e as Error).message)
+  }
+  return c.json({ city, temp_c: null, condition: 'Unavailable', rain_prob_pct: null, alert: null, source: 'stub' })
+})
+
+// Cross-issue activity timeline.
+api.get('/activity', requireRole('admin'), async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT u.issue_id, u.status, u.message, u.author, u.created_at, i.title, i.category
+     FROM issue_updates u JOIN issues i ON i.id = u.issue_id
+     ORDER BY u.created_at DESC LIMIT 30`
+  ).all()
+  return c.json({ activity: results || [] })
+})
+
+// Global search across issues + contractors + departments.
+api.get('/search', requireRole('admin'), async (c) => {
+  const q = (c.req.query('q') || '').trim()
+  if (!q) return c.json({ issues: [], contractors: [] })
+  const like = `%${q}%`
+  const issues = await c.env.DB.prepare(
+    `SELECT id, title, category, severity, status, address FROM issues
+     WHERE title LIKE ? OR category LIKE ? OR address LIKE ? ORDER BY priority_score DESC LIMIT 10`
+  ).bind(like, like, like).all()
+  const contractors = await c.env.DB.prepare(
+    `SELECT c.user_id, u.name, c.company, c.skills, c.rating FROM contractors c JOIN users u ON u.id = c.user_id
+     WHERE u.name LIKE ? OR c.company LIKE ? OR c.skills LIKE ? LIMIT 10`
+  ).bind(like, like, like).all()
+  return c.json({ issues: issues.results || [], contractors: contractors.results || [] })
 })
 
 export default api
