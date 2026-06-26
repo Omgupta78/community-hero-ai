@@ -29,7 +29,7 @@ async function log(
     .run()
 }
 
-export async function runTriageAgent(env: Env, issueId: number): Promise<{ ok: boolean; steps: number; conclusion: string }> {
+export async function runTriageAgent(env: Env, issueId: number): Promise<{ ok: boolean; steps: number; conclusion: string; duplicate_of: number | null }> {
   const db = env.DB
 
   // 1. PERCEIVE
@@ -37,7 +37,7 @@ export async function runTriageAgent(env: Env, issueId: number): Promise<{ ok: b
     .prepare(`SELECT id, title, description, category, severity, address, department, status FROM issues WHERE id = ?`)
     .bind(issueId)
     .first<any>()
-  if (!issue) return { ok: false, steps: 0, conclusion: 'Issue not found' }
+  if (!issue) return { ok: false, steps: 0, conclusion: 'Issue not found', duplicate_of: null }
 
   // Clear any prior trace (re-runnable)
   await db.prepare(`DELETE FROM agent_actions WHERE issue_id = ?`).bind(issueId).run()
@@ -98,7 +98,7 @@ export async function runTriageAgent(env: Env, issueId: number): Promise<{ ok: b
       .prepare(`INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'Reported', ?, 'Triage Agent')`)
       .bind(issueId, `AI agent flagged this as a duplicate of #${decision.duplicate_of}.`)
       .run()
-    return { ok: true, steps: step - 1, conclusion: `Flagged as duplicate of #${decision.duplicate_of}.` }
+    return { ok: true, steps: step - 1, conclusion: `Flagged as duplicate of #${decision.duplicate_of}.`, duplicate_of: decision.duplicate_of }
   }
 
   // 4. PRIORITIZE
@@ -154,5 +154,5 @@ export async function runTriageAgent(env: Env, issueId: number): Promise<{ ok: b
 
   await db.prepare(`UPDATE issues SET agent_processed = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(issueId).run()
 
-  return { ok: true, steps: step - 1, conclusion: decision.conclusion }
+  return { ok: true, steps: step - 1, conclusion: decision.conclusion, duplicate_of: null }
 }

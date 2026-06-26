@@ -12,6 +12,7 @@ import {
   SESSION_COOKIE,
 } from '../lib/auth'
 import { getFirebaseUser, getOrCreateCitizen } from '../lib/firebase'
+import { tierFor } from '../lib/reputation'
 
 type Bindings = {
   DB: D1Database
@@ -243,19 +244,22 @@ api.post('/issues', async (c) => {
     `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'Reported', ?, 'System')`
   ).bind(issueId, 'Issue reported and analyzed by AI.').run()
 
-  // reward the reporter
-  await c.env.DB.prepare(`UPDATE users SET score = score + 10 WHERE id = ?`).bind(reporterId).run()
-
   // Autonomous triage agent processes the new report immediately:
   // de-duplicates, prioritizes, auto-routes to a department, and drafts a plan.
-  let agent: { ok: boolean; steps: number; conclusion: string } | null = null
+  let agent: { ok: boolean; steps: number; conclusion: string; duplicate_of: number | null } | null = null
   try {
     agent = await runTriageAgent(c.env, issueId as number)
   } catch (e) {
     console.error('Triage agent error:', (e as Error).message)
   }
 
-  return c.json({ id: issueId, ...analysis, agent }, 201)
+  // Integrity-gated reward: a genuine new report earns +10; a report the agent
+  // flagged as a duplicate earns only +2 (still thanked, but can't farm points).
+  const isDuplicate = !!(agent && agent.duplicate_of)
+  const pointsAwarded = isDuplicate ? 2 : 10
+  await c.env.DB.prepare(`UPDATE users SET score = score + ? WHERE id = ?`).bind(pointsAwarded, reporterId).run()
+
+  return c.json({ id: issueId, ...analysis, agent, points_awarded: pointsAwarded, duplicate_of: agent?.duplicate_of ?? null }, 201)
 })
 
 // ---------------------------------------------------------------
@@ -580,7 +584,37 @@ api.get('/me', async (c) => {
     .bind(citizenId).first<any>()
   const reports = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE reporter_id = ?`)
     .bind(citizenId).first<{ n: number }>()
-  return c.json({ ...user, reports: reports?.n || 0, authenticated })
+
+  // Community rank + reputation tier.
+  const rankRow = await c.env.DB.prepare(
+    `SELECT COUNT(*) + 1 AS rank FROM users WHERE role = 'citizen' AND score > ?`
+  ).bind(user?.score || 0).first<{ rank: number }>()
+  const tier = tierFor(user?.score || 0)
+
+  return c.json({ ...user, reports: reports?.n || 0, authenticated, tier, rank: rankRow?.rank || null })
+})
+
+// ---------------------------------------------------------------
+// LEADERBOARD — top community heroes (gamification)
+// ---------------------------------------------------------------
+api.get('/leaderboard', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT u.id, u.name, u.score, u.photo_url,
+            (SELECT COUNT(*) FROM issues i WHERE i.reporter_id = u.id) AS reports
+     FROM users u
+     WHERE u.role = 'citizen'
+     ORDER BY u.score DESC, reports DESC
+     LIMIT 20`
+  ).all()
+  const leaders = ((results as any[]) || []).map((r, i) => ({
+    rank: i + 1,
+    name: r.name,
+    score: r.score,
+    photo_url: r.photo_url,
+    reports: r.reports,
+    tier: tierFor(r.score),
+  }))
+  return c.json({ leaders })
 })
 
 export default api

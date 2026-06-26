@@ -22,6 +22,20 @@
       $('p-score').textContent = me.score ?? 0
       $('p-reports').textContent = me.reports ?? 0
 
+      // Reputation tier + progress
+      if (me.tier) {
+        const t = me.tier
+        if ($('p-tier-name')) $('p-tier-name').textContent = t.name
+        if ($('p-tier-icon')) $('p-tier-icon').textContent = t.icon
+        if ($('p-rank')) $('p-rank').textContent = me.rank ? '#' + me.rank : '—'
+        if ($('p-tier-bar')) $('p-tier-bar').style.width = Math.round((t.progress || 0) * 100) + '%'
+        if ($('p-tier-next')) {
+          $('p-tier-next').textContent = t.next
+            ? `${Math.max(0, t.next - (me.score ?? 0))} points to the next tier`
+            : 'Top tier reached — true Community Hero! 🏆'
+        }
+      }
+
       // avatar
       const avatar = $('p-avatar')
       if (me.photo_url) {

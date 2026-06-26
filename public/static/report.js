@@ -124,8 +124,12 @@
         ai: lastAnalysis,
       }
       const { data } = await api.post('/issues', payload)
-      toast('Report submitted! +10 points')
-      setTimeout(() => { window.location.href = '/issue/' + data.id }, 800)
+      if (data.duplicate_of) {
+        toast(`Thanks! Looks like a duplicate of #${data.duplicate_of} (+${data.points_awarded} pts)`)
+      } else {
+        toast(`Report submitted! +${data.points_awarded} points`)
+      }
+      setTimeout(() => { window.location.href = '/issue/' + data.id }, 900)
     } catch (e) {
       toast('Submit failed', false)
       btn.disabled = false

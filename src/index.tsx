@@ -76,7 +76,7 @@ app.get('/', (c) => {
         {/* Quick actions */}
         <section>
           <h3 class="text-xs font-bold text-on-surface-variant mb-md uppercase tracking-widest">Quick Actions</h3>
-          <div class="grid grid-cols-3 gap-sm">
+          <div class="grid grid-cols-4 gap-sm">
             <a href="/report" class="bg-primary-container text-on-primary-container rounded-xl p-md flex flex-col items-center justify-center gap-sm min-h-[100px] active:scale-95 transition-transform hover:bg-surface-tint hover:text-on-primary">
               <span class="material-symbols-outlined text-[32px]">add_circle</span>
               <span class="text-xs text-center font-medium">Report Issue</span>
@@ -88,6 +88,10 @@ app.get('/', (c) => {
             <a href="/verify" class="bg-surface-lowest border border-outline-variant text-primary rounded-xl p-md flex flex-col items-center justify-center gap-sm min-h-[100px] active:scale-95 transition-transform hover:bg-surface-container">
               <span class="material-symbols-outlined text-[32px]">verified</span>
               <span class="text-xs text-center font-medium">Verify Reports</span>
+            </a>
+            <a href="/leaderboard" class="bg-surface-lowest border border-outline-variant text-primary rounded-xl p-md flex flex-col items-center justify-center gap-sm min-h-[100px] active:scale-95 transition-transform hover:bg-surface-container">
+              <span class="material-symbols-outlined text-[32px]">leaderboard</span>
+              <span class="text-xs text-center font-medium">Leaderboard</span>
             </a>
           </div>
         </section>
@@ -390,6 +394,24 @@ app.get('/profile', (c) => {
               <p class="text-xs font-bold uppercase text-on-surface-variant mt-1">Reports Filed</p>
             </div>
           </section>
+
+          {/* Reputation tier + progress */}
+          <section class="bg-surface-lowest border border-outline-variant rounded-xl p-lg">
+            <div class="flex items-center gap-3 mb-2">
+              <span id="p-tier-icon" class="material-symbols-outlined text-[32px] text-primary" style="font-variation-settings:'FILL' 1;">military_tech</span>
+              <div class="min-w-0">
+                <p class="font-bold text-on-surface text-[18px]" id="p-tier-name">—</p>
+                <p class="text-xs text-on-surface-variant">Community rank <span id="p-rank" class="font-bold text-on-surface">—</span></p>
+              </div>
+              <a href="/leaderboard" class="ml-auto text-xs font-bold text-primary flex items-center gap-1 hover:underline">
+                Leaderboard <span class="material-symbols-outlined text-[16px]">leaderboard</span>
+              </a>
+            </div>
+            <div class="w-full h-2 bg-surface-container rounded-full overflow-hidden">
+              <div id="p-tier-bar" class="h-full bg-primary rounded-full transition-all" style="width:0%"></div>
+            </div>
+            <p id="p-tier-next" class="text-[11px] text-on-surface-variant mt-1">—</p>
+          </section>
           <section>
             <h3 class="text-[18px] font-semibold text-on-surface mb-md">My Reports</h3>
             <div id="my-reports" class="space-y-md">
@@ -405,6 +427,43 @@ app.get('/profile', (c) => {
       <script src="/static/profile.js"></script>
     </div>,
     { title: 'My Profile' }
+  )
+})
+
+// Community leaderboard (gamification)
+app.get('/leaderboard', (c) => {
+  return c.render(
+    <div class="pt-[80px] pb-[100px]">
+      <TopBar title="Community Heroes" />
+      <main class="px-container-margin max-w-2xl mx-auto mt-lg space-y-lg">
+        <section class="bg-primary text-on-primary rounded-xl p-lg relative overflow-hidden">
+          <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">leaderboard</span>
+            <h2 class="font-bold text-[18px]">Top Community Heroes</h2>
+          </div>
+          <p class="text-sm text-primary-fixed">Earn points by reporting real issues and verifying neighbors' reports on-site. Climb the tiers from Newcomer to Platinum Hero.</p>
+        </section>
+
+        <section id="leaderboard-list" class="space-y-2">
+          <div class="text-center text-on-surface-variant py-8">Loading heroes…</div>
+        </section>
+
+        <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+          <h3 class="font-bold text-sm text-on-surface mb-3">Hero Tiers</h3>
+          <div class="grid grid-cols-1 gap-2 text-sm">
+            <div class="flex items-center gap-2"><span class="material-symbols-outlined text-on-surface-variant">eco</span> Newcomer <span class="ml-auto text-on-surface-variant">0+</span></div>
+            <div class="flex items-center gap-2"><span class="material-symbols-outlined text-tertiary-container">military_tech</span> Bronze Hero <span class="ml-auto text-on-surface-variant">50+</span></div>
+            <div class="flex items-center gap-2"><span class="material-symbols-outlined text-outline">military_tech</span> Silver Hero <span class="ml-auto text-on-surface-variant">150+</span></div>
+            <div class="flex items-center gap-2"><span class="material-symbols-outlined text-tertiary">workspace_premium</span> Gold Hero <span class="ml-auto text-on-surface-variant">350+</span></div>
+            <div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary">diamond</span> Platinum Hero <span class="ml-auto text-on-surface-variant">750+</span></div>
+          </div>
+        </section>
+      </main>
+      <BottomNav active="impact" />
+      <script src="/static/leaderboard.js"></script>
+    </div>,
+    { title: 'Community Heroes' }
   )
 })
 

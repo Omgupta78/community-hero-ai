@@ -46,6 +46,10 @@ resolution.
   issue while physically near it ("on-site") is worth more and counts double toward
   promotion, while remote reviews count less — so a report is only auto-promoted to
   "Verified" once it reaches enough *trusted* confirmations. You can't verify your own report.
+- **Reputation tiers & live leaderboard** — community score maps to Hero tiers (Newcomer →
+  Bronze → Silver → Gold → Platinum Hero) shown with a progress bar on each profile, plus a
+  ranked community leaderboard. **Integrity-gated points**: reports the agent flags as
+  duplicates earn far less, so points can't be farmed with spam or repeat reports.
 - **Live interactive map** — Leaflet with severity-colored, auto-refreshing markers + GPS.
 - **Role-based municipal dashboards** — a super-admin assigns issues; department authorities
   see only their assigned queue and advance status; citizens see official updates instantly.
