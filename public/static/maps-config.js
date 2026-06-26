@@ -6,4 +6,4 @@
 //
 // IMPORTANT: in Google Cloud Console → Credentials, restrict this key by
 // HTTP referrer to: http://localhost:5173/* and your deployed https://*.run.app/*
-window.GOOGLE_MAPS_KEY = ''
+window.GOOGLE_MAPS_KEY = 'AIzaSyAtU6UQV9-cNmjEZ5lfg0g-1efw4-oejek'
