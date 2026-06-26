@@ -178,60 +178,91 @@ app.get('/report', (c) => {
     <div class="pt-[80px] pb-[120px]">
       <TopBar title="Report Issue" />
       <main class="px-container-margin max-w-2xl mx-auto space-y-lg mt-lg">
-        {/* Photo / video upload */}
-        <section class="bg-surface-container-low border border-outline-variant rounded-xl p-lg text-center">
+        {/* Header */}
+        <div class="text-center">
+          <h1 class="text-[26px] font-bold text-on-surface">Snap to report</h1>
+          <p class="text-sm text-on-surface-variant mt-1">One photo. Gemini does the paperwork — no category hunting needed.</p>
+        </div>
+
+        {/* Quick example starters */}
+        <div id="example-chips" class="flex flex-wrap gap-2 justify-center">
+          {['Burst water pipe', 'Deep pothole', 'Downed live wire', 'Illegal dumping', 'Broken streetlight'].map((x) => (
+            <button data-ex={x} class="ex-chip border border-outline-variant rounded-full px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition flex items-center gap-1">
+              <span class="material-symbols-outlined text-[16px] text-secondary">bolt</span>{x}
+            </button>
+          ))}
+        </div>
+
+        {/* Photo / video upload + AI triage */}
+        <section class="bg-surface-container-low border-2 border-dashed border-outline-variant rounded-xl p-lg text-center">
           <input type="file" id="photo-input" accept="image/*,video/*" capture="environment" class="hidden" />
           <div id="photo-zone" class="cursor-pointer">
             <div id="photo-placeholder">
               <div class="w-16 h-16 mx-auto rounded-full bg-primary-fixed flex items-center justify-center mb-3">
                 <span class="material-symbols-outlined text-primary text-[32px]">add_a_photo</span>
               </div>
-              <p class="text-primary font-semibold text-[18px]">Add a Photo or Video</p>
-              <p class="text-sm text-on-surface-variant mt-1">Photo or a short clip — clear evidence helps our AI &amp; teams resolve issues faster.</p>
+              <p class="text-on-surface font-semibold text-[16px]">Add a photo or short video</p>
+              <p class="text-sm text-on-surface-variant mt-1">Clear evidence helps Gemini fill the form automatically.</p>
             </div>
             <img id="photo-preview" class="hidden w-full rounded-lg max-h-72 object-cover" />
             <video id="video-preview" class="hidden w-full rounded-lg max-h-72 bg-black" controls playsinline></video>
-            <p id="media-note" class="hidden text-xs text-on-surface-variant mt-2"></p>
+          </div>
+          <p id="media-note" class="hidden text-xs text-on-surface-variant mt-2"></p>
+          <div class="flex gap-2 justify-center mt-4">
+            <button id="upload-btn" class="bg-primary text-on-primary rounded-full px-5 py-2.5 font-bold text-sm flex items-center gap-2 active:scale-95 transition">
+              <span class="material-symbols-outlined text-[18px]">upload</span> Upload photo
+            </button>
+            <button id="analyze-btn" class="bg-secondary text-white rounded-full px-5 py-2.5 font-bold text-sm flex items-center gap-2 active:scale-95 transition">
+              <span class="material-symbols-outlined text-[18px]">auto_awesome</span> AI triage
+            </button>
           </div>
         </section>
 
-        {/* AI analysis result */}
-        <section id="ai-result" class="hidden bg-surface-lowest border-2 border-primary rounded-xl p-md">
-          <div class="flex items-center gap-2 mb-3 text-primary">
-            <span class="material-symbols-outlined">auto_awesome</span>
-            <h3 class="font-bold">Gemini AI Analysis</h3>
-            <span id="ai-source" class="ml-auto text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-primary-fixed text-primary"></span>
-          </div>
-          <div id="ai-content" class="space-y-3"></div>
-        </section>
+        {/* AI verification banner (genuine / needs evidence / suspect) */}
+        <div id="ai-verify" class="hidden rounded-xl p-3 text-sm flex items-start gap-2"></div>
 
-        {/* AI suggestions chips (manual) */}
-        <section>
-          <p class="text-xs font-bold text-on-surface-variant mb-2 uppercase tracking-wide flex items-center gap-1">
-            <span class="material-symbols-outlined text-[16px]">auto_awesome</span> AI Suggestions
-          </p>
-          <div id="category-chips" class="flex flex-wrap gap-2">
-            {['Pothole', 'Illegal Dumping', 'Streetlight', 'Water Leak', 'Graffiti'].map((cat) => (
-              <button
-                data-cat={cat}
-                class="cat-chip border border-outline-variant rounded-full px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition"
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* Description */}
+        {/* Form — AI-filled, editable */}
         <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md space-y-md">
           <div>
-            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Description</label>
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Describe it</label>
+              <span class="text-[11px] font-bold text-secondary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">auto_awesome</span>AI-assisted</span>
+            </div>
             <textarea
               id="description"
-              rows={4}
-              placeholder="Provide more details about the issue…"
+              rows={3}
+              placeholder="The AI fills this from your photo. Edit if needed."
               class="mt-2 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary resize-none"
             ></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-md">
+            <div>
+              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Category · <span class="text-secondary">AI</span></label>
+              <select id="category-select" class="mt-2 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary">
+                {['Pothole', 'Illegal Dumping', 'Streetlight', 'Water Leak', 'Graffiti', 'Other'].map((x) => <option>{x}</option>)}
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Severity · <span class="text-secondary">AI</span></label>
+              <select id="severity-select" class="mt-2 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary">
+                <option value="5">Critical (5)</option>
+                <option value="4">High (4)</option>
+                <option value="3" selected>Medium (3)</option>
+                <option value="2">Low (2)</option>
+                <option value="1">Minor (1)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Gemini routing strip */}
+          <div id="ai-result" class="hidden bg-primary-fixed rounded-lg p-3">
+            <div class="flex items-center gap-2 text-primary mb-1">
+              <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+              <span class="font-bold text-sm">Gemini routing</span>
+              <span id="ai-source" class="ml-auto text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-white/60 text-primary"></span>
+            </div>
+            <div id="ai-content" class="text-sm text-on-surface"></div>
           </div>
 
           <div>
@@ -262,10 +293,7 @@ app.get('/report', (c) => {
           </div>
         </section>
 
-        <button id="analyze-btn" class="w-full bg-primary text-on-primary rounded-xl py-4 font-bold text-[16px] active:scale-[0.98] transition flex items-center justify-center gap-2">
-          <span class="material-symbols-outlined">auto_awesome</span> Analyze with AI
-        </button>
-        <button id="submit-btn" class="hidden w-full bg-secondary text-white rounded-xl py-4 font-bold text-[16px] active:scale-[0.98] transition flex items-center justify-center gap-2">
+        <button id="submit-btn" class="w-full bg-secondary text-white rounded-xl py-4 font-bold text-[16px] active:scale-[0.98] transition flex items-center justify-center gap-2">
           <span class="material-symbols-outlined">send</span> Submit Report
         </button>
       </main>
