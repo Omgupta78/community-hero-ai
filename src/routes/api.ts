@@ -515,7 +515,7 @@ api.post('/issues/:id/proof', requireRole('contractor'), async (c) => {
   const { after_photo, afterImageBase64, mimeType } = body
 
   const issue = await c.env.DB.prepare(
-    `SELECT title, category, description, photo_data, contractor_id, bounty, status, fix_verified FROM issues WHERE id = ?`
+    `SELECT title, category, description, photo_data, contractor_id, bounty, status, fix_verified, department FROM issues WHERE id = ?`
   ).bind(id).first<any>()
   if (!issue) return c.json({ error: 'Not found' }, 404)
   if (Number(issue.contractor_id) !== Number(me.id)) return c.json({ error: 'This job is not assigned to you' }, 403)
@@ -535,15 +535,39 @@ api.post('/issues/:id/proof', requireRole('contractor'), async (c) => {
   )
 
   let paid = 0
+  let via = 'bounty'
   if (verdict.resolved) {
-    paid = issue.bounty || 0
+    // Escrow-aware payout: if the Municipality assigned this job with a locked
+    // escrow, release the escrow; otherwise fall back to the open-board bounty.
+    const job = await c.env.DB.prepare(
+      `SELECT id, escrow_amount FROM job_assignments WHERE issue_id = ? AND escrow_status = 'locked'`
+    ).bind(id).first<any>()
+
+    if (job) {
+      via = 'escrow'
+      paid = job.escrow_amount || 0
+      await c.env.DB.prepare(
+        `UPDATE job_assignments SET escrow_status = 'released', state = 'Resolved', citizen_confirmed = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+      ).bind(job.id).run()
+      await c.env.DB.prepare(
+        `UPDATE contractors SET active_tasks = MAX(0, active_tasks - 1), jobs_completed = jobs_completed + 1 WHERE user_id = ?`
+      ).bind(me.id).run()
+      if (issue.department) {
+        await c.env.DB.prepare(
+          `UPDATE budgets SET spent = spent + ?, committed = MAX(0, committed - ?) WHERE department = ?`
+        ).bind(paid, paid, issue.department).run()
+      }
+    } else {
+      paid = issue.bounty || 0
+    }
+
     await c.env.DB.prepare(
       `UPDATE issues SET after_photo = ?, fix_verified = 1, fix_reason = ?, status = 'Resolved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
     ).bind(after_photo || null, verdict.reason, id).run()
     await c.env.DB.prepare(`UPDATE users SET earnings = earnings + ? WHERE id = ?`).bind(paid, me.id).run()
     await c.env.DB.prepare(
       `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'Resolved', ?, ?)`
-    ).bind(id, `Fix AI-verified (${verdict.confidence}% confidence) — ₹${paid} released to ${me.name}. ${verdict.reason}`, me.name).run()
+    ).bind(id, `Fix AI-verified (${verdict.confidence}% confidence) — ${via === 'escrow' ? 'escrow' : 'bounty'} \u20B9${paid} released to ${me.name}. ${verdict.reason}`, me.name).run()
   } else {
     await c.env.DB.prepare(
       `UPDATE issues SET after_photo = ?, fix_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
@@ -553,7 +577,7 @@ api.post('/issues/:id/proof', requireRole('contractor'), async (c) => {
     ).bind(id, `Proof submitted but AI could not confirm the fix (${verdict.confidence}%). ${verdict.reason}`, me.name).run()
   }
 
-  return c.json({ ...verdict, paid, status: verdict.resolved ? 'Resolved' : 'In Progress' })
+  return c.json({ ...verdict, paid, via, status: verdict.resolved ? 'Resolved' : 'In Progress' })
 })
 
 // AI-generated resolution action plan for a single issue (real-time Gemini).
@@ -1340,6 +1364,40 @@ api.get('/search', requireRole('admin'), async (c) => {
      WHERE u.name LIKE ? OR c.company LIKE ? OR c.skills LIKE ? LIMIT 10`
   ).bind(like, like, like).all()
   return c.json({ issues: issues.results || [], contractors: contractors.results || [] })
+})
+
+// Contractor's municipality-assigned jobs (escrow-backed), newest first.
+api.get('/contractor/assignments', requireRole('contractor'), async (c) => {
+  const me = c.get('staff')
+  const { results } = await c.env.DB.prepare(
+    `SELECT j.id AS job_id, j.issue_id, j.escrow_amount, j.escrow_status, j.state, j.created_at,
+            i.title, i.category, i.severity, i.status, i.address, i.department, i.photo_data,
+            i.fix_verified, i.lat, i.lng,
+            a.name AS assigned_by
+     FROM job_assignments j
+     JOIN issues i ON i.id = j.issue_id
+     LEFT JOIN users a ON a.id = j.assigned_by
+     WHERE j.contractor_id = ?
+     ORDER BY j.created_at DESC LIMIT 50`
+  ).bind(me.id).all()
+  // Contractor profile + earnings for the header.
+  const prof = await c.env.DB.prepare(
+    `SELECT u.earnings, c.company, c.rating, c.jobs_completed, c.availability, c.active_tasks
+     FROM users u LEFT JOIN contractors c ON c.user_id = u.id WHERE u.id = ?`
+  ).bind(me.id).first<any>()
+  return c.json({ assignments: results || [], profile: prof || {} })
+})
+
+// Contractor sets their availability (available | busy | offline).
+api.post('/contractor/availability', requireRole('contractor'), async (c) => {
+  const me = c.get('staff')
+  const body = await c.req.json().catch(() => ({}))
+  const v = ['available', 'busy', 'offline'].includes(body.availability) ? body.availability : 'available'
+  await c.env.DB.prepare(
+    `INSERT INTO contractors (user_id, availability) VALUES (?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET availability = excluded.availability`
+  ).bind(me.id, v).run()
+  return c.json({ ok: true, availability: v })
 })
 
 export default api

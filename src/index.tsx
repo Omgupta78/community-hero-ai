@@ -781,74 +781,113 @@ app.get('/contractor', async (c) => {
   if (user.role !== 'contractor') return c.redirect(user.role === 'admin' ? '/admin' : '/authority')
 
   return c.render(
-    <div class="pt-[80px] pb-[40px]">
-      <TopBar title="Responder" authority />
-      <main class="px-container-margin max-w-4xl mx-auto mt-lg space-y-lg">
-        <section class="bg-primary text-on-primary rounded-xl p-lg flex items-center gap-4">
-          <span class="material-symbols-outlined text-[40px]">construction</span>
-          <div class="min-w-0">
-            <p class="text-xs uppercase font-bold opacity-80">Signed in as</p>
-            <h2 class="font-bold text-[20px] truncate">{user.name}</h2>
-            <p class="text-sm opacity-90">Civic Responder</p>
+    <div class="ctr-scope" id="ctr-root">
+      {/* ---------- TOP BAR ---------- */}
+      <header class="ctr-topbar">
+        <a href="/" class="ctr-brand">
+          <img src="/static/logo.svg" class="w-8 h-8" alt="TrustLens AI" />
+          <span><b>Trust</b>Lens<span class="ctr-badge">Field Ops</span></span>
+        </a>
+        <div class="ctr-topbar-right">
+          <div class="ctr-avail" id="ctr-avail">
+            <span class="ctr-avail-dot"></span>
+            <select id="ctr-avail-select" title="Your availability">
+              <option value="available">Available</option>
+              <option value="busy">Busy</option>
+              <option value="offline">Offline</option>
+            </select>
           </div>
-          <div class="ml-auto text-right">
-            <p class="text-xs uppercase font-bold opacity-80">Total earned</p>
-            <p class="text-2xl font-bold" id="c-earnings">₹—</p>
+          <button id="ctr-ai-btn" class="ctr-chip"><span class="material-symbols-outlined">support_agent</span> Help</button>
+          <div class="ctr-profile"><div class="ctr-avatar">{(user.name || 'C')[0]}</div>
+            <div class="ctr-profile-meta"><b>{user.name}</b><small>Civic Responder</small></div></div>
+          <a href="/login" class="ctr-switch" title="Switch role"><span class="material-symbols-outlined">logout</span></a>
+        </div>
+      </header>
+
+      <main class="ctr-main">
+        {/* HERO / EARNINGS */}
+        <section class="ctr-hero">
+          <div class="ctr-hero-text">
+            <p class="ctr-eyebrow">Welcome back</p>
+            <h1>{user.name}</h1>
+            <p class="ctr-hero-sub">Win jobs from the city, prove the fix with a photo, get paid the moment AI verifies it.</p>
+          </div>
+          <div class="ctr-earn-card">
+            <p class="ctr-earn-label"><span class="material-symbols-outlined">account_balance_wallet</span> Total earned</p>
+            <p class="ctr-earn-val" id="ctr-earnings">₹—</p>
+            <div class="ctr-earn-foot"><span id="ctr-rating">★ —</span><span id="ctr-jobs-done">— jobs completed</span></div>
           </div>
         </section>
 
-        <section class="grid grid-cols-3 gap-md">
-          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md text-center">
-            <p class="text-3xl font-bold text-on-surface" id="c-available">—</p>
-            <p class="text-xs uppercase font-bold text-on-surface-variant mt-1">Open Jobs</p>
-          </div>
-          <div class="bg-secondary-container rounded-xl p-md text-center">
-            <p class="text-3xl font-bold text-on-secondary-container" id="c-active">—</p>
-            <p class="text-xs uppercase font-bold text-on-surface-variant mt-1">In Progress</p>
-          </div>
-          <div class="bg-secondary rounded-xl p-md text-center">
-            <p class="text-3xl font-bold text-white" id="c-done">—</p>
-            <p class="text-xs uppercase font-bold text-white mt-1">Completed</p>
-          </div>
+        {/* KPI CARDS */}
+        <section class="ctr-kpis">
+          <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#2563EB;background:#2563EB1a">verified_user</span>
+            <div><p class="ctr-kpi-val" id="ctr-k-assigned">—</p><p class="ctr-kpi-label">Assigned by City</p></div></div>
+          <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#F59E0B;background:#F59E0B1a">pending_actions</span>
+            <div><p class="ctr-kpi-val" id="ctr-k-active">—</p><p class="ctr-kpi-label">In Progress</p></div></div>
+          <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#10B981;background:#10B9811a">task_alt</span>
+            <div><p class="ctr-kpi-val" id="ctr-k-done">—</p><p class="ctr-kpi-label">Completed</p></div></div>
+          <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#8B5CF6;background:#8B5CF61a">paid</span>
+            <div><p class="ctr-kpi-val" id="ctr-k-escrow">₹—</p><p class="ctr-kpi-label">In Escrow</p></div></div>
         </section>
 
-        <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
-          <h2 class="font-bold text-[18px] text-on-surface mb-3">Available Jobs <span class="text-xs text-on-surface-variant">— ranked by bounty &amp; priority</span></h2>
-          <div id="available-jobs" class="space-y-md"><div class="text-center text-on-surface-variant py-8">Loading jobs…</div></div>
+        {/* ASSIGNED BY MUNICIPALITY (escrow) */}
+        <section class="ctr-block">
+          <div class="ctr-block-head">
+            <h2><span class="material-symbols-outlined">apartment</span> Assigned by the Municipality</h2>
+            <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">lock</span> Escrow-backed</span>
+          </div>
+          <p class="ctr-block-sub">The City Command Center assigned these jobs to you and locked the payment in escrow. Complete the work, submit an "after" photo — Gemini verifies it and the escrow is released to you instantly.</p>
+          <div id="ctr-assigned" class="ctr-grid"><div class="ctr-skel"></div></div>
         </section>
 
-        <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
-          <h2 class="font-bold text-[18px] text-on-surface mb-3">My Jobs</h2>
-          <div id="my-jobs" class="space-y-md"><div class="text-center text-on-surface-variant py-8">No jobs claimed yet.</div></div>
+        {/* OPEN JOBS BOARD */}
+        <section class="ctr-block">
+          <div class="ctr-block-head">
+            <h2><span class="material-symbols-outlined">work</span> Open Jobs Board</h2>
+            <span class="ctr-tag">Ranked by bounty &amp; priority</span>
+          </div>
+          <p class="ctr-block-sub">Self-serve jobs anyone can claim. First responder to claim and verify the fix earns the bounty.</p>
+          <div id="ctr-open" class="ctr-grid"><div class="ctr-skel"></div></div>
         </section>
+
+        {/* MY CLAIMED JOBS */}
+        <section class="ctr-block">
+          <div class="ctr-block-head"><h2><span class="material-symbols-outlined">construction</span> My Active Jobs</h2></div>
+          <div id="ctr-mine" class="ctr-grid"><p class="ctr-empty">No claimed jobs yet.</p></div>
+        </section>
+
+        <p class="ctr-footnote">Powered by <b>Gemini 2.5 Flash</b> · Before/after fixes are AI-verified · Escrow released automatically on verification.</p>
       </main>
 
-      {/* Proof-of-fix modal */}
-      <div id="proof-modal" class="hidden fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center p-4">
-        <div class="bg-surface-lowest rounded-xl p-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-          <h3 class="font-bold text-[18px] text-on-surface mb-1">Prove the Fix <span id="proof-issue-id"></span></h3>
-          <p id="proof-issue-title" class="text-sm text-on-surface-variant mb-4"></p>
-          <input type="file" id="proof-input" accept="image/*" capture="environment" class="hidden" />
-          <div id="proof-zone" class="cursor-pointer border-2 border-dashed border-outline-variant rounded-xl p-lg text-center mb-3">
-            <div id="proof-placeholder">
-              <span class="material-symbols-outlined text-primary text-[32px]">add_a_photo</span>
-              <p class="text-sm text-on-surface-variant mt-1">Upload an "after" photo of the completed fix</p>
+      {/* ---------- PROOF-OF-FIX MODAL ---------- */}
+      <div id="ctr-proof-modal" class="ctr-modal hidden">
+        <div class="ctr-modal-card">
+          <div class="ctr-modal-head"><h3>Prove the Fix <span id="ctr-proof-id"></span></h3>
+            <button id="ctr-proof-close" class="ctr-icon-btn"><span class="material-symbols-outlined">close</span></button></div>
+          <div class="ctr-modal-body">
+            <p id="ctr-proof-title" class="ctr-proof-title"></p>
+            <div id="ctr-proof-payout" class="ctr-proof-payout"></div>
+            <div class="ctr-beforeafter">
+              <div class="ctr-ba-col"><span class="ctr-ba-label">Before (reported)</span>
+                <div id="ctr-before" class="ctr-ba-img ctr-ba-empty"><span class="material-symbols-outlined">image</span></div></div>
+              <div class="ctr-ba-col"><span class="ctr-ba-label">After (your fix)</span>
+                <div id="ctr-proof-zone" class="ctr-ba-img ctr-ba-drop"><div id="ctr-proof-ph"><span class="material-symbols-outlined">add_a_photo</span><small>Tap to add photo</small></div>
+                  <img id="ctr-proof-preview" class="hidden" /></div></div>
             </div>
-            <img id="proof-preview" class="hidden w-full rounded-lg max-h-56 object-cover" />
-          </div>
-          <div id="proof-verdict" class="hidden rounded-lg p-3 mb-3 text-sm"></div>
-          <div class="flex gap-2">
-            <button id="proof-cancel" class="flex-1 border border-outline-variant rounded-lg py-3 font-bold text-on-surface">Close</button>
-            <button id="proof-submit" class="flex-1 bg-primary text-on-primary rounded-lg py-3 font-bold flex items-center justify-center gap-2">
-              <span class="material-symbols-outlined text-[18px]">verified</span> Submit for AI Verification
-            </button>
+            <input type="file" id="ctr-proof-input" accept="image/*" capture="environment" class="hidden" />
+            <div id="ctr-proof-verdict" class="hidden ctr-verdict"></div>
+            <div class="ctr-modal-actions">
+              <button id="ctr-proof-cancel" class="ctr-btn ctr-btn-line">Close</button>
+              <button id="ctr-proof-submit" class="ctr-btn ctr-btn-primary"><span class="material-symbols-outlined">verified</span> Submit for AI Verification</button>
+            </div>
           </div>
         </div>
       </div>
 
       <script src="/static/contractor.js"></script>
     </div>,
-    { title: 'Responder Dashboard' }
+    { title: 'Field Ops · TrustLens AI Responder' }
   )
 })
 
