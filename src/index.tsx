@@ -188,7 +188,7 @@ app.get('/report', (c) => {
             <input
               id="address"
               type="text"
-              value="123 Main St, Springfield"
+              value="Sector 17, Chandigarh"
               class="mt-2 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary"
             />
             <p class="text-xs text-on-surface-variant mt-1" id="gps-status">Auto-detected from GPS</p>

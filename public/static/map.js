@@ -4,7 +4,7 @@
   let filter = 'all'
   let markers = []
 
-  const map = L.map('map', { zoomControl: true }).setView([39.799, -89.644], 14)
+  const map = L.map('map', { zoomControl: true }).setView([30.7333, 76.7794], 13)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap', maxZoom: 19,
   }).addTo(map)
