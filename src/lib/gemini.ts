@@ -63,9 +63,9 @@ async function callGemini(
   imageBase64?: string,
   mimeType?: string
 ): Promise<AIAnalysis> {
-  const instruction = `You are a municipal civic-issue triage assistant. Analyze the reported community issue${
-    imageBase64 ? ' and the attached photo' : ''
-  } and respond ONLY with strict minified JSON, no markdown, matching:
+  const isVideo = !!mimeType && mimeType.startsWith('video/')
+  const mediaPhrase = imageBase64 ? (isVideo ? ' and the attached video clip' : ' and the attached photo') : ''
+  const instruction = `You are a municipal civic-issue triage assistant. Analyze the reported community issue${mediaPhrase} and respond ONLY with strict minified JSON, no markdown, matching:
 {"category": one of ${JSON.stringify(CATEGORIES)},
 "severity": integer 1-5 (5=critical danger to people),
 "title": short headline under 60 chars,

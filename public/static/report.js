@@ -9,7 +9,8 @@
   let selectedCat = null
   let lastAnalysis = null
 
-  const MAX_VIDEO_MB = 12
+  const MAX_VIDEO_MB = 12        // max clip size to store for playback
+  const GEMINI_VIDEO_MAX_MB = 6  // max clip size to send to Gemini for true video analysis
 
   const $ = (id) => document.getElementById(id)
 
@@ -57,31 +58,37 @@
 
     if (file.type.startsWith('video/')) {
       mediaType = 'video'
-      mimeType = 'image/jpeg' // we analyze an extracted frame
       // Playable preview
       const objUrl = URL.createObjectURL(file)
       vid.src = objUrl
       vid.classList.remove('hidden')
       img.classList.add('hidden')
       note.classList.remove('hidden')
-      note.textContent = 'Extracting a frame for AI analysis…'
+      note.textContent = 'Extracting a frame…'
 
       const frame = await extractFrame(file)
-      if (frame) {
-        thumbDataUrl = frame
-        imageBase64 = frame.split(',')[1]
-      } else {
-        thumbDataUrl = null
-        imageBase64 = null
-      }
+      thumbDataUrl = frame || null
 
       const sizeMB = file.size / (1024 * 1024)
-      if (sizeMB <= MAX_VIDEO_MB) {
-        videoDataUrl = await readAsDataURL(file)
-        note.textContent = `Video ready (${sizeMB.toFixed(1)} MB). AI will analyze a frame from it.`
+      // Store the clip for playback if it's not too large.
+      videoDataUrl = sizeMB <= MAX_VIDEO_MB ? await readAsDataURL(file) : null
+
+      // Prefer TRUE video analysis by Gemini when the clip is small enough;
+      // otherwise fall back to analyzing the extracted frame.
+      if (videoDataUrl && sizeMB <= GEMINI_VIDEO_MAX_MB) {
+        imageBase64 = videoDataUrl.split(',')[1]
+        mimeType = file.type || 'video/mp4'
+        note.textContent = `Video ready (${sizeMB.toFixed(1)} MB) — Gemini will analyze the actual clip.`
+      } else if (frame) {
+        imageBase64 = frame.split(',')[1]
+        mimeType = 'image/jpeg'
+        note.textContent =
+          sizeMB > MAX_VIDEO_MB
+            ? `Clip is ${sizeMB.toFixed(1)} MB — too large to attach; Gemini will analyze a frame. Use a shorter clip (≤ ${MAX_VIDEO_MB} MB) to attach the video.`
+            : `Video ready (${sizeMB.toFixed(1)} MB) — Gemini will analyze a frame (clip too large for full-video analysis).`
       } else {
-        videoDataUrl = null
-        note.textContent = `Clip is ${sizeMB.toFixed(1)} MB — too large to store, but AI will still analyze a frame. Use a shorter clip (≤ ${MAX_VIDEO_MB} MB) to attach the video.`
+        imageBase64 = null
+        mimeType = null
       }
     } else {
       mediaType = 'image'
