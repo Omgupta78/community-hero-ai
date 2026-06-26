@@ -1,7 +1,33 @@
-// Impact dashboard — real charts + real Gemini weekly insight
+// Impact dashboard — hero stats, environmental impact, Gemini insight + predictions, charts
 (function () {
   const { api } = window.CH
   let catChart, statusChart
+
+  async function loadHero() {
+    try {
+      const { data } = await api.get('/stats')
+      const rate = data.total ? Math.round((data.resolved / data.total) * 100) : 0
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v }
+      set('imp-resolved', data.resolved)
+      set('imp-total', data.total)
+      set('imp-rate', rate + '%')
+    } catch (e) { console.error(e) }
+  }
+
+  async function loadEnv() {
+    try {
+      const { data } = await api.get('/impact-metrics')
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v }
+      set('env-potholes', data.potholesFilled)
+      set('env-leaks', data.leaksFixed)
+      set('env-water', (data.waterSavedLitres || 0).toLocaleString())
+      set('env-lights', data.lightsRestored)
+      set('env-waste', data.wasteSitesCleared)
+      set('env-tonnes', data.wasteTonnes)
+      set('env-graffiti', data.graffitiRemoved)
+      set('env-co2', (data.co2SavedKg || 0).toLocaleString())
+    } catch (e) { console.error(e) }
+  }
 
   async function loadInsight() {
     try {
@@ -57,8 +83,10 @@
     } catch (e) { console.error(e) }
   }
 
+  loadHero()
+  loadEnv()
   loadInsight()
   loadPredict()
   loadCharts()
-  setInterval(loadCharts, 8000)
+  setInterval(() => { loadHero(); loadEnv(); loadCharts() }, 8000)
 })()

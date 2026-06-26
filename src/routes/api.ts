@@ -685,6 +685,34 @@ api.get('/city-health', async (c) => {
   return c.json({ score, systems, worst: worst?.name || null, insight: insight.text, insight_source: insight.source })
 })
 
+// Environmental & civic impact metrics derived from resolved issues.
+api.get('/impact-metrics', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT category, COUNT(*) AS n FROM issues WHERE status = 'Resolved' GROUP BY category`
+  ).all()
+  const byCat: Record<string, number> = {}
+  for (const r of (results as any[]) || []) byCat[r.category] = r.n
+
+  const potholes = byCat['Pothole'] || 0
+  const leaks = byCat['Water Leak'] || 0
+  const lights = byCat['Streetlight'] || 0
+  const waste = byCat['Illegal Dumping'] || 0
+  const graffiti = byCat['Graffiti'] || 0
+  const totalResolved = Object.values(byCat).reduce((a, b) => a + b, 0)
+
+  return c.json({
+    totalResolved,
+    potholesFilled: potholes,
+    leaksFixed: leaks,
+    waterSavedLitres: leaks * 5000,      // ~5,000 L saved per leak fixed
+    lightsRestored: lights,
+    wasteSitesCleared: waste,
+    wasteTonnes: Math.round(waste * 0.5 * 10) / 10,
+    graffitiRemoved: graffiti,
+    co2SavedKg: totalResolved * 15,       // faster maintenance avoids ~15 kg CO2 each
+  })
+})
+
 // ---------------------------------------------------------------
 // AI CHATBOT — "Hero Assistant" (real-time Gemini, grounded with live stats)
 // ---------------------------------------------------------------

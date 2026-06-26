@@ -350,32 +350,99 @@ app.get('/verify', (c) => {
 app.get('/impact', (c) => {
   return c.render(
     <div class="pt-[80px] pb-[100px]">
-      <TopBar title="Impact Dashboard" />
+      <TopBar title="Impact" />
       <main class="px-container-margin max-w-3xl mx-auto mt-lg space-y-lg">
-        <section id="ai-insight" class="bg-primary text-on-primary rounded-xl p-lg">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="material-symbols-outlined">insights</span>
-            <h2 class="font-bold text-[18px]">AI Weekly Summary</h2>
-            <span id="insight-source" class="ml-auto text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-white/20"></span>
+        {/* Hero — headline impact numbers */}
+        <section class="bg-gradient-to-br from-primary to-surface-tint text-on-primary rounded-xl p-lg relative overflow-hidden">
+          <div class="absolute -right-12 -top-12 w-44 h-44 bg-white/10 rounded-full blur-2xl"></div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">insights</span>
+            <h2 class="font-bold text-[18px]">Community Impact</h2>
           </div>
-          <p id="insight-text" class="text-sm text-primary-fixed leading-relaxed">Generating insights…</p>
+          <p class="text-sm text-primary-fixed">What TrustLens AI and your neighbours are fixing — live.</p>
+          <div class="grid grid-cols-3 gap-3 mt-4">
+            <div><p class="text-[28px] font-bold leading-none" id="imp-resolved">—</p><p class="text-[10px] uppercase font-bold opacity-80 mt-1">Resolved</p></div>
+            <div><p class="text-[28px] font-bold leading-none" id="imp-total">—</p><p class="text-[10px] uppercase font-bold opacity-80 mt-1">Total reports</p></div>
+            <div><p class="text-[28px] font-bold leading-none" id="imp-rate">—</p><p class="text-[10px] uppercase font-bold opacity-80 mt-1">Resolution rate</p></div>
+          </div>
         </section>
 
-        {/* Predictive insights (Gemini forecast) */}
-        <section id="predict-box" class="bg-tertiary-container rounded-xl p-lg border border-tertiary-fixed">
+        {/* Environmental & civic impact */}
+        <section>
+          <h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-3">Environmental &amp; Civic Impact</h3>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-md">
+            <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+              <span class="material-symbols-outlined text-primary">construction</span>
+              <p class="text-2xl font-bold text-on-surface mt-1" id="env-potholes">—</p>
+              <p class="text-xs text-on-surface-variant">Potholes filled</p>
+            </div>
+            <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+              <span class="material-symbols-outlined text-primary">water_drop</span>
+              <p class="text-2xl font-bold text-on-surface mt-1" id="env-leaks">—</p>
+              <p class="text-xs text-on-surface-variant">Leaks fixed · <span id="env-water" class="font-bold">—</span> L saved</p>
+            </div>
+            <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+              <span class="material-symbols-outlined text-tertiary">lightbulb</span>
+              <p class="text-2xl font-bold text-on-surface mt-1" id="env-lights">—</p>
+              <p class="text-xs text-on-surface-variant">Streetlights restored</p>
+            </div>
+            <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+              <span class="material-symbols-outlined text-secondary">recycling</span>
+              <p class="text-2xl font-bold text-on-surface mt-1" id="env-waste">—</p>
+              <p class="text-xs text-on-surface-variant">Waste sites cleared · <span id="env-tonnes" class="font-bold">—</span> t</p>
+            </div>
+            <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+              <span class="material-symbols-outlined text-tertiary">format_paint</span>
+              <p class="text-2xl font-bold text-on-surface mt-1" id="env-graffiti">—</p>
+              <p class="text-xs text-on-surface-variant">Graffiti removed</p>
+            </div>
+            <div class="bg-secondary-container rounded-xl p-md">
+              <span class="material-symbols-outlined text-on-secondary-container">eco</span>
+              <p class="text-2xl font-bold text-on-secondary-container mt-1" id="env-co2">—</p>
+              <p class="text-xs text-on-secondary-container">kg CO₂ saved (est.)</p>
+            </div>
+          </div>
+        </section>
+
+        {/* AI Weekly Summary */}
+        <section id="ai-insight" class="bg-surface-lowest border border-outline-variant rounded-xl p-lg">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="material-symbols-outlined text-primary">auto_awesome</span>
+            <h2 class="font-bold text-[16px] text-on-surface">AI Weekly Summary</h2>
+            <span id="insight-source" class="ml-auto text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-primary-fixed text-primary"></span>
+          </div>
+          <p id="insight-text" class="text-sm text-on-surface-variant leading-relaxed">Generating insights…</p>
+          <div class="grid grid-cols-3 gap-sm mt-3">
+            <div class="bg-surface-container-low rounded-lg p-2 text-center">
+              <p class="text-[10px] uppercase font-bold text-on-surface-variant">Most reported</p>
+              <p id="ins-most" class="font-bold text-on-surface text-sm mt-0.5">—</p>
+            </div>
+            <div class="bg-surface-container-low rounded-lg p-2 text-center">
+              <p class="text-[10px] uppercase font-bold text-on-surface-variant">Hotspot</p>
+              <p id="ins-hotspot" class="font-bold text-on-surface text-sm mt-0.5">—</p>
+            </div>
+            <div class="bg-surface-container-low rounded-lg p-2 text-center">
+              <p class="text-[10px] uppercase font-bold text-on-surface-variant">Resolution</p>
+              <p id="ins-rate" class="font-bold text-secondary text-sm mt-0.5">—</p>
+            </div>
+          </div>
+        </section>
+
+        {/* AI Predictive Insights */}
+        <section id="predict-box" class="bg-tertiary-container rounded-xl p-lg">
           <div class="flex items-center gap-2 mb-2 text-on-tertiary-container">
             <span class="material-symbols-outlined">trending_up</span>
-            <h2 class="font-bold text-[18px]">AI Predictive Insights</h2>
+            <h2 class="font-bold text-[16px]">AI Predictive Insights</h2>
             <span id="predict-source" class="ml-auto text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-white/40 text-on-tertiary-container">Forecast</span>
           </div>
           <p id="predict-forecast" class="text-sm text-on-tertiary-container leading-relaxed mb-3">Forecasting trends…</p>
           <div class="grid grid-cols-2 gap-sm">
             <div class="bg-surface-lowest/70 rounded-lg p-2">
-              <p class="text-[10px] uppercase font-bold text-on-surface-variant">Emerging Hotspot</p>
+              <p class="text-[10px] uppercase font-bold text-on-surface-variant">Emerging hotspot</p>
               <p id="predict-hotspot" class="text-sm font-bold text-on-surface">—</p>
             </div>
             <div class="bg-surface-lowest/70 rounded-lg p-2">
-              <p class="text-[10px] uppercase font-bold text-on-surface-variant">Likely to Rise</p>
+              <p class="text-[10px] uppercase font-bold text-on-surface-variant">Likely to rise</p>
               <p id="predict-category" class="text-sm font-bold text-on-surface">—</p>
             </div>
           </div>
@@ -385,35 +452,22 @@ app.get('/impact', (c) => {
           </div>
         </section>
 
-        <section class="grid grid-cols-3 gap-sm">
-          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md text-center">
-            <p class="text-[11px] uppercase font-bold text-on-surface-variant">Most Reported</p>
-            <p id="ins-most" class="font-bold text-on-surface mt-1 text-sm">—</p>
+        {/* Charts */}
+        <section class="grid md:grid-cols-2 gap-lg">
+          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+            <h3 class="font-semibold text-on-surface mb-3 text-sm">Issues by Category</h3>
+            <canvas id="categoryChart" height="220"></canvas>
           </div>
-          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md text-center">
-            <p class="text-[11px] uppercase font-bold text-on-surface-variant">Hotspot</p>
-            <p id="ins-hotspot" class="font-bold text-on-surface mt-1 text-sm">—</p>
+          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+            <h3 class="font-semibold text-on-surface mb-3 text-sm">Issues by Status</h3>
+            <canvas id="statusChart" height="220"></canvas>
           </div>
-          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md text-center">
-            <p class="text-[11px] uppercase font-bold text-on-surface-variant">Resolution Rate</p>
-            <p id="ins-rate" class="font-bold text-secondary mt-1 text-sm">—</p>
-          </div>
-        </section>
-
-        <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
-          <h3 class="font-semibold text-on-surface mb-3">Issues by Category</h3>
-          <canvas id="categoryChart" height="200"></canvas>
-        </section>
-
-        <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
-          <h3 class="font-semibold text-on-surface mb-3">Issues by Status</h3>
-          <canvas id="statusChart" height="200"></canvas>
         </section>
       </main>
       <BottomNav active="impact" />
       <script src="/static/impact.js"></script>
     </div>,
-    { title: 'Impact Dashboard' }
+    { title: 'Impact' }
   )
 })
 
