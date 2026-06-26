@@ -1,65 +1,139 @@
-// Map page — real Leaflet map with live markers
+// Map page — hybrid: Google Maps when a key is configured, Leaflet/OSM fallback.
 (function () {
-  const { api, CAT_ICON, severityBadge, esc } = window.CH
+  const { api, severityBadge, esc } = window.CH
+  const KEY = (window.GOOGLE_MAPS_KEY || '').trim()
+  const CENTER = { lat: 30.7333, lng: 76.7794 } // Chandigarh
   let filter = 'all'
-  let markers = []
-
-  const map = L.map('map', { zoomControl: true }).setView([30.7333, 76.7794], 13)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap', maxZoom: 19,
-  }).addTo(map)
-
-  // try to center on user
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition((p) => {
-      map.setView([p.coords.latitude, p.coords.longitude], 14)
-      L.circleMarker([p.coords.latitude, p.coords.longitude], { radius: 8, color: '#003d9b', fillColor: '#0052cc', fillOpacity: 0.6 }).addTo(map).bindPopup('You are here')
-    }, () => {})
-  }
+  let activeLoad = () => {}
 
   function sevColor(sev) {
     return { 5: '#ba1a1a', 4: '#d9534f', 3: '#b8860b', 2: '#006c47', 1: '#737685' }[sev] || '#0052cc'
   }
-
-  async function load() {
-    const params = {}
-    if (filter === 'mine') params.mine = 'true'
-    if (filter === 'verify') params.verify = 'true'
-    try {
-      const { data } = await api.get('/issues', { params })
-      markers.forEach((m) => map.removeLayer(m))
-      markers = []
-      data.issues.forEach((i) => {
-        if (i.lat == null || i.lng == null) return
-        const [, slabel] = severityBadge(i.severity)
-        const m = L.circleMarker([i.lat, i.lng], {
-          radius: 9, color: '#fff', weight: 2, fillColor: sevColor(i.severity), fillOpacity: 0.9,
-        }).addTo(map)
-        m.bindPopup(`
-          <div style="min-width:180px">
-            <b>${esc(i.title)}</b><br/>
-            <span style="font-size:12px;color:#434654">${esc(i.address) || ''}</span><br/>
-            <span style="font-size:11px">${i.category} · ${slabel} · ${i.status}</span><br/>
-            <a href="/issue/${i.id}" style="color:#003d9b;font-weight:600;font-size:12px">View details →</a>
-          </div>`)
-        markers.push(m)
+  function paramsForFilter() {
+    const p = {}
+    if (filter === 'mine') p.mine = 'true'
+    if (filter === 'verify') p.verify = 'true'
+    return p
+  }
+  function wireFilters() {
+    document.querySelectorAll('.map-filter').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        filter = btn.dataset.filter
+        document.querySelectorAll('.map-filter').forEach((b) => {
+          b.classList.remove('bg-primary', 'text-on-primary')
+          b.classList.add('bg-surface-container', 'text-on-surface')
+        })
+        btn.classList.add('bg-primary', 'text-on-primary')
+        btn.classList.remove('bg-surface-container', 'text-on-surface')
+        activeLoad()
       })
-    } catch (e) { console.error(e) }
+    })
+  }
+  function popupHTML(i) {
+    const [, slabel] = severityBadge(i.severity)
+    return `<div style="min-width:180px">
+        <b>${esc(i.title)}</b><br/>
+        <span style="font-size:12px;color:#434654">${esc(i.address) || ''}</span><br/>
+        <span style="font-size:11px">${i.category} · ${slabel} · ${i.status}</span><br/>
+        <a href="/issue/${i.id}" style="color:#003d9b;font-weight:600;font-size:12px">View details →</a>
+      </div>`
   }
 
-  document.querySelectorAll('.map-filter').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      filter = btn.dataset.filter
-      document.querySelectorAll('.map-filter').forEach((b) => {
-        b.classList.remove('bg-primary', 'text-on-primary')
-        b.classList.add('bg-surface-container', 'text-on-surface')
-      })
-      btn.classList.add('bg-primary', 'text-on-primary')
-      btn.classList.remove('bg-surface-container', 'text-on-surface')
-      load()
-    })
-  })
+  // ============================ GOOGLE MAPS ============================
+  function initGoogle() {
+    let gmap, info
+    let gmarkers = []
 
-  load()
-  setInterval(load, 7000) // real-time refresh
+    window.__chInitMap = function () {
+      gmap = new google.maps.Map(document.getElementById('map'), {
+        center: CENTER,
+        zoom: 13,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+      })
+      info = new google.maps.InfoWindow()
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((p) => {
+          const here = { lat: p.coords.latitude, lng: p.coords.longitude }
+          gmap.setCenter(here)
+          new google.maps.Marker({
+            position: here, map: gmap, title: 'You are here',
+            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#0052cc', fillOpacity: 0.7, strokeColor: '#fff', strokeWeight: 2 },
+          })
+        }, () => {})
+      }
+
+      activeLoad = load
+      load()
+      setInterval(load, 7000)
+      wireFilters()
+    }
+
+    async function load() {
+      try {
+        const { data } = await api.get('/issues', { params: paramsForFilter() })
+        gmarkers.forEach((m) => m.setMap(null))
+        gmarkers = []
+        data.issues.forEach((i) => {
+          if (i.lat == null || i.lng == null) return
+          const marker = new google.maps.Marker({
+            position: { lat: i.lat, lng: i.lng },
+            map: gmap,
+            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: sevColor(i.severity), fillOpacity: 0.9, strokeColor: '#fff', strokeWeight: 2 },
+          })
+          marker.addListener('click', () => { info.setContent(popupHTML(i)); info.open(gmap, marker) })
+          gmarkers.push(marker)
+        })
+      } catch (e) { console.error(e) }
+    }
+
+    const s = document.createElement('script')
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(KEY)}&callback=__chInitMap&loading=async`
+    s.async = true
+    s.onerror = () => { console.warn('Google Maps failed to load — falling back to Leaflet'); initLeaflet() }
+    document.head.appendChild(s)
+  }
+
+  // ============================ LEAFLET (fallback) ============================
+  function initLeaflet() {
+    const map = L.map('map', { zoomControl: true }).setView([CENTER.lat, CENTER.lng], 13)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap', maxZoom: 19,
+    }).addTo(map)
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((p) => {
+        map.setView([p.coords.latitude, p.coords.longitude], 14)
+        L.circleMarker([p.coords.latitude, p.coords.longitude], { radius: 8, color: '#003d9b', fillColor: '#0052cc', fillOpacity: 0.6 }).addTo(map).bindPopup('You are here')
+      }, () => {})
+    }
+
+    let markers = []
+    async function load() {
+      try {
+        const { data } = await api.get('/issues', { params: paramsForFilter() })
+        markers.forEach((m) => map.removeLayer(m))
+        markers = []
+        data.issues.forEach((i) => {
+          if (i.lat == null || i.lng == null) return
+          const m = L.circleMarker([i.lat, i.lng], {
+            radius: 9, color: '#fff', weight: 2, fillColor: sevColor(i.severity), fillOpacity: 0.9,
+          }).addTo(map)
+          m.bindPopup(popupHTML(i))
+          markers.push(m)
+        })
+      } catch (e) { console.error(e) }
+    }
+
+    activeLoad = load
+    load()
+    setInterval(load, 7000)
+    wireFilters()
+  }
+
+  // Choose backend.
+  if (KEY) initGoogle()
+  else initLeaflet()
 })()
