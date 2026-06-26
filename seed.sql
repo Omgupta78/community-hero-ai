@@ -80,3 +80,11 @@ INSERT OR IGNORE INTO agent_actions (issue_id, step, tool, thought, action, resu
   (3, 1, 'perceive', 'Gathering context for issue #3.', 'Found 0 open same-category issues; department workload is 1.', 'Context ready.'),
   (3, 2, 'reason', 'Dark intersection is a safety risk after dusk; route to Electrical.', 'duplicate_of=none, priority=55, dept=Electrical', 'Reasoning by Gemini.'),
   (3, 3, 'route', 'Category "Streetlight" maps to the Electrical department.', 'Left in queue for admin assignment.', 'Pending manual assignment.');
+
+-- Contractor / Responder account (login: builder@city.gov / Build@123)
+INSERT OR IGNORE INTO users (id, name, email, role, password_hash) VALUES
+  (20, 'FixIt Civic Works', 'builder@city.gov', 'contractor',
+   '3d89ef0f080e6a433a0cdf4ef1db0510:3284753195d462f98f548b51e624d162e64b7f549b5f43301904aff43a20efdf');
+
+-- Bounties on open issues (reward a responder earns for a verified fix).
+UPDATE issues SET bounty = severity * 500 WHERE id IN (1, 2, 3, 4, 5);

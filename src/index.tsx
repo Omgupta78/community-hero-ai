@@ -491,7 +491,7 @@ app.get('/issue/:id', (c) => {
 app.get('/login', async (c) => {
   // Already logged in? Send to the right dashboard.
   const user = await getSessionUser(c)
-  if (user) return c.redirect(user.role === 'admin' ? '/admin' : '/authority')
+  if (user) return c.redirect(user.role === 'admin' ? '/admin' : user.role === 'contractor' ? '/contractor' : '/authority')
 
   return c.render(
     <div class="min-h-screen flex items-center justify-center px-container-margin py-12">
@@ -528,7 +528,7 @@ app.get('/login', async (c) => {
           <p class="font-bold text-on-surface mb-1">Demo accounts</p>
           <p>Super Admin: <code>admin@city.gov</code> / <code>Admin@123</code></p>
           <p>Roads Authority: <code>roads@city.gov</code> / <code>Roads@123</code></p>
-          <p>Water Authority: <code>water@city.gov</code> / <code>Water@123</code></p>
+          <p>Responder: <code>builder@city.gov</code> / <code>Build@123</code></p>
         </div>
 
         <a href="/" class="block text-center text-sm text-primary font-bold mt-md hover:underline">← Back to citizen app</a>
@@ -545,7 +545,7 @@ app.get('/login', async (c) => {
 app.get('/authority', async (c) => {
   const user = await getSessionUser(c)
   if (!user) return c.redirect('/login')
-  if (user.role !== 'authority') return c.redirect('/admin')
+  if (user.role !== 'authority') return c.redirect(user.role === 'admin' ? '/admin' : '/contractor')
 
   return c.render(
     <div class="pt-[80px] pb-[40px]">
@@ -612,12 +612,92 @@ app.get('/authority', async (c) => {
 })
 
 // =============================================================
+// CONTRACTOR / RESPONDER PORTAL — claim jobs, prove fixes, get paid
+// =============================================================
+app.get('/contractor', async (c) => {
+  const user = await getSessionUser(c)
+  if (!user) return c.redirect('/login')
+  if (user.role !== 'contractor') return c.redirect(user.role === 'admin' ? '/admin' : '/authority')
+
+  return c.render(
+    <div class="pt-[80px] pb-[40px]">
+      <TopBar title="Responder" authority />
+      <main class="px-container-margin max-w-4xl mx-auto mt-lg space-y-lg">
+        <section class="bg-primary text-on-primary rounded-xl p-lg flex items-center gap-4">
+          <span class="material-symbols-outlined text-[40px]">construction</span>
+          <div class="min-w-0">
+            <p class="text-xs uppercase font-bold opacity-80">Signed in as</p>
+            <h2 class="font-bold text-[20px] truncate">{user.name}</h2>
+            <p class="text-sm opacity-90">Civic Responder</p>
+          </div>
+          <div class="ml-auto text-right">
+            <p class="text-xs uppercase font-bold opacity-80">Total earned</p>
+            <p class="text-2xl font-bold" id="c-earnings">₹—</p>
+          </div>
+        </section>
+
+        <section class="grid grid-cols-3 gap-md">
+          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md text-center">
+            <p class="text-3xl font-bold text-on-surface" id="c-available">—</p>
+            <p class="text-xs uppercase font-bold text-on-surface-variant mt-1">Open Jobs</p>
+          </div>
+          <div class="bg-secondary-container rounded-xl p-md text-center">
+            <p class="text-3xl font-bold text-on-secondary-container" id="c-active">—</p>
+            <p class="text-xs uppercase font-bold text-on-surface-variant mt-1">In Progress</p>
+          </div>
+          <div class="bg-secondary rounded-xl p-md text-center">
+            <p class="text-3xl font-bold text-white" id="c-done">—</p>
+            <p class="text-xs uppercase font-bold text-white mt-1">Completed</p>
+          </div>
+        </section>
+
+        <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+          <h2 class="font-bold text-[18px] text-on-surface mb-3">Available Jobs <span class="text-xs text-on-surface-variant">— ranked by bounty &amp; priority</span></h2>
+          <div id="available-jobs" class="space-y-md"><div class="text-center text-on-surface-variant py-8">Loading jobs…</div></div>
+        </section>
+
+        <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
+          <h2 class="font-bold text-[18px] text-on-surface mb-3">My Jobs</h2>
+          <div id="my-jobs" class="space-y-md"><div class="text-center text-on-surface-variant py-8">No jobs claimed yet.</div></div>
+        </section>
+      </main>
+
+      {/* Proof-of-fix modal */}
+      <div id="proof-modal" class="hidden fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center p-4">
+        <div class="bg-surface-lowest rounded-xl p-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <h3 class="font-bold text-[18px] text-on-surface mb-1">Prove the Fix <span id="proof-issue-id"></span></h3>
+          <p id="proof-issue-title" class="text-sm text-on-surface-variant mb-4"></p>
+          <input type="file" id="proof-input" accept="image/*" capture="environment" class="hidden" />
+          <div id="proof-zone" class="cursor-pointer border-2 border-dashed border-outline-variant rounded-xl p-lg text-center mb-3">
+            <div id="proof-placeholder">
+              <span class="material-symbols-outlined text-primary text-[32px]">add_a_photo</span>
+              <p class="text-sm text-on-surface-variant mt-1">Upload an "after" photo of the completed fix</p>
+            </div>
+            <img id="proof-preview" class="hidden w-full rounded-lg max-h-56 object-cover" />
+          </div>
+          <div id="proof-verdict" class="hidden rounded-lg p-3 mb-3 text-sm"></div>
+          <div class="flex gap-2">
+            <button id="proof-cancel" class="flex-1 border border-outline-variant rounded-lg py-3 font-bold text-on-surface">Close</button>
+            <button id="proof-submit" class="flex-1 bg-primary text-on-primary rounded-lg py-3 font-bold flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined text-[18px]">verified</span> Submit for AI Verification
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <script src="/static/contractor.js"></script>
+    </div>,
+    { title: 'Responder Dashboard' }
+  )
+})
+
+// =============================================================
 // ADMIN PORTAL (super-admin — password protected)
 // =============================================================
 app.get('/admin', async (c) => {
   const user = await getSessionUser(c)
   if (!user) return c.redirect('/login')
-  if (user.role !== 'admin') return c.redirect('/authority')
+  if (user.role !== 'admin') return c.redirect(user.role === 'contractor' ? '/contractor' : '/authority')
 
   return c.render(
     <div class="pt-[80px] pb-[40px]">

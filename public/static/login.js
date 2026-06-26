@@ -15,7 +15,8 @@
       const { data } = await api.post('/auth/login', { email, password })
       toast('Welcome, ' + data.user.name)
       // Route by role.
-      window.location.href = data.user.role === 'admin' ? '/admin' : '/authority'
+      const dest = data.user.role === 'admin' ? '/admin' : data.user.role === 'contractor' ? '/contractor' : '/authority'
+      window.location.href = dest
     } catch (err) {
       const msg = err?.response?.data?.error || 'Login failed'
       errEl.textContent = msg

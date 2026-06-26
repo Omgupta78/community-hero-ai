@@ -30,6 +30,11 @@ users throughout. The result is a transparent, accountable, AI-driven loop from 
 resolution.
 
 ## Key Features
+- **Full civic loop with a Contractor/Responder role** — beyond citizens and municipal
+  staff, civic responders can browse a **bounty-ranked jobs board**, claim a job, and submit
+  an "after" photo as **proof of fix**. Gemini compares the before/after images to verify the
+  repair, and the bounty is **paid out automatically** on a verified fix — closing the loop
+  from a citizen's photo to a verified, paid-for resolution.
 - **Image & video reporting** — capture or upload a photo *or* a short video clip. Gemini
   analyzes the **actual video clip** when it's small enough (with automatic fallback to an
   extracted frame for longer clips), and the clip plays back on the issue page.

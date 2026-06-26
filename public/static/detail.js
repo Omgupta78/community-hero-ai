@@ -121,6 +121,21 @@
       : i.photo_data
       ? `<img src="${i.photo_data}" class="w-full rounded-xl max-h-72 object-cover mb-4"/>`
       : ''
+
+    // Before/after proof-of-fix (contractor loop)
+    const proof = i.after_photo
+      ? `<div class="bg-surface-lowest border ${i.fix_verified ? 'border-secondary' : 'border-outline-variant'} rounded-xl p-md mb-4">
+           <div class="flex items-center gap-2 mb-2">
+             <span class="material-symbols-outlined ${i.fix_verified ? 'text-secondary' : 'text-on-surface-variant'}">${i.fix_verified ? 'verified' : 'pending'}</span>
+             <h3 class="font-bold text-sm text-on-surface">Proof of Fix ${i.fix_verified ? '· AI-verified ✓' : '· pending verification'}</h3>
+           </div>
+           <div class="grid grid-cols-2 gap-2">
+             <div><p class="text-[10px] uppercase font-bold text-on-surface-variant mb-1">Before</p>${i.photo_data ? `<img src="${i.photo_data}" class="w-full h-32 object-cover rounded-lg"/>` : '<div class="h-32 bg-surface-container rounded-lg"></div>'}</div>
+             <div><p class="text-[10px] uppercase font-bold text-on-surface-variant mb-1">After</p><img src="${i.after_photo}" class="w-full h-32 object-cover rounded-lg"/></div>
+           </div>
+           ${i.fix_reason ? `<p class="text-xs text-on-surface-variant mt-2">${esc(i.fix_reason)}</p>` : ''}
+         </div>`
+      : ''
     const timeline = updates.map((u, idx) => `
       <div class="flex gap-3">
         <div class="flex flex-col items-center">
@@ -171,6 +186,8 @@
       </div>
 
       <div id="agent-trace-wrap" class="hidden bg-surface-lowest border border-primary/30 rounded-xl p-md mb-4"></div>
+
+      ${proof}
 
       <div id="ai-plan-wrap" class="bg-secondary-container/40 border border-secondary-container rounded-xl p-md mb-4">
         ${planSectionHTML()}

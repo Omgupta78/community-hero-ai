@@ -318,6 +318,74 @@ function heuristicPlan(issue: { category: string; severity: number }): Resolutio
 export { CATEGORIES, DEPARTMENTS, computePriority }
 
 // ---------------------------------------------------------------
+// CONTRACTOR PROOF-OF-FIX — Gemini before/after verification
+// ---------------------------------------------------------------
+export type FixVerdict = {
+  resolved: boolean
+  confidence: number // 0-100
+  reason: string
+  source: 'gemini' | 'heuristic'
+}
+
+/**
+ * Compares the original report image ("before") with the contractor's proof
+ * image ("after") and judges whether the civic issue appears genuinely fixed.
+ */
+export async function verifyFix(
+  apiKey: string | undefined,
+  issue: { title: string; category: string; description?: string },
+  beforeBase64: string | undefined,
+  afterBase64: string | undefined,
+  afterMime?: string
+): Promise<FixVerdict> {
+  if (apiKey && afterBase64) {
+    try {
+      const parts: any[] = [
+        {
+          text: `You are a municipal QA inspector. A contractor claims they fixed this civic issue: "${issue.title}" (category ${issue.category}). ${
+            issue.description ? `Citizen description: "${issue.description}". ` : ''
+          }${beforeBase64 ? 'The FIRST image is BEFORE (the reported problem). The SECOND image is AFTER (the claimed fix). ' : 'The image is the AFTER (claimed fix). '}Judge whether the issue genuinely appears resolved. Respond ONLY with strict minified JSON: {"resolved": boolean, "confidence": integer 0-100, "reason": "one short sentence"}`,
+        },
+      ]
+      if (beforeBase64) parts.push({ inline_data: { mime_type: 'image/jpeg', data: beforeBase64 } })
+      parts.push({ inline_data: { mime_type: afterMime || 'image/jpeg', data: afterBase64 } })
+
+      const res = await fetch(GEMINI_URL(apiKey), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts }],
+          generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
+        }),
+      })
+      if (res.ok) {
+        const data: any = await res.json()
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+        const p = JSON.parse(text)
+        return {
+          resolved: !!p.resolved,
+          confidence: Math.min(100, Math.max(0, Math.round(Number(p.confidence)) || 0)),
+          reason: (p.reason || '').toString(),
+          source: 'gemini',
+        }
+      }
+    } catch (e) {
+      console.error('Fix verification failed:', (e as Error).message)
+    }
+  }
+
+  // Heuristic fallback: accept the proof if an after photo was provided.
+  return {
+    resolved: !!afterBase64,
+    confidence: afterBase64 ? 70 : 0,
+    reason: afterBase64
+      ? 'Proof image submitted; manual spot-check recommended (AI vision unavailable).'
+      : 'No proof image provided.',
+    source: 'heuristic',
+  }
+}
+
+// ---------------------------------------------------------------
 // AI CITY HEALTH — Gemini insight on the city's civic health score
 // ---------------------------------------------------------------
 export async function generateCityHealthInsight(

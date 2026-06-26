@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { analyzeIssue, generateInsight, generateResolutionPlan, chatReply, predictTrends, generateCityHealthInsight, computePriority } from '../lib/gemini'
+import { analyzeIssue, generateInsight, generateResolutionPlan, chatReply, predictTrends, generateCityHealthInsight, verifyFix, computePriority } from '../lib/gemini'
 import { runTriageAgent } from '../lib/agent'
 import {
   verifyPassword,
@@ -62,7 +62,7 @@ api.post('/auth/login', async (c) => {
   ).bind(String(email).trim().toLowerCase()).first<any>()
 
   // Only staff accounts (with a password) can log in here.
-  if (!user || !user.password_hash || (user.role !== 'admin' && user.role !== 'authority')) {
+  if (!user || !user.password_hash || !['admin', 'authority', 'contractor'].includes(user.role)) {
     return c.json({ error: 'Invalid credentials' }, 401)
   }
 
@@ -437,6 +437,100 @@ api.patch('/issues/:id/assign', requireRole('admin'), async (c) => {
   ).run()
 
   return c.json({ ok: true, assigned_to: authority.id, department: authority.department, status: newStatus })
+})
+
+// ---------------------------------------------------------------
+// CONTRACTOR / RESPONDER LOOP — claim a job, prove the fix, get paid
+// ---------------------------------------------------------------
+function dataUrlToBase64(s?: string | null): string | undefined {
+  if (!s) return undefined
+  const i = s.indexOf(',')
+  return i >= 0 ? s.slice(i + 1) : s
+}
+
+// Jobs board: open jobs available to claim + the contractor's own jobs.
+api.get('/jobs', requireRole('contractor'), async (c) => {
+  const me = c.get('staff')
+  const available = await c.env.DB.prepare(
+    `SELECT id, title, category, severity, status, department, address, lat, lng, priority_score, bounty, photo_data, media_type
+     FROM issues
+     WHERE status != 'Resolved' AND contractor_id IS NULL AND duplicate_of IS NULL
+     ORDER BY bounty DESC, priority_score DESC
+     LIMIT 50`
+  ).all()
+  const mine = await c.env.DB.prepare(
+    `SELECT id, title, category, severity, status, department, address, priority_score, bounty, fix_verified, photo_data, after_photo, media_type
+     FROM issues WHERE contractor_id = ? ORDER BY updated_at DESC LIMIT 50`
+  ).bind(me.id).all()
+  const earn = await c.env.DB.prepare(`SELECT earnings FROM users WHERE id = ?`).bind(me.id).first<{ earnings: number }>()
+  return c.json({ available: available.results || [], mine: mine.results || [], earnings: earn?.earnings || 0 })
+})
+
+// Claim an open job.
+api.post('/issues/:id/claim', requireRole('contractor'), async (c) => {
+  const me = c.get('staff')
+  const id = Number(c.req.param('id'))
+  const issue = await c.env.DB.prepare(`SELECT contractor_id, status FROM issues WHERE id = ?`).bind(id).first<any>()
+  if (!issue) return c.json({ error: 'Not found' }, 404)
+  if (issue.contractor_id) return c.json({ error: 'Job already claimed' }, 409)
+
+  const newStatus = issue.status === 'Resolved' ? 'Resolved' : 'In Progress'
+  await c.env.DB.prepare(
+    `UPDATE issues SET contractor_id = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).bind(me.id, newStatus, id).run()
+  await c.env.DB.prepare(
+    `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, ?, ?, ?)`
+  ).bind(id, newStatus, `Job claimed by responder ${me.name}. Work in progress.`, me.name).run()
+  return c.json({ ok: true, status: newStatus })
+})
+
+// Submit proof-of-fix → Gemini before/after verification → pay bounty if verified.
+api.post('/issues/:id/proof', requireRole('contractor'), async (c) => {
+  const me = c.get('staff')
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json().catch(() => ({}))
+  const { after_photo, afterImageBase64, mimeType } = body
+
+  const issue = await c.env.DB.prepare(
+    `SELECT title, category, description, photo_data, contractor_id, bounty, status, fix_verified FROM issues WHERE id = ?`
+  ).bind(id).first<any>()
+  if (!issue) return c.json({ error: 'Not found' }, 404)
+  if (Number(issue.contractor_id) !== Number(me.id)) return c.json({ error: 'This job is not assigned to you' }, 403)
+  if (issue.fix_verified || issue.status === 'Resolved') {
+    return c.json({ error: 'This job is already completed and paid' }, 409)
+  }
+
+  const beforeB64 = dataUrlToBase64(issue.photo_data)
+  const afterB64 = afterImageBase64 || dataUrlToBase64(after_photo)
+
+  const verdict = await verifyFix(
+    c.env.GEMINI_API_KEY,
+    { title: issue.title, category: issue.category, description: issue.description },
+    beforeB64,
+    afterB64,
+    mimeType
+  )
+
+  let paid = 0
+  if (verdict.resolved) {
+    paid = issue.bounty || 0
+    await c.env.DB.prepare(
+      `UPDATE issues SET after_photo = ?, fix_verified = 1, fix_reason = ?, status = 'Resolved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).bind(after_photo || null, verdict.reason, id).run()
+    await c.env.DB.prepare(`UPDATE users SET earnings = earnings + ? WHERE id = ?`).bind(paid, me.id).run()
+    await c.env.DB.prepare(
+      `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'Resolved', ?, ?)`
+    ).bind(id, `Fix AI-verified (${verdict.confidence}% confidence) — ₹${paid} released to ${me.name}. ${verdict.reason}`, me.name).run()
+  } else {
+    await c.env.DB.prepare(
+      `UPDATE issues SET after_photo = ?, fix_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).bind(after_photo || null, verdict.reason, id).run()
+    await c.env.DB.prepare(
+      `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'In Progress', ?, ?)`
+    ).bind(id, `Proof submitted but AI could not confirm the fix (${verdict.confidence}%). ${verdict.reason}`, me.name).run()
+  }
+
+  return c.json({ ...verdict, paid, status: verdict.resolved ? 'Resolved' : 'In Progress' })
 })
 
 // AI-generated resolution action plan for a single issue (real-time Gemini).
