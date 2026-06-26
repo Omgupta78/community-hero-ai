@@ -88,4 +88,6 @@ On every report the agent autonomously executes a plan and mutates real system s
 4. **Prioritize** — sets a computed priority score.
 5. **Route** — auto-assigns the issue to the matching department authority.
 6. **Plan** — drafts a field resolution plan.
-Every thought and action is persisted and shown to users as a transparent agent trace.
+Every thought and action is persisted and shown to users as a transparent agent trace, and
+the admin Operations dashboard has a **live "Autonomous Agent Activity" feed** plus an
+"auto-triaged" counter, so reviewers can watch the agent continuously working across the city.
