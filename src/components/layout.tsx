@@ -5,7 +5,7 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
   return (
     <header class="fixed top-0 left-0 right-0 z-[1000] bg-surface-lowest/90 backdrop-blur border-b border-outline-variant">
       <div class="max-w-5xl mx-auto h-[64px] flex items-center gap-3 px-container-margin">
-        <a href="/home" class="flex items-center gap-2 text-primary shrink-0">
+        <a href="/" class="flex items-center gap-2 text-primary shrink-0">
           <img src="/static/logo.svg" alt="TrustLens AI" class="w-7 h-7" />
           {!title && <span class="font-bold text-[18px] text-on-surface hidden sm:block">TrustLens AI</span>}
         </a>
@@ -17,6 +17,10 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
         <div class="ml-auto flex items-center gap-1">
           {staff ? (
             <>
+              <a href="/" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
+                <span class="material-symbols-outlined text-[18px]">swap_horiz</span>
+                <span class="hidden sm:inline">Switch Role</span>
+              </a>
               <a href="/home" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
                 <span class="material-symbols-outlined text-[18px]">public</span>
                 <span class="hidden sm:inline">Citizen View</span>
@@ -43,6 +47,9 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
               <a href="/login" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
                 <span class="material-symbols-outlined text-[18px]">shield_person</span>
                 <span class="hidden sm:inline">Staff Login</span>
+              </a>
+              <a href="/" class="text-xs font-bold text-primary px-2 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1" title="Switch role">
+                <span class="material-symbols-outlined text-[18px]">swap_horiz</span>
               </a>
             </>
           )}
