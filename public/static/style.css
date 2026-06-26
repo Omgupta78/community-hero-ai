@@ -354,7 +354,12 @@ main button[class*="rounded-xl"]:hover {
 }
 
 /* ===================== Command Center — view router + new sections ===================== */
-.cc-scope .cc-view { display: flex; flex-direction: column; gap: 20px; animation: cc-fade .35s ease; }
+/* The command center manages its OWN entrance animation. The global scroll-reveal
+   (common.js initReveal) tags every `main > *` with `.tl-reveal { opacity:0 }` and only
+   reveals on IntersectionObserver — which leaves display:none views stuck invisible and
+   makes un-filled animations snap back to 0. Neutralize it inside .cc-scope. */
+.cc-scope .tl-reveal { opacity: 1 !important; transform: none !important; }
+.cc-scope .cc-view { display: flex; flex-direction: column; gap: 20px; animation: cc-fade .35s ease both; animation-delay: 0s !important; }
 @keyframes cc-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .cc-view-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .cc-view-head h1 { font-size: 22px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 10px; }

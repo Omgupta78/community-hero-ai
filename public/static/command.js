@@ -482,7 +482,7 @@
 
     // AI assistant button → open the floating chat.
     const aiBtn = $('cc-ai-btn'); if (aiBtn) aiBtn.addEventListener('click', () => {
-      const fab = document.querySelector('#chat-fab, [data-chat-toggle], #ch-chat-toggle, .chat-fab'); if (fab) fab.click()
+      const fab = document.querySelector('#ch-chat-fab, #chat-fab, [data-chat-toggle], .chat-fab'); if (fab) fab.click()
     })
     initSearch()
   }
