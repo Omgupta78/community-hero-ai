@@ -183,7 +183,29 @@
     } catch (e) { /* ignore */ }
   }
 
-  function refresh() { loadStats(); loadQueue(); loadTable(); loadAgentActivity() }
+  async function loadCityHealth() {
+    try {
+      const { data } = await api.get('/city-health')
+      $('ch-health-score').textContent = data.score
+      const arc = document.getElementById('ch-health-arc')
+      if (arc) arc.setAttribute('stroke-dasharray', `${data.score} 100`)
+      const color = data.score >= 80 ? '#006c47' : data.score >= 60 ? '#7d5200' : '#ba1a1a'
+      if (arc) arc.setAttribute('stroke', color)
+      const sys = $('ch-health-systems')
+      if (sys) {
+        sys.innerHTML = (data.systems || []).map((s) => {
+          const c = s.health >= 80 ? 'bg-secondary' : s.health >= 60 ? 'bg-tertiary-container' : 'bg-error'
+          return `<div>
+            <div class="flex justify-between text-xs mb-0.5"><span class="text-on-surface-variant">${esc(s.name)}</span><span class="font-bold text-on-surface">${s.health}%</span></div>
+            <div class="w-full h-1.5 bg-surface-container rounded-full overflow-hidden"><div class="h-full ${c} rounded-full" style="width:${s.health}%"></div></div>
+          </div>`
+        }).join('')
+      }
+      $('ch-health-insight').textContent = data.insight || ''
+    } catch (e) { /* ignore */ }
+  }
+
+  function refresh() { loadStats(); loadQueue(); loadTable(); loadAgentActivity(); loadCityHealth() }
 
   ;(async function init() {
     if (!(await guard())) return

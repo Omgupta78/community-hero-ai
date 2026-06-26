@@ -195,7 +195,19 @@
   function renderAI(d) {
     const sevLabels = { 5: 'Critical', 4: 'High', 3: 'Medium', 2: 'Low', 1: 'Minor' }
     $('ai-source').textContent = d.source === 'gemini' ? 'Gemini Live' : 'Smart Fallback'
-    $('ai-content').innerHTML = `
+    const auth = {
+      genuine: ['bg-secondary-container text-on-secondary-container', 'verified', 'Looks genuine'],
+      needs_evidence: ['bg-tertiary-fixed text-on-tertiary-fixed', 'info', 'Needs more evidence'],
+      suspect: ['bg-error-container text-on-error-container', 'gpp_maybe', 'Possible fake report'],
+    }[d.authenticity] || null
+    const authBanner = auth
+      ? `<div class="flex items-start gap-2 rounded-lg p-2.5 mb-1 ${auth[0]}">
+           <span class="material-symbols-outlined text-[20px]">${auth[1]}</span>
+           <div><p class="font-bold text-sm">AI verification: ${auth[2]}</p>
+           <p class="text-xs opacity-90">${(d.authenticity_reason || '')}</p></div>
+         </div>`
+      : ''
+    $('ai-content').innerHTML = authBanner + `
       <div class="grid grid-cols-2 gap-3">
         <div class="bg-surface-container-low rounded-lg p-3">
           <p class="text-[10px] uppercase font-bold text-on-surface-variant">Category</p>
@@ -217,6 +229,41 @@
       <p class="text-sm text-on-surface mt-1"><b>${d.title}</b> — ${d.summary}</p>`
     $('ai-result').classList.remove('hidden')
   }
+
+  // Voice-based reporting (Web Speech API — browser-native, no key)
+  ;(function setupVoice() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    const btn = $('voice-btn')
+    if (!SR || !btn) return // unsupported → keep button hidden
+    btn.classList.remove('hidden')
+    const rec = new SR()
+    rec.lang = 'en-IN'
+    rec.interimResults = true
+    rec.continuous = false
+    let listening = false
+    let baseText = ''
+
+    rec.onresult = (e) => {
+      let transcript = ''
+      for (let i = 0; i < e.results.length; i++) transcript += e.results[i][0].transcript
+      $('description').value = (baseText ? baseText + ' ' : '') + transcript
+    }
+    rec.onerror = () => { $('voice-status').textContent = 'Could not hear you — try again.'; }
+    rec.onend = () => {
+      listening = false
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">mic</span> Speak'
+      $('voice-status').classList.add('hidden')
+    }
+
+    btn.addEventListener('click', () => {
+      if (listening) { rec.stop(); return }
+      baseText = $('description').value.trim()
+      try { rec.start() } catch (e) { return }
+      listening = true
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px] text-error animate-pulse">mic</span> Listening… tap to stop'
+      const st = $('voice-status'); st.textContent = 'Listening… speak the issue, e.g. "Broken streetlight near PEC gate".'; st.classList.remove('hidden')
+    })
+  })()
 
   // Submit to D1
   $('submit-btn').addEventListener('click', async () => {

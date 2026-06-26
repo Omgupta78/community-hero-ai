@@ -165,6 +165,7 @@
           <h3 class="font-bold text-sm">AI Analysis</h3>
           <span class="ml-auto text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-white/60 text-primary">${i.ai_source === 'gemini' ? 'Gemini' : 'Smart'}</span>
         </div>
+        ${i.authenticity && i.authenticity !== 'genuine' ? `<div class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full mb-2 ${i.authenticity === 'suspect' ? 'bg-error-container text-on-error-container' : 'bg-tertiary-fixed text-on-tertiary-fixed'}"><span class="material-symbols-outlined text-[14px]">${i.authenticity === 'suspect' ? 'gpp_maybe' : 'info'}</span>${i.authenticity === 'suspect' ? 'AI: possible fake report' : 'AI: needs more evidence'}</div>` : `<div class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full mb-2 bg-secondary-container text-on-secondary-container"><span class="material-symbols-outlined text-[14px]">verified</span>AI-verified genuine</div>`}
         <p class="text-sm text-on-surface">${esc(i.ai_summary) || ''}</p>
         <p class="text-xs text-primary font-bold mt-2">Priority score: ${Math.round(i.priority_score)}/100${i.department ? ' · Routed to ' + esc(i.department) : ''}</p>
       </div>

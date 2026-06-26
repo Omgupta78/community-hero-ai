@@ -22,6 +22,8 @@ export type AIAnalysis = {
   title: string
   summary: string
   priority_score: number
+  authenticity: 'genuine' | 'needs_evidence' | 'suspect'
+  authenticity_reason: string
   source: 'gemini' | 'heuristic'
 }
 
@@ -69,7 +71,9 @@ async function callGemini(
 {"category": one of ${JSON.stringify(CATEGORIES)},
 "severity": integer 1-5 (5=critical danger to people),
 "title": short headline under 60 chars,
-"summary": 1-2 sentence triage note with recommended action}
+"summary": 1-2 sentence triage note with recommended action,
+"authenticity": one of ["genuine","needs_evidence","suspect"] (is this a real civic issue with clear enough evidence? "needs_evidence" if the media/description is unclear or insufficient; "suspect" if it looks fake, staged, irrelevant or spam),
+"authenticity_reason": short reason for the authenticity judgement}
 Citizen description: "${description || '(none provided)'}"${
     category ? `\nCitizen-selected category hint: ${category}` : ''
   }`
@@ -101,6 +105,8 @@ Citizen description: "${description || '(none provided)'}"${
 
   const cat = CATEGORIES.includes(parsed.category) ? parsed.category : 'Other'
   const severity = clampSeverity(parsed.severity)
+  const authOptions = ['genuine', 'needs_evidence', 'suspect']
+  const authenticity = authOptions.includes(parsed.authenticity) ? parsed.authenticity : 'genuine'
 
   return {
     category: cat,
@@ -109,6 +115,8 @@ Citizen description: "${description || '(none provided)'}"${
     title: (parsed.title || `${cat} reported`).toString().slice(0, 80),
     summary: (parsed.summary || 'Issue logged for review.').toString(),
     priority_score: computePriority(severity),
+    authenticity: authenticity as AIAnalysis['authenticity'],
+    authenticity_reason: (parsed.authenticity_reason || '').toString(),
     source: 'gemini',
   }
 }
@@ -135,6 +143,10 @@ function heuristicAnalysis(description: string, category?: string): AIAnalysis {
   // urgency keywords bump severity
   if (/(danger|emergency|urgent|injur|fire|burst|exposed|child)/.test(text)) sev = Math.min(5, sev + 1)
 
+  // Basic authenticity heuristic: enough signal = genuine; thin input = needs evidence.
+  const wordCount = (description || '').trim().split(/\s+/).filter(Boolean).length
+  const authenticity: AIAnalysis['authenticity'] = wordCount === 0 ? 'needs_evidence' : 'genuine'
+
   return {
     category: cat,
     severity: sev,
@@ -144,6 +156,11 @@ function heuristicAnalysis(description: string, category?: string): AIAnalysis {
       sev >= 4 ? 'High priority — recommend prompt dispatch.' : 'Queued for standard review.'
     }`,
     priority_score: computePriority(sev),
+    authenticity,
+    authenticity_reason:
+      authenticity === 'genuine'
+        ? 'Description provides enough context to action.'
+        : 'Add a photo or more detail so the report can be verified.',
     source: 'heuristic',
   }
 }
@@ -299,6 +316,42 @@ function heuristicPlan(issue: { category: string; severity: number }): Resolutio
 }
 
 export { CATEGORIES, DEPARTMENTS, computePriority }
+
+// ---------------------------------------------------------------
+// AI CITY HEALTH — Gemini insight on the city's civic health score
+// ---------------------------------------------------------------
+export async function generateCityHealthInsight(
+  apiKey: string | undefined,
+  data: { score: number; systems: { name: string; health: number }[]; worst: string; hotspot: string; topCategory: string }
+): Promise<{ text: string; source: 'gemini' | 'heuristic' }> {
+  if (apiKey) {
+    try {
+      const prompt = `You are a city operations advisor AI. The city's overall civic Health Score is ${data.score}/100.
+System scores: ${data.systems.map((s) => `${s.name} ${s.health}%`).join(', ')}.
+The weakest system is "${data.worst}". Most reports are "${data.topCategory}", concentrated around ${data.hotspot}.
+Write ONE concise, actionable sentence (max 30 words) telling operators what to prioritize to most improve the score. Plain text only.`
+      const res = await fetch(GEMINI_URL(apiKey), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.4 },
+        }),
+      })
+      if (res.ok) {
+        const d: any = await res.json()
+        const text = d?.candidates?.[0]?.content?.parts?.[0]?.text
+        if (text) return { text: text.trim(), source: 'gemini' }
+      }
+    } catch (e) {
+      console.error('City health insight failed:', (e as Error).message)
+    }
+  }
+  return {
+    text: `Most unresolved complaints are ${data.topCategory.toLowerCase()} around ${data.hotspot}. Prioritising ${data.worst} would most improve the city health score.`,
+    source: 'heuristic',
+  }
+}
 
 // ---------------------------------------------------------------
 // AGENTIC TRIAGE — autonomous multi-step reasoning + action

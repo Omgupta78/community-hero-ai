@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { analyzeIssue, generateInsight, generateResolutionPlan, chatReply, predictTrends, computePriority } from '../lib/gemini'
+import { analyzeIssue, generateInsight, generateResolutionPlan, chatReply, predictTrends, generateCityHealthInsight, computePriority } from '../lib/gemini'
 import { runTriageAgent } from '../lib/agent'
 import {
   verifyPassword,
@@ -153,7 +153,7 @@ api.get('/issues', async (c) => {
   // for performance — it is only returned by the single-issue detail endpoint.
   const sql = `SELECT i.id, i.title, i.description, i.category, i.severity, i.status, i.department,
                       i.priority_score, i.address, i.lat, i.lng, i.photo_data, i.media_type,
-                      i.ai_summary, i.ai_source, i.anonymous, i.verify_count, i.reporter_id,
+                      i.ai_summary, i.ai_source, i.authenticity, i.anonymous, i.verify_count, i.reporter_id,
                       i.created_at, i.updated_at, i.assigned_to, i.duplicate_of, i.agent_processed,
                       u.name AS reporter_name, a.name AS assignee_name, a.department AS assignee_department
                FROM issues i
@@ -227,8 +227,9 @@ api.post('/issues', async (c) => {
   const res = await c.env.DB.prepare(
     `INSERT INTO issues
       (title, description, category, severity, status, department, priority_score,
-       address, lat, lng, photo_data, media_type, video_data, ai_summary, ai_source, anonymous, reporter_id)
-     VALUES (?, ?, ?, ?, 'Reported', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       address, lat, lng, photo_data, media_type, video_data, ai_summary, ai_source,
+       authenticity, authenticity_reason, anonymous, reporter_id)
+     VALUES (?, ?, ?, ?, 'Reported', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     analysis.title,
     description,
@@ -244,6 +245,8 @@ api.post('/issues', async (c) => {
     media_type === 'video' ? video_data : null,
     analysis.summary,
     analysis.source,
+    analysis.authenticity || 'genuine',
+    analysis.authenticity_reason || null,
     anonymous ? 1 : 0,
     reporterId
   ).run()
@@ -501,6 +504,57 @@ api.get('/predict', async (c) => {
     recent: (recent as any[]) || [],
   })
   return c.json(prediction)
+})
+
+// AI City Health Score — composite civic health with per-system breakdown + Gemini insight.
+api.get('/city-health', async (c) => {
+  // Map issue categories to civic systems.
+  const SYSTEMS: Record<string, string> = {
+    Pothole: 'Road Infrastructure',
+    'Illegal Dumping': 'Waste Management',
+    Streetlight: 'Street Lighting',
+    'Water Leak': 'Water Supply',
+    Graffiti: 'Public Spaces',
+    Other: 'General Services',
+  }
+  // Penalty per open (unresolved) issue, weighted by severity. Resolved issues don't penalise.
+  const { results } = await c.env.DB.prepare(
+    `SELECT category,
+            SUM(CASE WHEN status != 'Resolved' THEN severity * 4 ELSE 0 END) AS penalty,
+            SUM(CASE WHEN status != 'Resolved' THEN 1 ELSE 0 END) AS open_count,
+            COUNT(*) AS total
+     FROM issues GROUP BY category`
+  ).all()
+
+  const byCat: Record<string, { penalty: number; open: number }> = {}
+  for (const r of (results as any[]) || []) byCat[r.category] = { penalty: r.penalty || 0, open: r.open_count || 0 }
+
+  const systems = Object.keys(SYSTEMS)
+    .filter((cat) => cat !== 'Other')
+    .map((cat) => {
+      const p = byCat[cat]?.penalty || 0
+      return { name: SYSTEMS[cat], category: cat, health: Math.max(0, Math.min(100, 100 - p)), open: byCat[cat]?.open || 0 }
+    })
+
+  const score = Math.round(systems.reduce((a, s) => a + s.health, 0) / systems.length)
+  const worst = systems.slice().sort((a, b) => a.health - b.health)[0]
+
+  const topCatRow = await c.env.DB.prepare(
+    `SELECT category FROM issues WHERE status != 'Resolved' GROUP BY category ORDER BY COUNT(*) DESC LIMIT 1`
+  ).first<{ category: string }>()
+  const hotspot = await c.env.DB.prepare(
+    `SELECT address FROM issues WHERE status != 'Resolved' AND address != '' GROUP BY address ORDER BY COUNT(*) DESC LIMIT 1`
+  ).first<{ address: string }>()
+
+  const insight = await generateCityHealthInsight(c.env.GEMINI_API_KEY, {
+    score,
+    systems: systems.map((s) => ({ name: s.name, health: s.health })),
+    worst: worst?.name || 'General Services',
+    hotspot: hotspot?.address || 'city-wide',
+    topCategory: topCatRow?.category || 'N/A',
+  })
+
+  return c.json({ score, systems, worst: worst?.name || null, insight: insight.text, insight_source: insight.source })
 })
 
 // ---------------------------------------------------------------

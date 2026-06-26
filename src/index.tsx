@@ -169,13 +169,19 @@ app.get('/report', (c) => {
         {/* Description */}
         <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md space-y-md">
           <div>
-            <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Description</label>
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Description</label>
+              <button id="voice-btn" type="button" class="hidden text-xs font-bold text-primary flex items-center gap-1 hover:underline">
+                <span class="material-symbols-outlined text-[18px]">mic</span> Speak
+              </button>
+            </div>
             <textarea
               id="description"
               rows={4}
               placeholder="Provide more details about the issue…"
               class="mt-2 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary resize-none"
             ></textarea>
+            <p id="voice-status" class="hidden text-xs text-primary mt-1"></p>
           </div>
 
           <div>
@@ -623,6 +629,38 @@ app.get('/admin', async (c) => {
     <div class="pt-[80px] pb-[40px]">
       <TopBar title="Operations" admin />
       <main class="px-container-margin max-w-5xl mx-auto mt-lg space-y-lg">
+        {/* AI City Health Score — composite civic health + Gemini insight */}
+        <section class="bg-surface-lowest border border-outline-variant rounded-xl p-lg">
+          <div class="flex flex-col md:flex-row md:items-center gap-lg">
+            <div class="flex items-center gap-4 shrink-0">
+              <div class="relative w-24 h-24">
+                <svg viewBox="0 0 36 36" class="w-24 h-24 -rotate-90">
+                  <path d="M18 2.5a15.5 15.5 0 1 1 0 31 15.5 15.5 0 0 1 0-31" fill="none" stroke="#e1e2e4" stroke-width="3"></path>
+                  <path id="ch-health-arc" d="M18 2.5a15.5 15.5 0 1 1 0 31 15.5 15.5 0 0 1 0-31" fill="none" stroke="#003d9b" stroke-width="3" stroke-linecap="round" stroke-dasharray="0 100"></path>
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                  <span id="ch-health-score" class="text-2xl font-bold text-on-surface leading-none">—</span>
+                  <span class="text-[9px] uppercase font-bold text-on-surface-variant">/ 100</span>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 text-primary">
+                  <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">ecg_heart</span>
+                  <h2 class="font-bold text-[18px] text-on-surface">AI City Health Score</h2>
+                </div>
+                <p class="text-xs text-on-surface-variant mt-0.5">Live composite of civic systems</p>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div id="ch-health-systems" class="grid grid-cols-1 sm:grid-cols-2 gap-x-lg gap-y-2"></div>
+              <div class="mt-3 flex items-start gap-2 bg-primary-fixed rounded-lg p-2.5">
+                <span class="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
+                <p id="ch-health-insight" class="text-sm text-on-surface">Generating city health insight…</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section class="grid grid-cols-2 md:grid-cols-4 gap-md">
           <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
             <p class="text-xs uppercase font-bold text-on-surface-variant">Total Reports</p>
