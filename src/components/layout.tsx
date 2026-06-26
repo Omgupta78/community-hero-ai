@@ -6,15 +6,13 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
     <header class="fixed top-0 left-0 right-0 z-[1000] bg-surface-lowest/90 backdrop-blur border-b border-outline-variant">
       <div class="max-w-5xl mx-auto h-[64px] flex items-center gap-3 px-container-margin">
         <a href="/home" class="flex items-center gap-2 text-primary shrink-0">
-          <span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">
-            volunteer_activism
-          </span>
-          {!title && <span class="font-bold text-[18px] text-on-surface hidden sm:block">Community Hero AI</span>}
+          <img src="/static/logo.svg" alt="TrustLens AI" class="w-7 h-7" />
+          {!title && <span class="font-bold text-[18px] text-on-surface hidden sm:block">TrustLens AI</span>}
         </a>
         {title ? (
           <h1 class="font-bold text-[18px] text-on-surface truncate">{title}</h1>
         ) : (
-          <span class="font-bold text-[18px] text-on-surface sm:hidden">Community Hero AI</span>
+          <span class="font-bold text-[18px] text-on-surface sm:hidden">TrustLens AI</span>
         )}
         <div class="ml-auto flex items-center gap-1">
           {staff ? (

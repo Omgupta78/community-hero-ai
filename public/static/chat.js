@@ -1,4 +1,4 @@
-// Hero Assistant — floating AI chatbot widget (Gemini-powered).
+// TrustLens Assistant — floating AI chatbot widget (Gemini-powered).
 // Self-injects on every page. Talks to POST /api/chat.
 (function () {
   function boot() {
@@ -16,7 +16,7 @@
     // --- inject DOM ---
     const wrap = document.createElement('div')
     wrap.innerHTML = `
-      <button id="ch-chat-fab" aria-label="Open Hero Assistant"
+      <button id="ch-chat-fab" aria-label="Open TrustLens Assistant"
         class="fixed right-4 bottom-[92px] md:bottom-6 z-[2500] w-14 h-14 rounded-full bg-primary text-on-primary shadow-lg flex items-center justify-center active:scale-95 transition">
         <span class="material-symbols-outlined text-[28px]">forum</span>
       </button>
@@ -26,7 +26,7 @@
         <div class="bg-primary text-on-primary px-4 py-3 flex items-center gap-2 shrink-0">
           <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">smart_toy</span>
           <div class="leading-tight">
-            <p class="font-bold text-sm">Hero Assistant</p>
+            <p class="font-bold text-sm">TrustLens Assistant</p>
             <p class="text-[11px] opacity-80">AI civic helper · powered by Gemini</p>
           </div>
           <button id="ch-chat-close" class="ml-auto w-8 h-8 rounded-full hover:bg-white/15 flex items-center justify-center">
@@ -123,7 +123,7 @@
 
     function greet() {
       if (log.childElementCount) return
-      bubble('assistant', "Hi! I'm <b>Hero Assistant</b>. I can help you report a civic issue, verify reports, earn community points, or track an issue's status. How can I help?")
+      bubble('assistant', "Hi! I'm <b>TrustLens Assistant</b>. I can help you report a civic issue, verify reports, earn community points, or track an issue's status. How can I help?")
     }
 
     fab.addEventListener('click', () => {

@@ -602,7 +602,7 @@ Output STRICT minified JSON only: {"forecast":"2-sentence prediction of what's l
 export type ChatMessage = { role: 'user' | 'assistant'; content: string }
 
 const ASSISTANT_SYSTEM = (ctx: { total: number; resolved: number; open: number }) =>
-  `You are "Hero Assistant", the friendly in-app guide for **Community Hero AI**, a civic issue
+  `You are "TrustLens Assistant", the friendly in-app guide for **TrustLens AI**, a civic issue
 reporting platform where citizens report local problems (potholes, water leaks, broken
 streetlights, illegal dumping, graffiti) with a photo. Google Gemini triages each report
 (category, severity, department, priority) and the community verifies them; municipal staff
