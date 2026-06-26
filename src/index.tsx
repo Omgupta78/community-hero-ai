@@ -732,4 +732,29 @@ app.get('/admin', async (c) => {
   )
 })
 
+// Branded 404
+app.notFound((c) => {
+  c.status(404)
+  return c.render(
+    <div class="min-h-screen flex items-center justify-center px-container-margin py-12">
+      <main class="w-full max-w-sm text-center">
+        <div class="w-20 h-20 mx-auto rounded-full bg-primary-container flex items-center justify-center mb-4">
+          <span class="material-symbols-outlined text-on-primary-container text-[44px]">explore_off</span>
+        </div>
+        <h1 class="text-[28px] font-bold text-on-surface">Page not found</h1>
+        <p class="text-sm text-on-surface-variant mt-2 mb-lg">This page took a detour. Let's get you back to your community.</p>
+        <div class="flex flex-col gap-2">
+          <a href="/" class="w-full bg-primary text-on-primary rounded-xl py-3 font-bold flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined">home</span> Back to Home
+          </a>
+          <a href="/report" class="w-full border border-outline-variant text-primary rounded-xl py-3 font-bold flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined">add_circle</span> Report an Issue
+          </a>
+        </div>
+      </main>
+    </div>,
+    { title: 'Not Found · Community Hero AI' }
+  )
+})
+
 export default app

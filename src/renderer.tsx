@@ -7,6 +7,13 @@ export const renderer = jsxRenderer(({ children, title }) => {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{title || 'Community Hero AI'}</title>
+        <meta name="description" content="AI-powered hyperlocal civic issue reporting. Citizens report problems with a photo or video; an autonomous Gemini agent triages, prioritizes, and routes them — the community verifies and the city resolves." />
+        <meta name="theme-color" content="#003d9b" />
+        {/* Social / link preview */}
+        <meta property="og:title" content="Community Hero AI" />
+        <meta property="og:description" content="Turn citizen reports into prioritized, accountable civic action with an autonomous AI agent." />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary" />
         <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
         <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
         <link

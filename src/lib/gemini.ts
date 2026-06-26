@@ -409,7 +409,7 @@ function similarTitle(a: string, b: string): boolean {
 // token (e.g. both mention "Main"). Prevents merging issues on different streets.
 function sameArea(a?: string, b?: string): boolean {
   if (!a || !b) return false
-  const stop = new Set(['street', 'st', 'rd', 'road', 'ave', 'avenue', 'blvd', 'lane', 'ln', 'dr', 'drive', 'springfield'])
+  const stop = new Set(['street', 'st', 'rd', 'road', 'ave', 'avenue', 'blvd', 'lane', 'ln', 'dr', 'drive', 'springfield', 'chandigarh', 'sector', 'market', 'near'])
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter((w) => w.length > 2 && !stop.has(w) && isNaN(Number(w)))
   const wa = new Set(norm(a))
   const wb = norm(b)
