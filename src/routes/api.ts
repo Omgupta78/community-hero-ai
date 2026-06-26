@@ -465,6 +465,20 @@ api.post('/issues/:id/agent/run', requireRole('admin'), async (c) => {
   return c.json(result)
 })
 
+// Live feed of the autonomous agent's recent decisions across all issues (admin).
+api.get('/agent/activity', requireRole('admin'), async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT a.issue_id, a.tool, a.thought, a.action, a.created_at, i.title, i.category
+     FROM agent_actions a JOIN issues i ON i.id = a.issue_id
+     ORDER BY a.created_at DESC, a.id DESC
+     LIMIT 14`
+  ).all()
+  const processed = await c.env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM issues WHERE agent_processed = 1`
+  ).first<{ n: number }>()
+  return c.json({ activity: results || [], processed: processed?.n || 0 })
+})
+
 // Predictive insights — Gemini forecasts emerging hotspots & rising categories.
 api.get('/predict', async (c) => {
   const total = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues`).first<{ n: number }>()

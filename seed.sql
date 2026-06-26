@@ -61,3 +61,22 @@ INSERT OR IGNORE INTO verifications (issue_id, user_id, vote, on_site, distance_
 UPDATE issues
 SET verify_count = (SELECT COUNT(*) FROM verifications v WHERE v.issue_id = issues.id AND v.vote = 'confirm')
 WHERE id IN (1, 2, 3, 4, 5);
+
+-- Autonomous Triage Agent traces for seeded issues (so the agent's work is
+-- visible immediately in the demo without waiting for a fresh report).
+UPDATE issues SET agent_processed = 1 WHERE id IN (1, 2, 3, 4, 5);
+
+INSERT OR IGNORE INTO agent_actions (issue_id, step, tool, thought, action, result) VALUES
+  (1, 1, 'perceive', 'Gathering context for issue #1.', 'Found 0 open same-category issues; department workload is 1.', 'Context ready.'),
+  (1, 2, 'reason', 'Critical road hazard with strong community confirmation; not a duplicate.', 'duplicate_of=none, priority=92, dept=Road Maintenance', 'Reasoning by Gemini.'),
+  (1, 3, 'prioritize', 'Severity 5 plus 3 confirmations raises urgency to the top of the queue.', 'Set priority score to 92/100.', 'Priority updated.'),
+  (1, 4, 'route', 'Category "Pothole" maps to the Road Maintenance department.', 'Assigned to Road Maintenance Dept; status set to Assigned.', 'Dispatched to department.'),
+  (1, 5, 'plan', 'Drafting a field action plan.', '4 steps - crew: 2-3 person road crew - est 2-4 hours, $150-$500.', 'Inspect -> Cordon off -> Apply asphalt -> Compact and seal.'),
+  (4, 1, 'perceive', 'Gathering context for issue #4.', 'Found 0 open same-category issues; department workload is 1.', 'Context ready.'),
+  (4, 2, 'reason', 'Active pipe burst creating a slip hazard; route urgently.', 'duplicate_of=none, priority=78, dept=Water Works', 'Reasoning by Gemini.'),
+  (4, 3, 'prioritize', 'Ongoing water loss and public-safety risk keep priority high.', 'Set priority score to 78/100.', 'Priority updated.'),
+  (4, 4, 'route', 'Category "Water Leak" maps to the Water Works department.', 'Assigned to Water Works Dept; status set to Assigned.', 'Dispatched to department.'),
+  (4, 5, 'plan', 'Drafting a field action plan.', '4 steps - crew: 3-person water works crew - est 4-8 hours, $400-$1,500.', 'Isolate valve -> Excavate -> Replace section -> Pressure-test.'),
+  (3, 1, 'perceive', 'Gathering context for issue #3.', 'Found 0 open same-category issues; department workload is 1.', 'Context ready.'),
+  (3, 2, 'reason', 'Dark intersection is a safety risk after dusk; route to Electrical.', 'duplicate_of=none, priority=55, dept=Electrical', 'Reasoning by Gemini.'),
+  (3, 3, 'route', 'Category "Streetlight" maps to the Electrical department.', 'Left in queue for admin assignment.', 'Pending manual assignment.');

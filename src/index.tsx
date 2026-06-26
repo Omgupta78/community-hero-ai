@@ -654,6 +654,20 @@ app.get('/admin', async (c) => {
           </div>
         </section>
 
+        {/* Autonomous AI Agent activity feed */}
+        <section class="bg-surface-lowest border border-primary/30 rounded-xl p-md">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">smart_toy</span>
+            <h2 class="font-bold text-[18px] text-on-surface">Autonomous Agent Activity</h2>
+            <span class="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-primary-fixed text-primary">
+              <span id="agent-processed">0</span> auto-triaged
+            </span>
+          </div>
+          <div id="agent-activity" class="space-y-2 max-h-72 overflow-y-auto">
+            <div class="text-center text-on-surface-variant py-8">Loading agent activity…</div>
+          </div>
+        </section>
+
         {/* Issue Queue table */}
         <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md overflow-x-auto">
           <h2 class="font-bold text-[18px] text-on-surface mb-3">Issue Queue</h2>

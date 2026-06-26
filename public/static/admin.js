@@ -155,7 +155,35 @@
     } finally { btn.disabled = false }
   })
 
-  function refresh() { loadStats(); loadQueue(); loadTable() }
+  const AGENT_ICON = {
+    perceive: 'visibility', reason: 'psychology', dedupe: 'content_copy',
+    prioritize: 'priority_high', route: 'alt_route', plan: 'engineering',
+  }
+
+  async function loadAgentActivity() {
+    try {
+      const { data } = await api.get('/agent/activity')
+      $('agent-processed').textContent = data.processed || 0
+      const el = $('agent-activity')
+      if (!data.activity || !data.activity.length) {
+        el.innerHTML = '<p class="text-sm text-on-surface-variant py-4">No agent activity yet. New reports are auto-triaged on submission.</p>'
+        return
+      }
+      el.innerHTML = data.activity.map((a) => `
+        <a href="/issue/${a.issue_id}" class="flex items-start gap-2 bg-surface-container-low rounded-lg p-2.5 hover:bg-surface-container transition">
+          <span class="w-7 h-7 rounded-full bg-primary-fixed text-primary flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[16px]">${AGENT_ICON[a.tool] || 'bolt'}</span>
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs"><span class="font-bold uppercase text-primary">${esc(a.tool)}</span>
+              <span class="text-on-surface-variant"> · #${a.issue_id} ${esc(a.title)}</span></p>
+            <p class="text-sm text-on-surface truncate">${esc(a.action)}</p>
+          </div>
+        </a>`).join('')
+    } catch (e) { /* ignore */ }
+  }
+
+  function refresh() { loadStats(); loadQueue(); loadTable(); loadAgentActivity() }
 
   ;(async function init() {
     if (!(await guard())) return
