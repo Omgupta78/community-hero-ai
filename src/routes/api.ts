@@ -552,32 +552,34 @@ api.get('/notifications', async (c) => {
 // STATS / DASHBOARD
 // ---------------------------------------------------------------
 api.get('/stats', async (c) => {
-  const total = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues`).first<{ n: number }>()
-  const resolved = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE status = 'Resolved'`).first<{ n: number }>()
-  const open = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE status != 'Resolved'`).first<{ n: number }>()
-  const critical = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE severity >= 5 AND status != 'Resolved'`).first<{ n: number }>()
-  const pending = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE status IN ('Reported','Verified')`).first<{ n: number }>()
   const citizenId = await currentCitizenId(c)
-  const mine = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE reporter_id = ?`).bind(citizenId).first<{ n: number }>()
-  const user = await c.env.DB.prepare(`SELECT score FROM users WHERE id = ?`).bind(citizenId).first<{ score: number }>()
-
-  const { results: byCategory } = await c.env.DB.prepare(
-    `SELECT category, COUNT(*) AS n FROM issues GROUP BY category ORDER BY n DESC`
-  ).all()
-  const { results: byStatus } = await c.env.DB.prepare(
-    `SELECT status, COUNT(*) AS n FROM issues GROUP BY status`
-  ).all()
+  // One aggregate query for all counts, run in parallel with the breakdowns and
+  // the per-citizen lookups (was 9 sequential round-trips → 1 + 1 parallel batch).
+  const [agg, catRes, statusRes, mine, user] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT COUNT(*) AS total,
+              SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) AS resolved,
+              SUM(CASE WHEN status != 'Resolved' THEN 1 ELSE 0 END) AS open,
+              SUM(CASE WHEN severity >= 5 AND status != 'Resolved' THEN 1 ELSE 0 END) AS critical,
+              SUM(CASE WHEN status IN ('Reported','Verified') THEN 1 ELSE 0 END) AS pending
+       FROM issues`
+    ).first<any>(),
+    c.env.DB.prepare(`SELECT category, COUNT(*) AS n FROM issues GROUP BY category ORDER BY n DESC`).all(),
+    c.env.DB.prepare(`SELECT status, COUNT(*) AS n FROM issues GROUP BY status`).all(),
+    c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE reporter_id = ?`).bind(citizenId).first<{ n: number }>(),
+    c.env.DB.prepare(`SELECT score FROM users WHERE id = ?`).bind(citizenId).first<{ score: number }>(),
+  ])
 
   return c.json({
-    total: total?.n || 0,
-    resolved: resolved?.n || 0,
-    open: open?.n || 0,
-    critical: critical?.n || 0,
-    pending: pending?.n || 0,
+    total: agg?.total || 0,
+    resolved: agg?.resolved || 0,
+    open: agg?.open || 0,
+    critical: agg?.critical || 0,
+    pending: agg?.pending || 0,
     mine: mine?.n || 0,
     score: user?.score || 0,
-    byCategory: byCategory || [],
-    byStatus: byStatus || [],
+    byCategory: catRes.results || [],
+    byStatus: statusRes.results || [],
   })
 })
 

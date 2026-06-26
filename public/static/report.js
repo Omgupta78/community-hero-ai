@@ -31,10 +31,17 @@
       }
       video.onseeked = () => {
         try {
+          const maxDim = 1280
+          let w = video.videoWidth || 640
+          let h = video.videoHeight || 480
+          if (w > maxDim || h > maxDim) {
+            if (w >= h) { h = Math.round((h * maxDim) / w); w = maxDim }
+            else { w = Math.round((w * maxDim) / h); h = maxDim }
+          }
           const canvas = document.createElement('canvas')
-          canvas.width = video.videoWidth || 640
-          canvas.height = video.videoHeight || 480
-          canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
+          canvas.width = w
+          canvas.height = h
+          canvas.getContext('2d').drawImage(video, 0, 0, w, h)
           finish(canvas.toDataURL('image/jpeg', 0.7))
         } catch (e) { finish(null) }
       }
@@ -45,6 +52,31 @@
 
   const readAsDataURL = (file) =>
     new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => resolve(null); r.readAsDataURL(file) })
+
+  // Downscale an image File to a max dimension and re-encode as JPEG — keeps DB
+  // rows, list payloads and Gemini uploads small without hurting visible quality.
+  function downscaleImage(file, maxDim = 1280, quality = 0.72) {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file)
+      const im = new Image()
+      im.onload = () => {
+        let { width, height } = im
+        if (width > maxDim || height > maxDim) {
+          if (width >= height) { height = Math.round((height * maxDim) / width); width = maxDim }
+          else { width = Math.round((width * maxDim) / height); height = maxDim }
+        }
+        try {
+          const canvas = document.createElement('canvas')
+          canvas.width = width; canvas.height = height
+          canvas.getContext('2d').drawImage(im, 0, 0, width, height)
+          URL.revokeObjectURL(url)
+          resolve(canvas.toDataURL('image/jpeg', quality))
+        } catch (e) { URL.revokeObjectURL(url); resolve(null) }
+      }
+      im.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+      im.src = url
+    })
+  }
 
   // Photo / video selection
   $('photo-zone').addEventListener('click', () => $('photo-input').click())
@@ -92,10 +124,11 @@
       }
     } else {
       mediaType = 'image'
-      mimeType = file.type
+      mimeType = 'image/jpeg'
       videoDataUrl = null
       vid.classList.add('hidden')
-      const dataUrl = await readAsDataURL(file)
+      // Downscale before storing/analyzing (fallback to raw if it fails).
+      const dataUrl = (await downscaleImage(file)) || (await readAsDataURL(file))
       thumbDataUrl = dataUrl
       imageBase64 = dataUrl ? dataUrl.split(',')[1] : null
       img.src = dataUrl
