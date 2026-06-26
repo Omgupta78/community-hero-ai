@@ -31,7 +31,6 @@ export const renderer = jsxRenderer(({ children, title }) => {
         <script dangerouslySetInnerHTML={{ __html: tailwindConfig }} />
         <link href="/static/style.css" rel="stylesheet" />
         <script src="/static/firebase-config.js"></script>
-        <script src="/static/maps-config.js"></script>
         <script src="/static/common.js"></script>
         <script src="/static/chat.js"></script>
         <script src="/static/notifications.js"></script>
