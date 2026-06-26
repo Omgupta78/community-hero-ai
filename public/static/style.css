@@ -26,3 +26,65 @@ body {
   background: #c3c6d6;
   border-radius: 3px;
 }
+
+/* ============================================================
+   TrustLens AI — global UX & motion layer
+   ============================================================ */
+* { -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; }
+body { animation: tl-page 0.45s ease both; }
+
+@keyframes tl-page { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tl-up   { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes tl-pop  { 0% { transform: scale(0.92); opacity: 0; } 60% { transform: scale(1.02); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes tl-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes tl-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+@keyframes tl-toast { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* Scroll-reveal (added by common.js) */
+.tl-reveal { opacity: 0; transform: translateY(16px); }
+.tl-in { animation: tl-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Smooth micro-interactions on interactive elements */
+a, button, select, .ex-chip, .cat-chip, .map-filter {
+  transition: transform 0.16s ease, box-shadow 0.22s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+button:active, a:active { transform: scale(0.97); }
+
+/* Card hover-lift for the rounded card surfaces */
+main a[class*="rounded-xl"]:hover,
+main button[class*="rounded-xl"]:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -12px rgba(0, 61, 155, 0.35);
+}
+
+/* Stat / headline numbers settle in */
+[id^="stat-"], [id^="imp-"], [id^="env-"], [id^="a-"], [id^="d-"], [id^="c-"], [id^="p-score"], [id^="p-reports"] {
+  transition: color 0.3s ease;
+}
+
+/* Toast (created in common.js) gets a smooth entrance */
+.tl-toast-in { animation: tl-toast 0.3s ease both; }
+
+/* Skeleton shimmer utility */
+.tl-skeleton {
+  background: linear-gradient(90deg, #edeef0 25%, #f6f7f9 37%, #edeef0 63%);
+  background-size: 800px 100%;
+  animation: tl-shimmer 1.4s infinite linear;
+  border-radius: 8px;
+}
+
+/* Gentle float for hero/landing logo */
+.tl-float { animation: tl-float 4s ease-in-out infinite; }
+
+/* Material icon weight crispness */
+.material-symbols-outlined { will-change: font-variation-settings; }
+
+/* Bottom-nav active pop */
+@keyframes tl-nav { from { transform: scale(0.8); } to { transform: scale(1); } }
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, body { animation: none !important; transition: none !important; }
+  .tl-reveal { opacity: 1 !important; transform: none !important; }
+}

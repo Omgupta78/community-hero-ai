@@ -22,7 +22,7 @@ app.get('/', (c) => {
   return c.render(
     <div class="min-h-screen flex flex-col items-center justify-center px-container-margin py-12 bg-gradient-to-b from-primary-fixed/40 to-background">
       <main class="w-full max-w-4xl mx-auto text-center">
-        <img src="/static/logo.svg" alt="TrustLens AI" class="w-20 h-20 mx-auto mb-3 drop-shadow" />
+        <img src="/static/logo.svg" alt="TrustLens AI" class="w-20 h-20 mx-auto mb-3 drop-shadow tl-float" />
         <h1 class="text-[36px] font-bold leading-none">
           <span class="text-primary">Trust</span><span class="text-secondary">Lens</span>
           <span class="align-middle text-[15px] font-bold text-on-primary bg-primary rounded-md px-1.5 py-0.5 ml-1">AI</span>

@@ -65,7 +65,7 @@ window.CH = (function () {
   }
   function toast(msg, ok = true) {
     const t = document.createElement('div')
-    t.className = `fixed bottom-24 left-1/2 -translate-x-1/2 z-[3000] px-4 py-2 rounded-full text-sm font-medium shadow-lg ${ok ? 'bg-secondary text-white' : 'bg-error text-white'}`
+    t.className = `tl-toast-in fixed bottom-24 left-1/2 -translate-x-1/2 z-[3000] px-4 py-2 rounded-full text-sm font-medium shadow-lg ${ok ? 'bg-secondary text-white' : 'bg-error text-white'}`
     t.textContent = msg
     document.body.appendChild(t)
     setTimeout(() => t.remove(), 2600)
@@ -112,6 +112,27 @@ window.CH = (function () {
     }
   }
   document.addEventListener('ch-auth-changed', (e) => updateCitizenChip(e.detail && e.detail.user))
+
+  // Scroll-reveal: gently animate page sections into view (respects reduced-motion).
+  function initReveal() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const targets = document.querySelectorAll('main > *')
+    if (!targets.length || !('IntersectionObserver' in window)) return
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add('tl-in')
+          io.unobserve(e.target)
+        }
+      })
+    }, { threshold: 0.06, rootMargin: '0px 0px -40px 0px' })
+    targets.forEach((el, i) => {
+      el.classList.add('tl-reveal')
+      el.style.animationDelay = Math.min(i, 8) * 55 + 'ms'
+      io.observe(el)
+    })
+  }
+  document.addEventListener('DOMContentLoaded', initReveal)
 
   return { api, CAT_ICON, STATUS_COLOR, severityBadge, timeAgo, esc, issueCard, toast, getLocation }
 })()
