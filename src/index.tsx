@@ -32,15 +32,15 @@ app.get('/', (c) => {
           AI-powered hyperlocal civic issue resolution platform — <b class="text-on-surface">one autonomous agent runs the whole loop, from a citizen's photo to a verified fix.</b>
         </p>
 
-        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-10 mb-4">Sign in as</p>
-        <div class="grid sm:grid-cols-2 gap-md text-left max-w-2xl mx-auto">
+        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-10 mb-4">Log in as</p>
+        <div class="grid md:grid-cols-3 gap-md text-left">
           <a href="/home" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-primary hover:shadow-lg transition active:scale-[0.98]">
             <div class="w-12 h-12 rounded-lg bg-primary text-on-primary flex items-center justify-center mb-3">
               <span class="material-symbols-outlined text-[26px]">person</span>
             </div>
             <h2 class="font-bold text-[18px] text-on-surface">Citizen</h2>
             <p class="text-sm text-on-surface-variant mt-1 mb-3">Report a problem and watch it get fixed.</p>
-            <span class="text-sm font-bold text-primary flex items-center gap-1">Continue as Citizen <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
+            <span class="text-sm font-bold text-primary flex items-center gap-1">Log in as Citizen <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
           </a>
           <a href="/login" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-on-surface hover:shadow-lg transition active:scale-[0.98]">
             <div class="w-12 h-12 rounded-lg bg-on-surface text-surface-lowest flex items-center justify-center mb-3">
@@ -48,13 +48,17 @@ app.get('/', (c) => {
             </div>
             <h2 class="font-bold text-[18px] text-on-surface">Municipal Official</h2>
             <p class="text-sm text-on-surface-variant mt-1 mb-3">Command the agent and clear the backlog.</p>
-            <span class="text-sm font-bold text-primary flex items-center gap-1">Sign in as Official <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
+            <span class="text-sm font-bold text-primary flex items-center gap-1">Log in as Official <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
+          </a>
+          <a href="/login" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-secondary hover:shadow-lg transition active:scale-[0.98]">
+            <div class="w-12 h-12 rounded-lg bg-secondary text-white flex items-center justify-center mb-3">
+              <span class="material-symbols-outlined text-[26px]">construction</span>
+            </div>
+            <h2 class="font-bold text-[18px] text-on-surface">Contractor / Responder</h2>
+            <p class="text-sm text-on-surface-variant mt-1 mb-3">Win jobs, prove the fix, get paid.</p>
+            <span class="text-sm font-bold text-secondary flex items-center gap-1">Log in as Responder <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
           </a>
         </div>
-
-        <a href="/login" class="inline-flex items-center gap-1 text-sm font-bold text-secondary mt-6 hover:underline">
-          <span class="material-symbols-outlined text-[18px]">construction</span> Are you a contractor / responder? Join the network →
-        </a>
 
         <div class="flex items-center justify-center gap-lg mt-8 text-xs text-on-surface-variant flex-wrap">
           <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-primary">shield</span><b class="text-on-surface">Trust</b> — transparency &amp; accountability</span>
