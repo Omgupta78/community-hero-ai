@@ -30,6 +30,9 @@ users throughout. The result is a transparent, accountable, AI-driven loop from 
 resolution.
 
 ## Key Features
+- **Image & video reporting** — capture or upload a photo *or* a short video clip. For video,
+  the app extracts a representative frame for Gemini Vision analysis and plays the clip back
+  on the issue page.
 - **Autonomous Triage Agent** — a multi-step agent (perceive → reason → de-duplicate →
   prioritize → auto-route & assign → plan) that acts on each new report and logs a visible
   reasoning/action trace.

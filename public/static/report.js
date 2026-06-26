@@ -1,29 +1,100 @@
-// Report page — real photo capture, real Gemini analysis, real submit to D1
+// Report page — real photo/video capture, frame extraction, Gemini analysis, submit to D1
 (function () {
   const { api, toast } = window.CH
-  let imageBase64 = null
+  let imageBase64 = null   // still image (or extracted video frame) sent to Gemini
   let mimeType = null
+  let mediaType = 'image'  // 'image' | 'video'
+  let videoDataUrl = null  // playable clip (base64 data URL) for video reports
+  let thumbDataUrl = null  // still image data URL stored as photo_data
   let selectedCat = null
   let lastAnalysis = null
 
+  const MAX_VIDEO_MB = 12
+
   const $ = (id) => document.getElementById(id)
 
-  // Photo upload
+  // Extract a representative still frame from a video File → JPEG data URL.
+  function extractFrame(file) {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file)
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      video.muted = true
+      video.playsInline = true
+      video.src = url
+      let done = false
+      const finish = (val) => { if (!done) { done = true; URL.revokeObjectURL(url); resolve(val) } }
+      video.onloadeddata = () => {
+        const t = isFinite(video.duration) && video.duration > 0 ? Math.min(1, video.duration / 2) : 0
+        try { video.currentTime = t } catch (e) { /* some browsers */ }
+      }
+      video.onseeked = () => {
+        try {
+          const canvas = document.createElement('canvas')
+          canvas.width = video.videoWidth || 640
+          canvas.height = video.videoHeight || 480
+          canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
+          finish(canvas.toDataURL('image/jpeg', 0.7))
+        } catch (e) { finish(null) }
+      }
+      video.onerror = () => finish(null)
+      setTimeout(() => finish(null), 8000) // safety timeout
+    })
+  }
+
+  const readAsDataURL = (file) =>
+    new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => resolve(null); r.readAsDataURL(file) })
+
+  // Photo / video selection
   $('photo-zone').addEventListener('click', () => $('photo-input').click())
-  $('photo-input').addEventListener('change', (e) => {
+  $('photo-input').addEventListener('change', async (e) => {
     const file = e.target.files[0]
     if (!file) return
-    mimeType = file.type
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result
-      imageBase64 = dataUrl.split(',')[1]
-      const img = $('photo-preview')
+    const img = $('photo-preview')
+    const vid = $('video-preview')
+    const note = $('media-note')
+    $('photo-placeholder').classList.add('hidden')
+
+    if (file.type.startsWith('video/')) {
+      mediaType = 'video'
+      mimeType = 'image/jpeg' // we analyze an extracted frame
+      // Playable preview
+      const objUrl = URL.createObjectURL(file)
+      vid.src = objUrl
+      vid.classList.remove('hidden')
+      img.classList.add('hidden')
+      note.classList.remove('hidden')
+      note.textContent = 'Extracting a frame for AI analysis…'
+
+      const frame = await extractFrame(file)
+      if (frame) {
+        thumbDataUrl = frame
+        imageBase64 = frame.split(',')[1]
+      } else {
+        thumbDataUrl = null
+        imageBase64 = null
+      }
+
+      const sizeMB = file.size / (1024 * 1024)
+      if (sizeMB <= MAX_VIDEO_MB) {
+        videoDataUrl = await readAsDataURL(file)
+        note.textContent = `Video ready (${sizeMB.toFixed(1)} MB). AI will analyze a frame from it.`
+      } else {
+        videoDataUrl = null
+        note.textContent = `Clip is ${sizeMB.toFixed(1)} MB — too large to store, but AI will still analyze a frame. Use a shorter clip (≤ ${MAX_VIDEO_MB} MB) to attach the video.`
+      }
+    } else {
+      mediaType = 'image'
+      mimeType = file.type
+      videoDataUrl = null
+      vid.classList.add('hidden')
+      const dataUrl = await readAsDataURL(file)
+      thumbDataUrl = dataUrl
+      imageBase64 = dataUrl ? dataUrl.split(',')[1] : null
       img.src = dataUrl
       img.classList.remove('hidden')
-      $('photo-placeholder').classList.add('hidden')
+      note.classList.add('hidden')
     }
-    reader.readAsDataURL(file)
   })
 
   // Category chips
@@ -119,7 +190,9 @@
         address: $('address').value,
         lat: parseFloat($('lat').value) || null,
         lng: parseFloat($('lng').value) || null,
-        photo_data: $('photo-preview').src && !$('photo-preview').classList.contains('hidden') ? $('photo-preview').src : null,
+        photo_data: thumbDataUrl || null,
+        media_type: mediaType,
+        video_data: mediaType === 'video' ? videoDataUrl : null,
         anonymous: $('anon-toggle').checked,
         ai: lastAnalysis,
       }

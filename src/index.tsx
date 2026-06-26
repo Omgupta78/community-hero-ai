@@ -122,18 +122,20 @@ app.get('/report', (c) => {
     <div class="pt-[80px] pb-[120px]">
       <TopBar title="Report Issue" />
       <main class="px-container-margin max-w-2xl mx-auto space-y-lg mt-lg">
-        {/* Photo upload */}
+        {/* Photo / video upload */}
         <section class="bg-surface-container-low border border-outline-variant rounded-xl p-lg text-center">
-          <input type="file" id="photo-input" accept="image/*" capture="environment" class="hidden" />
+          <input type="file" id="photo-input" accept="image/*,video/*" capture="environment" class="hidden" />
           <div id="photo-zone" class="cursor-pointer">
             <div id="photo-placeholder">
               <div class="w-16 h-16 mx-auto rounded-full bg-primary-fixed flex items-center justify-center mb-3">
-                <span class="material-symbols-outlined text-primary text-[32px]">photo_camera</span>
+                <span class="material-symbols-outlined text-primary text-[32px]">add_a_photo</span>
               </div>
-              <p class="text-primary font-semibold text-[18px]">Take a Photo or Video</p>
-              <p class="text-sm text-on-surface-variant mt-1">Clear visual evidence helps our AI &amp; teams resolve issues faster.</p>
+              <p class="text-primary font-semibold text-[18px]">Add a Photo or Video</p>
+              <p class="text-sm text-on-surface-variant mt-1">Photo or a short clip — clear evidence helps our AI &amp; teams resolve issues faster.</p>
             </div>
             <img id="photo-preview" class="hidden w-full rounded-lg max-h-72 object-cover" />
+            <video id="video-preview" class="hidden w-full rounded-lg max-h-72 bg-black" controls playsinline></video>
+            <p id="media-note" class="hidden text-xs text-on-surface-variant mt-2"></p>
           </div>
         </section>
 

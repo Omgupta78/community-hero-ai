@@ -51,6 +51,7 @@ window.CH = (function () {
             <div class="flex items-center gap-2 flex-wrap">
               <h4 class="font-semibold text-on-surface truncate">${esc(i.title)}</h4>
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${scls}">${slabel}</span>
+              ${i.media_type === 'video' ? '<span class="material-symbols-outlined text-[16px] text-primary" title="Video report">videocam</span>' : ''}
             </div>
             <p class="text-xs text-on-surface-variant truncate mt-0.5">${esc(i.address) || 'Unknown location'}</p>
             <div class="flex items-center gap-2 mt-2">

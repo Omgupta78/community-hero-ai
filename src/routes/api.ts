@@ -149,7 +149,13 @@ api.get('/issues', async (c) => {
   }
   if (unassigned === 'true') { where.push('i.assigned_to IS NULL') }
 
-  const sql = `SELECT i.*, u.name AS reporter_name, a.name AS assignee_name, a.department AS assignee_department
+  // Note: video_data (large base64) is intentionally excluded from list results
+  // for performance — it is only returned by the single-issue detail endpoint.
+  const sql = `SELECT i.id, i.title, i.description, i.category, i.severity, i.status, i.department,
+                      i.priority_score, i.address, i.lat, i.lng, i.photo_data, i.media_type,
+                      i.ai_summary, i.ai_source, i.anonymous, i.verify_count, i.reporter_id,
+                      i.created_at, i.updated_at, i.assigned_to, i.duplicate_of, i.agent_processed,
+                      u.name AS reporter_name, a.name AS assignee_name, a.department AS assignee_department
                FROM issues i
                LEFT JOIN users u ON i.reporter_id = u.id
                LEFT JOIN users a ON i.assigned_to = a.id
@@ -204,6 +210,8 @@ api.post('/issues', async (c) => {
     lat = null,
     lng = null,
     photo_data = null,
+    media_type = 'image',
+    video_data = null,
     anonymous = false,
     imageBase64,
     mimeType,
@@ -219,8 +227,8 @@ api.post('/issues', async (c) => {
   const res = await c.env.DB.prepare(
     `INSERT INTO issues
       (title, description, category, severity, status, department, priority_score,
-       address, lat, lng, photo_data, ai_summary, ai_source, anonymous, reporter_id)
-     VALUES (?, ?, ?, ?, 'Reported', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       address, lat, lng, photo_data, media_type, video_data, ai_summary, ai_source, anonymous, reporter_id)
+     VALUES (?, ?, ?, ?, 'Reported', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     analysis.title,
     description,
@@ -232,6 +240,8 @@ api.post('/issues', async (c) => {
     lat,
     lng,
     photo_data,
+    media_type === 'video' ? 'video' : 'image',
+    media_type === 'video' ? video_data : null,
     analysis.summary,
     analysis.source,
     anonymous ? 1 : 0,

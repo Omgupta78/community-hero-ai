@@ -113,7 +113,12 @@
 
   function render(i, updates) {
     const [scls, slabel] = severityBadge(i.severity)
-    const photo = i.photo_data
+    const photo = i.media_type === 'video' && i.video_data
+      ? `<div class="relative mb-4">
+           <video src="${i.video_data}" ${i.photo_data ? `poster="${i.photo_data}"` : ''} class="w-full rounded-xl max-h-80 bg-black" controls playsinline></video>
+           <span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/70 text-white flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">videocam</span>VIDEO</span>
+         </div>`
+      : i.photo_data
       ? `<img src="${i.photo_data}" class="w-full rounded-xl max-h-72 object-cover mb-4"/>`
       : ''
     const timeline = updates.map((u, idx) => `

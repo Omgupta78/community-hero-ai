@@ -18,7 +18,10 @@
   function card(i) {
     const [scls, slabel] = severityBadge(i.severity)
     const photo = i.photo_data
-      ? `<img src="${i.photo_data}" class="w-full h-40 object-cover rounded-lg mb-3"/>`
+      ? `<div class="relative mb-3">
+           <img src="${i.photo_data}" class="w-full h-40 object-cover rounded-lg"/>
+           ${i.media_type === 'video' ? '<span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/70 text-white flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">play_circle</span>VIDEO</span>' : ''}
+         </div>`
       : ''
     return `
       <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md" data-id="${i.id}">
