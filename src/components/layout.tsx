@@ -5,7 +5,7 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
   return (
     <header class="fixed top-0 left-0 right-0 z-[1000] bg-surface-lowest/90 backdrop-blur border-b border-outline-variant">
       <div class="max-w-5xl mx-auto h-[64px] flex items-center gap-3 px-container-margin">
-        <a href="/" class="flex items-center gap-2 text-primary shrink-0">
+        <a href="/home" class="flex items-center gap-2 text-primary shrink-0">
           <span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">
             volunteer_activism
           </span>
@@ -19,7 +19,7 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
         <div class="ml-auto flex items-center gap-1">
           {staff ? (
             <>
-              <a href="/" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
+              <a href="/home" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
                 <span class="material-symbols-outlined text-[18px]">public</span>
                 <span class="hidden sm:inline">Citizen View</span>
               </a>
@@ -58,7 +58,7 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
 }
 
 const navItems = [
-  { key: 'home', href: '/', icon: 'home', label: 'Home' },
+  { key: 'home', href: '/home', icon: 'home', label: 'Home' },
   { key: 'map', href: '/map', icon: 'map', label: 'Map' },
   { key: 'report', href: '/report', icon: 'add_circle', label: 'Report' },
   { key: 'impact', href: '/impact', icon: 'insights', label: 'Impact' },

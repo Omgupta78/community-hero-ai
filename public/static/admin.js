@@ -207,6 +207,26 @@
 
   function refresh() { loadStats(); loadQueue(); loadTable(); loadAgentActivity(); loadCityHealth() }
 
+  // "Command the agent" — clear the backlog of un-triaged issues.
+  const backlogBtn = $('agent-backlog-btn')
+  if (backlogBtn) {
+    backlogBtn.addEventListener('click', async () => {
+      backlogBtn.disabled = true
+      const orig = backlogBtn.innerHTML
+      backlogBtn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> Running…'
+      try {
+        const { data } = await api.post('/agent/run-backlog')
+        window.CH.toast(data.processed ? `Agent triaged ${data.processed} issue(s)` : 'Backlog already clear')
+        refresh()
+      } catch (e) {
+        window.CH.toast(e?.response?.data?.error || 'Agent run failed', false)
+      } finally {
+        backlogBtn.disabled = false
+        backlogBtn.innerHTML = orig
+      }
+    })
+  }
+
   ;(async function init() {
     if (!(await guard())) return
     refresh()

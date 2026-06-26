@@ -4,6 +4,7 @@ import { analyzeIssue, generateInsight, generateResolutionPlan, chatReply, predi
 import { runTriageAgent } from '../lib/agent'
 import {
   verifyPassword,
+  hashPassword,
   createSession,
   destroySession,
   getSessionUser,
@@ -74,6 +75,27 @@ api.post('/auth/login', async (c) => {
   return c.json({
     user: { id: user.id, name: user.name, email: user.email, role: user.role, department: user.department },
   })
+})
+
+// Open contractor/responder self-registration — anyone can connect as a responder.
+api.post('/auth/register-contractor', async (c) => {
+  const { name, email, password } = await c.req.json().catch(() => ({}))
+  if (!name || !email || !password) return c.json({ error: 'Name, email and password are required' }, 400)
+  if (String(password).length < 6) return c.json({ error: 'Password must be at least 6 characters' }, 400)
+  const em = String(email).trim().toLowerCase()
+
+  const existing = await c.env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(em).first<any>()
+  if (existing) return c.json({ error: 'An account with this email already exists' }, 409)
+
+  const hash = await hashPassword(password)
+  const res = await c.env.DB.prepare(
+    `INSERT INTO users (name, email, role, password_hash) VALUES (?, ?, 'contractor', ?)`
+  ).bind(String(name).trim(), em, hash).run()
+  const userId = res.meta.last_row_id as number
+
+  const token = await createSession(c.env.DB, userId)
+  c.header('Set-Cookie', sessionCookie(token))
+  return c.json({ user: { id: userId, name: String(name).trim(), email: em, role: 'contractor' } })
 })
 
 api.post('/auth/logout', async (c) => {
@@ -560,6 +582,18 @@ api.post('/issues/:id/agent/run', requireRole('admin'), async (c) => {
   const id = Number(c.req.param('id'))
   const result = await runTriageAgent(c.env, id)
   return c.json(result)
+})
+
+// Command the agent to clear the backlog — runs triage on all unprocessed issues.
+api.post('/agent/run-backlog', requireRole('admin'), async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT id FROM issues WHERE agent_processed = 0 AND status != 'Resolved' ORDER BY created_at ASC LIMIT 12`
+  ).all()
+  let processed = 0
+  for (const r of (results as any[]) || []) {
+    try { await runTriageAgent(c.env, r.id); processed++ } catch (e) { /* continue */ }
+  }
+  return c.json({ processed })
 })
 
 // Live feed of the autonomous agent's recent decisions across all issues (admin).

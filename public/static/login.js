@@ -24,4 +24,34 @@
       btn.disabled = false
     }
   })
+
+  // Open responder registration
+  const regToggle = document.getElementById('reg-toggle')
+  const regForm = document.getElementById('register-form')
+  const regErr = document.getElementById('reg-error')
+  const regBtn = document.getElementById('reg-btn')
+  if (regToggle) {
+    regToggle.addEventListener('click', () => {
+      regForm.classList.toggle('hidden')
+      document.getElementById('reg-chevron').textContent = regForm.classList.contains('hidden') ? 'expand_more' : 'expand_less'
+    })
+    regForm.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      regErr.classList.add('hidden')
+      regBtn.disabled = true
+      try {
+        const { data } = await api.post('/auth/register-contractor', {
+          name: document.getElementById('reg-name').value.trim(),
+          email: document.getElementById('reg-email').value.trim(),
+          password: document.getElementById('reg-password').value,
+        })
+        toast('Welcome to the network, ' + data.user.name)
+        window.location.href = '/contractor'
+      } catch (err) {
+        regErr.textContent = err?.response?.data?.error || 'Registration failed'
+        regErr.classList.remove('hidden')
+        regBtn.disabled = false
+      }
+    })
+  }
 })()

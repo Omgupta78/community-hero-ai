@@ -16,11 +16,61 @@ app.use(renderer)
 app.route('/api', api)
 
 // =============================================================
+// LANDING — role selection entry (The Civic Resolution Network)
+// =============================================================
+app.get('/', (c) => {
+  return c.render(
+    <div class="min-h-screen flex flex-col items-center justify-center px-container-margin py-12 bg-gradient-to-b from-primary-fixed/40 to-background">
+      <main class="w-full max-w-4xl mx-auto text-center">
+        <div class="w-16 h-16 mx-auto rounded-full bg-primary-container flex items-center justify-center mb-3">
+          <span class="material-symbols-outlined text-on-primary-container text-[36px]" style="font-variation-settings:'FILL' 1;">volunteer_activism</span>
+        </div>
+        <h1 class="text-[34px] font-bold text-on-surface leading-none">Community Hero AI</h1>
+        <p class="text-xs font-bold tracking-[0.2em] text-primary mt-2 uppercase">The Civic Resolution Network</p>
+        <p class="text-on-surface-variant max-w-xl mx-auto mt-4">
+          From a citizen's photo to a verified, AI-resolved fix — <b class="text-on-surface">one autonomous agent runs the whole loop.</b>
+        </p>
+
+        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-10 mb-4">Enter as</p>
+        <div class="grid md:grid-cols-3 gap-md text-left">
+          <a href="/home" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-primary hover:shadow-lg transition active:scale-[0.98]">
+            <div class="w-11 h-11 rounded-lg bg-primary text-on-primary flex items-center justify-center mb-3">
+              <span class="material-symbols-outlined">person</span>
+            </div>
+            <h2 class="font-bold text-[18px] text-on-surface">Citizen</h2>
+            <p class="text-sm text-on-surface-variant mt-1 mb-3">Report a problem and watch it get fixed.</p>
+            <span class="text-sm font-bold text-primary flex items-center gap-1">Enter <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
+          </a>
+          <a href="/login" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-secondary hover:shadow-lg transition active:scale-[0.98]">
+            <div class="w-11 h-11 rounded-lg bg-secondary text-white flex items-center justify-center mb-3">
+              <span class="material-symbols-outlined">construction</span>
+            </div>
+            <h2 class="font-bold text-[18px] text-on-surface">Contractor / Responder</h2>
+            <p class="text-sm text-on-surface-variant mt-1 mb-3">Win jobs, prove the fix, get paid.</p>
+            <span class="text-sm font-bold text-secondary flex items-center gap-1">Enter <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
+          </a>
+          <a href="/login" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-primary hover:shadow-lg transition active:scale-[0.98]">
+            <div class="w-11 h-11 rounded-lg bg-on-surface text-surface-lowest flex items-center justify-center mb-3">
+              <span class="material-symbols-outlined">apartment</span>
+            </div>
+            <h2 class="font-bold text-[18px] text-on-surface">Municipal Official</h2>
+            <p class="text-sm text-on-surface-variant mt-1 mb-3">Command the agent and clear the backlog.</p>
+            <span class="text-sm font-bold text-primary flex items-center gap-1">Enter <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
+          </a>
+        </div>
+        <p class="text-xs text-on-surface-variant mt-8">You can switch roles anytime.</p>
+      </main>
+    </div>,
+    { title: 'Community Hero AI — The Civic Resolution Network' }
+  )
+})
+
+// =============================================================
 // CITIZEN PORTAL
 // =============================================================
 
-// Home Dashboard
-app.get('/', (c) => {
+// Home Dashboard (citizen)
+app.get('/home', (c) => {
   return c.render(
     <div class="pt-[80px] pb-[100px]">
       <TopBar />
@@ -531,7 +581,30 @@ app.get('/login', async (c) => {
           <p>Responder: <code>builder@city.gov</code> / <code>Build@123</code></p>
         </div>
 
-        <a href="/" class="block text-center text-sm text-primary font-bold mt-md hover:underline">← Back to citizen app</a>
+        {/* Open responder registration — any contractor can connect */}
+        <div class="mt-md bg-surface-lowest border border-secondary/40 rounded-xl p-md">
+          <button id="reg-toggle" class="w-full flex items-center justify-between text-left">
+            <span class="flex items-center gap-2 font-bold text-on-surface text-sm">
+              <span class="material-symbols-outlined text-secondary text-[20px]">construction</span>
+              New responder? Join the network
+            </span>
+            <span id="reg-chevron" class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+          </button>
+          <form id="register-form" class="hidden space-y-sm mt-3">
+            <input id="reg-name" type="text" required placeholder="Your name or company"
+              class="w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-secondary" />
+            <input id="reg-email" type="email" required autocomplete="email" placeholder="you@example.com"
+              class="w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-secondary" />
+            <input id="reg-password" type="password" required placeholder="Password (min 6 chars)"
+              class="w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-secondary" />
+            <p id="reg-error" class="hidden text-sm text-error font-medium"></p>
+            <button id="reg-btn" type="submit" class="w-full bg-secondary text-white rounded-lg py-3 font-bold active:scale-[0.98] transition flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined">how_to_reg</span> Create responder account
+            </button>
+          </form>
+        </div>
+
+        <a href="/home" class="block text-center text-sm text-primary font-bold mt-md hover:underline">← Back to citizen app</a>
       </main>
       <script src="/static/login.js"></script>
     </div>,
@@ -771,7 +844,10 @@ app.get('/admin', async (c) => {
           <div class="flex items-center gap-2 mb-3">
             <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">smart_toy</span>
             <h2 class="font-bold text-[18px] text-on-surface">Autonomous Agent Activity</h2>
-            <span class="ml-auto text-xs font-bold px-2 py-0.5 rounded-full bg-primary-fixed text-primary">
+            <button id="agent-backlog-btn" class="ml-auto text-xs font-bold px-3 py-1.5 rounded-full bg-primary text-on-primary flex items-center gap-1 active:scale-95 transition">
+              <span class="material-symbols-outlined text-[16px]">bolt</span> Clear Backlog
+            </button>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-primary-fixed text-primary">
               <span id="agent-processed">0</span> auto-triaged
             </span>
           </div>
@@ -856,7 +932,7 @@ app.notFound((c) => {
         <h1 class="text-[28px] font-bold text-on-surface">Page not found</h1>
         <p class="text-sm text-on-surface-variant mt-2 mb-lg">This page took a detour. Let's get you back to your community.</p>
         <div class="flex flex-col gap-2">
-          <a href="/" class="w-full bg-primary text-on-primary rounded-xl py-3 font-bold flex items-center justify-center gap-2">
+          <a href="/home" class="w-full bg-primary text-on-primary rounded-xl py-3 font-bold flex items-center justify-center gap-2">
             <span class="material-symbols-outlined">home</span> Back to Home
           </a>
           <a href="/report" class="w-full border border-outline-variant text-primary rounded-xl py-3 font-bold flex items-center justify-center gap-2">
