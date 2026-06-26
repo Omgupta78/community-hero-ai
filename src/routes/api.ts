@@ -534,6 +534,21 @@ api.post('/chat', async (c) => {
 })
 
 // ---------------------------------------------------------------
+// NOTIFICATIONS — status updates on the citizen's own reports
+// ---------------------------------------------------------------
+api.get('/notifications', async (c) => {
+  const citizenId = await currentCitizenId(c)
+  const { results } = await c.env.DB.prepare(
+    `SELECT up.id AS update_id, up.issue_id, up.status, up.message, up.author, up.created_at, i.title
+     FROM issue_updates up JOIN issues i ON i.id = up.issue_id
+     WHERE i.reporter_id = ?
+     ORDER BY up.created_at DESC, up.id DESC
+     LIMIT 25`
+  ).bind(citizenId).all()
+  return c.json({ notifications: results || [] })
+})
+
+// ---------------------------------------------------------------
 // STATS / DASHBOARD
 // ---------------------------------------------------------------
 api.get('/stats', async (c) => {

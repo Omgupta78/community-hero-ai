@@ -30,6 +30,11 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
             </>
           ) : (
             <>
+              {/* Notifications bell — citizen status updates */}
+              <button id="notif-btn" aria-label="Notifications" class="relative w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant">
+                <span class="material-symbols-outlined text-[22px]">notifications</span>
+                <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center">0</span>
+              </button>
               {/* Citizen auth chip — updated client-side by Firebase auth state */}
               <a href="/profile" id="citizen-auth-chip" class="hidden items-center gap-1 px-2 py-1 rounded-full hover:bg-surface-container">
                 <span id="citizen-avatar" class="w-7 h-7 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center overflow-hidden">
