@@ -459,32 +459,37 @@
   async function loadEscalation() {
     const el = $('cc-escalation'); if (!el) return
     try {
-      const wx = (await api.get('/weather?city=Chandigarh')).data
-      const mb = $('cc-monsoon-banner')
-      if (mb) {
-        if (wx && wx.rain_prob_pct != null && wx.rain_prob_pct >= 40) {
-          mb.classList.remove('hidden')
-          mb.innerHTML = `<span class="material-symbols-outlined">rainy</span> Monsoon alert · ${wx.rain_prob_pct}% rain forecast — drainage, potholes and waterlogging risk rises. Prioritise road &amp; water issues this week.`
-        } else mb.classList.add('hidden')
-      }
-    } catch (e) {}
-    try {
       let issues = (await api.get('/issues?limit=200')).data.issues || []
       issues = issues.filter((i) => i.status !== 'Resolved')
         .map((i) => ({ ...i, _loss: dailyLoss(i) }))
         .sort((a, b) => b._loss - a._loss || b.severity - a.severity)
+
+      // Total daily-loss banner
+      const lostToday = issues.reduce((s, i) => s + i._loss, 0)
+      const lb = $('cc-esc-loss')
+      if (lb) {
+        if (issues.length) {
+          lb.classList.remove('hidden')
+          lb.innerHTML = `<span class="material-symbols-outlined">warning</span> <b>${inr(lostToday)}</b> lost today from <b>${issues.length}</b> unresolved issue${issues.length === 1 ? '' : 's'}`
+        } else lb.classList.add('hidden')
+      }
+
       el.innerHTML = issues.map((i) => {
         const created = new Date((i.created_at || '').replace(' ', 'T') + 'Z').getTime()
         const daysOpen = created ? Math.max(0, Math.floor((Date.now() - created) / 86400000)) : 0
         const deadline = created + (SLA_HOURS[i.severity] || 72) * 3600000
         const affected = i.severity * 5 + (i.verify_count || 0) * 2
-        return `<div class="ctr-card cc-esc-card">
+        const overdue = created ? deadline <= Date.now() : false
+        // Left border + tint by state: overdue=red, critical=orange, else=teal
+        const borderCol = overdue ? '#DC2626' : (i.severity >= 5 ? '#EA580C' : '#1D9E75')
+        const cardStyle = `border-left:4px solid ${borderCol};${overdue ? 'background:#FEF2F2;' : ''}`
+        return `<div class="ctr-card cc-esc-card" style="${cardStyle}">
           <div class="cc-esc-top"><div><b>${esc(i.title)}</b><small>${esc(i.category)} · sev ${i.severity} · ${esc(i.address || '')}</small></div>
             <span class="cc-esc-loss">${inr(i._loss)}/day</span></div>
           <div class="cc-esc-meta">
             <span><span class="material-symbols-outlined">groups</span>${affected} citizens affected</span>
             <span><span class="material-symbols-outlined">event</span>${daysOpen}d open</span>
-            <span class="cc-sla" data-deadline="${deadline}"><span class="material-symbols-outlined">timer</span><b class="cc-sla-timer">—</b></span>
+            <span class="cc-sla${overdue ? ' overdue' : ''}" data-deadline="${deadline}"><span class="material-symbols-outlined">timer</span><b class="cc-sla-timer">—</b></span>
           </div>
           <div class="cc-esc-foot"><button class="ctr-btn ctr-btn-primary ctr-btn-sm" data-assign="${i.id}" data-cat="${esc(i.category)}" data-lat="${i.lat || ''}" data-lng="${i.lng || ''}" data-title="${esc(i.title)}">Assign now</button></div>
         </div>`
@@ -524,6 +529,7 @@
     const addC = $('cc-add-contractor'); if (addC) addC.addEventListener('click', openContractorForm)
     const addD = $('cc-add-dept'); if (addD) addD.addEventListener('click', openDeptForm)
     const sweep = $('cc-sla-sweep'); if (sweep) sweep.addEventListener('click', () => { loadEscalation(); window.CH.toast('SLA sweep complete') })
+    const prestage = $('cc-prestage'); if (prestage) prestage.addEventListener('click', () => window.CH.toast('Crews pre-staged for Sector 17 ahead of rainfall'))
   }
 
   document.addEventListener('DOMContentLoaded', () => {

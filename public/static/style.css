@@ -1103,3 +1103,13 @@ main button[class*="rounded-xl"]:hover {
 .cc-sla .cc-sla-timer { color: #0F6E56; font-weight: 700; }
 .cc-sla.overdue, .cc-sla.overdue .cc-sla-timer { color: #C0392B; }
 .cc-esc-foot { display: flex; justify-content: flex-end; }
+
+/* Escalation — top monsoon banner (with actions) + total loss banner */
+.cc-monsoon-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  background: #F0FAF6; border: 1px solid #1D9E75; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; }
+.cc-monsoon-msg { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #0F6E56; font-weight: 600; }
+.cc-monsoon-msg .material-symbols-outlined { color: #1D9E75; }
+.cc-monsoon-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.cc-esc-loss-banner { display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: #FEF2F2; color: #DC2626; border-radius: 12px; padding: 11px 16px; font-size: 14px; text-align: center; margin-bottom: 14px; }
+.cc-esc-loss-banner .material-symbols-outlined { color: #DC2626; }

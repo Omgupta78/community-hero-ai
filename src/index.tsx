@@ -1355,9 +1355,17 @@ app.get('/command', async (c) => {
 
         {/* ===================== ESCALATION ===================== */}
         <section class="ctr-view hidden" id="cview-escalation">
-          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">priority_high</span> Escalation</h1>
-            <button id="cc-sla-sweep" class="ctr-btn ctr-btn-primary ctr-btn-sm"><span class="material-symbols-outlined">radar</span> Run SLA sweep</button></div>
-          <div id="cc-monsoon-banner" class="cc-monsoon-banner hidden"></div>
+          {/* Monsoon banner — full width, very top */}
+          <div class="cc-monsoon-top">
+            <div class="cc-monsoon-msg"><span class="material-symbols-outlined">rainy</span><span>Monsoon alert active — Heavy rainfall forecast within 12h. Pre-stage crews recommended for Sector 17.</span></div>
+            <div class="cc-monsoon-actions">
+              <button id="cc-prestage" class="ctr-btn ctr-btn-line ctr-btn-sm">Pre-stage crew</button>
+              <button id="cc-sla-sweep" class="ctr-btn ctr-btn-primary ctr-btn-sm">Run SLA sweep <span class="material-symbols-outlined">arrow_forward</span></button>
+            </div>
+          </div>
+          {/* Total daily-loss banner */}
+          <div id="cc-esc-loss" class="cc-esc-loss-banner hidden"></div>
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">priority_high</span> Escalation</h1></div>
           <div id="cc-escalation" class="ctr-grid"><div class="ctr-skel"></div></div>
         </section>
 
