@@ -6,13 +6,13 @@
 // rejected as `?key=` ("ACCESS_TOKEN_TYPE_UNSUPPORTED") but work as a header.
 const geminiHeaders = (key: string) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key })
 
-// Model fallback chain — ORDER MATTERS. gemini-2.5-flash-lite is listed FIRST
-// because it has the largest free-tier quota (highest requests/min and /day),
-// so the vast majority of calls succeed on the first try — fast, and it leaves
-// the heavier 2.5-flash quota as a fallback. If one model returns a quota/
-// availability error (429/403/404/5xx) we transparently retry the next, and if
-// all are exhausted every gemini.ts function falls back to its heuristic.
-const GEMINI_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest']
+// Model fallback chain — ORDER MATTERS. Probed live against the configured key:
+// gemini-2.5-flash is the best model that reliably returns 200 with multimodal
+// (image) + JSON output, so it's primary for quality. gemini-2.5-flash-lite is a
+// fast, reliable fallback. gemini-2.5-pro is a last-resort high-quality option
+// (it has very low rate limits, so it can't be primary). If one model returns a
+// quota/availability error we retry the next; if all fail we use the heuristic.
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro']
 const GEMINI_MODEL = GEMINI_MODELS[0]
 export { GEMINI_MODELS }
 
