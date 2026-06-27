@@ -1113,3 +1113,27 @@ main button[class*="rounded-xl"]:hover {
 .cc-esc-loss-banner { display: flex; align-items: center; justify-content: center; gap: 8px;
   background: #FEF2F2; color: #DC2626; border-radius: 12px; padding: 11px 16px; font-size: 14px; text-align: center; margin-bottom: 14px; }
 .cc-esc-loss-banner .material-symbols-outlined { color: #DC2626; }
+
+/* ===================== AI Insights — forecast boxes, volunteer avatars, weekly summary ===================== */
+.mc-ptag.hot { background: #FEF2F2; }
+.mc-ptag.rise { background: #FFF7ED; }
+.mc-ptag.action { background: #F0FAF6; }
+.mc-ptag-ic { display: flex; align-items: center; justify-content: center; width: 22px; flex-shrink: 0; }
+.mc-ptag.rise .mc-ptag-ic .material-symbols-outlined { color: #EA580C; }
+.mc-ptag.action .mc-ptag-ic .material-symbols-outlined { color: #1D9E75; }
+.mc-pulse-dot { width: 10px; height: 10px; border-radius: 50%; background: #DC2626; animation: cc-dot-pulse 1.5s infinite; }
+@keyframes cc-dot-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(220,38,38,.5); }
+  70% { box-shadow: 0 0 0 7px rgba(220,38,38,0); }
+  100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+}
+
+.cc-vol-av { width: 36px; height: 36px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+
+.cc-weekly { margin-top: 18px; }
+.cc-weekly-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+@media (max-width: 900px) { .cc-weekly-grid { grid-template-columns: repeat(3, 1fr); } }
+.cc-ws { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; padding: 12px 8px; background: #F0EDDF; border-radius: 12px; }
+.cc-ws .material-symbols-outlined { color: #1D9E75; font-size: 22px; }
+.cc-ws b { font-size: 18px; font-weight: 600; color: #1A1A1A; }
+.cc-ws small { font-size: 11px; color: #5A5A52; }

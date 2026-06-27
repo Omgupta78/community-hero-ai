@@ -2,7 +2,7 @@ import { jsxRenderer } from 'hono/jsx-renderer'
 
 // Bump this whenever static CSS/JS changes so browsers fetch the latest assets
 // (prevents the "old styling cached" problem where pages look unchanged).
-export const ASSET_VER = '28'
+export const ASSET_VER = '29'
 
 export const renderer = jsxRenderer(({ children, title }) => {
   return (

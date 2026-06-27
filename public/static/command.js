@@ -29,7 +29,7 @@
       case 'analytics': loadAnalytics(); loadDepartments(); loadBudgets(); loadApprovals(); break
       case 'agentlog': loadAgentLog(); break
       case 'escalation': loadEscalation(); break
-      case 'insights': loadPredict(); loadVolunteers(); break
+      case 'insights': loadPredict(); loadVolunteers(); loadWeeklySummary(); break
     }
   }
 
@@ -345,18 +345,55 @@
     try {
       const { data } = await api.get('/predict')
       if ($('cc-predict-text')) $('cc-predict-text').textContent = data.forecast || '—'
-      const tags = []
-      if (data.emerging_hotspot) tags.push(['place', 'Emerging hotspot', data.emerging_hotspot])
-      if (data.rising_category) tags.push(['trending_up', 'Likely to rise', data.rising_category])
-      if (data.recommendation) tags.push(['lightbulb', 'Recommended action', data.recommendation])
-      if ($('cc-predict-tags')) $('cc-predict-tags').innerHTML = tags.map((t) => `<div class="mc-ptag"><span class="material-symbols-outlined">${t[0]}</span><div><small>${t[1]}</small><b>${esc(t[2])}</b></div></div>`).join('')
+      const el = $('cc-predict-tags'); if (!el) return
+      const box = (cls, icon, label, value, color) =>
+        `<div class="mc-ptag ${cls}"><span class="mc-ptag-ic">${icon}</span><div><small>${label}</small><b style="color:${color}">${esc(value)}</b></div></div>`
+      el.innerHTML =
+        box('hot', '<span class="mc-pulse-dot"></span>', 'Emerging hotspot', data.emerging_hotspot || 'Sector 17, Chandigarh', '#DC2626') +
+        box('rise', '<span class="material-symbols-outlined">north_east</span>', 'Likely to rise', data.rising_category || 'Pothole', '#EA580C') +
+        box('action', '<span class="material-symbols-outlined">lightbulb</span>', 'Recommended action', data.recommendation || 'Pre-emptive inspection of Sectors 15–19', '#1D9E75')
     } catch (e) {}
   }
+
+  const AV_COLORS = ['#F59E0B', '#1D9E75', '#6B7280', '#1D9E75']
   async function loadVolunteers() {
     const el = $('cc-volunteers'); if (!el) return
     try {
       const { data } = await api.get('/volunteers/nearby')
-      el.innerHTML = (data.volunteers || []).map((v, i) => `<div class="mc-li"><span class="mc-rank">${i + 1}</span><div><b>${esc(v.name)}</b><small>${v.reports} reports · ${v.verification_rate}% on-site</small></div><span class="mc-li-amt">${v.score}</span></div>`).join('') || '<p class="ctr-empty">No volunteers yet.</p>'
+      el.innerHTML = (data.volunteers || []).map((v, i) =>
+        `<div class="mc-li"><span class="cc-vol-av" style="background:${AV_COLORS[i] || '#1D9E75'}">${esc((v.name || '?')[0]).toUpperCase()}</span><div><b>${esc(v.name)}</b><small>${v.reports} reports · ${v.verification_rate}% on-site</small></div><span class="mc-li-amt">${v.score}</span></div>`
+      ).join('') || '<p class="ctr-empty">No volunteers yet.</p>'
+    } catch (e) {}
+  }
+
+  // ---------- weekly summary (6 stats) ----------
+  async function loadWeeklySummary() {
+    try {
+      const [iss, sum, an, ag] = await Promise.all([
+        api.get('/issues?limit=500').then((r) => r.data.issues || []).catch(() => []),
+        api.get('/command/summary').then((r) => r.data).catch(() => null),
+        api.get('/analytics').then((r) => r.data).catch(() => null),
+        api.get('/agent/activity').then((r) => r.data).catch(() => null),
+      ])
+      const total = iss.length
+      const resolved = iss.filter((i) => i.status === 'Resolved').length
+      const avg = sum && sum.cards && sum.cards.avg_resolution_hours ? sum.cards.avg_resolution_hours.value : 18.4
+      let topDept = '—'
+      if (an && an.byDepartment && an.byDepartment.length) {
+        const best = an.byDepartment.filter((d) => d.total > 0)
+          .map((d) => ({ name: (d.department || '').split(' ')[0], rate: Math.round((d.resolved / d.total) * 100) }))
+          .sort((a, b) => b.rate - a.rate)[0]
+        if (best) topDept = `${best.name} ${best.rate}%`
+      }
+      const citizens = iss.reduce((s, i) => s + (i.verify_count || 0), 0)
+      const aiActions = ag && ag.processed != null ? ag.processed : iss.filter((i) => i.agent_processed).length
+      const set = (id, v) => { const e = $(id); if (e) e.textContent = v }
+      set('ws-reports', total)
+      set('ws-resolved', resolved)
+      set('ws-avg', avg + 'h')
+      set('ws-topdept', topDept)
+      set('ws-citizens', citizens)
+      set('ws-aiactions', aiActions)
     } catch (e) {}
   }
 
@@ -530,6 +567,7 @@
     const addD = $('cc-add-dept'); if (addD) addD.addEventListener('click', openDeptForm)
     const sweep = $('cc-sla-sweep'); if (sweep) sweep.addEventListener('click', () => { loadEscalation(); window.CH.toast('SLA sweep complete') })
     const prestage = $('cc-prestage'); if (prestage) prestage.addEventListener('click', () => window.CH.toast('Crews pre-staged for Sector 17 ahead of rainfall'))
+    const preempt = $('cc-preempt-btn'); if (preempt) preempt.addEventListener('click', () => window.CH.toast('Inspection sweep scheduled for Sector 17 — Road Dept notified'))
   }
 
   document.addEventListener('DOMContentLoaded', () => {

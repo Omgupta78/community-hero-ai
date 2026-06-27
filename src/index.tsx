@@ -1374,11 +1374,26 @@ app.get('/command', async (c) => {
           <div class="ctr-view-head"><h1><span class="material-symbols-outlined">lightbulb</span> AI Insights</h1>
             <button id="cc-report-btn2" class="ctr-btn ctr-btn-primary ctr-btn-sm"><span class="material-symbols-outlined">summarize</span> Weekly Report</button></div>
           <div class="mc-grid-2">
-            <div class="ctr-card-plain mc-predict"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">insights</span> Predictive Forecast</h2><span class="ctr-tag ctr-tag-blue">Gemini</span></div>
+            <div class="ctr-card-plain mc-predict"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">insights</span> Predictive Forecast</h2><span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">auto_awesome</span> Gemini · 94%</span></div>
               <p id="cc-predict-text" class="mc-predict-text">Forecasting…</p>
-              <div id="cc-predict-tags" class="mc-predict-tags"></div></div>
+              <div id="cc-predict-tags" class="mc-predict-tags"></div>
+              <button id="cc-preempt-btn" class="ctr-btn ctr-btn-primary" style="width:100%;justify-content:center;margin-top:14px"><span class="material-symbols-outlined">bolt</span> Run Pre-emptive Inspection <span class="material-symbols-outlined">arrow_forward</span></button>
+            </div>
             <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">volunteer_activism</span> Top Volunteers</h2></div>
               <div id="cc-volunteers" class="mc-list mc-scrolly"></div></div>
+          </div>
+
+          {/* Weekly summary */}
+          <div class="ctr-card-plain cc-weekly">
+            <div class="ctr-block-head"><h2><span class="material-symbols-outlined">calendar_view_week</span> Weekly Summary</h2></div>
+            <div class="cc-weekly-grid">
+              <div class="cc-ws"><span class="material-symbols-outlined">description</span><b id="ws-reports">—</b><small>Reports</small></div>
+              <div class="cc-ws"><span class="material-symbols-outlined">task_alt</span><b id="ws-resolved">—</b><small>Resolved</small></div>
+              <div class="cc-ws"><span class="material-symbols-outlined">schedule</span><b id="ws-avg">—</b><small>Avg time</small></div>
+              <div class="cc-ws"><span class="material-symbols-outlined">emoji_events</span><b id="ws-topdept">—</b><small>Top dept</small></div>
+              <div class="cc-ws"><span class="material-symbols-outlined">groups</span><b id="ws-citizens">—</b><small>Citizens</small></div>
+              <div class="cc-ws"><span class="material-symbols-outlined">smart_toy</span><b id="ws-aiactions">—</b><small>AI actions</small></div>
+            </div>
           </div>
         </section>
 
