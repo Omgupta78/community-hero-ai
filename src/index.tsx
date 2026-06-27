@@ -1118,244 +1118,190 @@ app.get('/command', async (c) => {
   if (!user) return c.redirect('/login')
   if (user.role !== 'admin') return c.redirect(user.role === 'contractor' ? '/contractor' : '/authority')
 
-  const NAV: [string, string, string][] = [
-    ['dashboard', 'Dashboard', 'dashboard'],
-    ['map', 'Live Issue Map', 'map'],
-    ['issues', 'Issue Management', 'inbox'],
-    ['queue', 'AI Priority Queue', 'auto_awesome'],
-    ['contractors', 'Contractors', 'engineering'],
-    ['volunteers', 'Community Volunteers', 'volunteer_activism'],
-    ['departments', 'Departments', 'apartment'],
-    ['analytics', 'Analytics', 'bar_chart'],
-    ['insights', 'AI Insights', 'lightbulb'],
-    ['budgets', 'Budget & Quotations', 'account_balance'],
-  ]
-
   return c.render(
-    <div class="cc-scope" id="cc-root">
-      {/* ---------- LEFT SIDEBAR ---------- */}
-      <aside class="cc-sidebar">
-        <a href="/" class="cc-brand">
+    <div class="ctr-scope cc-blue" id="cc-root">
+      {/* ---------- TOP BAR (same design system as contractor) ---------- */}
+      <header class="ctr-topbar">
+        <a href="/" class="ctr-brand">
           <img src="/static/logo.svg" class="w-8 h-8" alt="TrustLens AI" />
-          <span><b>Trust</b>Lens<span class="cc-brand-badge">AI</span></span>
+          <span><b>Trust</b>Lens<span class="ctr-badge ctr-badge-blue">Command</span></span>
         </a>
-        <nav class="cc-nav">
-          {NAV.map(([id, label, icon]) => (
-            <a class="cc-nav-item" data-section={id} href={'#' + id}>
-              <span class="material-symbols-outlined">{icon}</span>
-              <span>{label}</span>
-            </a>
-          ))}
+        <nav class="ctr-tabs" id="cc-tabs">
+          <button class="ctr-tab active" data-tab="dashboard"><span class="material-symbols-outlined">grid_view</span>Dashboard</button>
+          <button class="ctr-tab" data-tab="issues"><span class="material-symbols-outlined">inbox</span>Issues</button>
+          <button class="ctr-tab" data-tab="map"><span class="material-symbols-outlined">map</span>Map</button>
+          <button class="ctr-tab" data-tab="contractors"><span class="material-symbols-outlined">engineering</span>Contractors</button>
+          <button class="ctr-tab" data-tab="departments"><span class="material-symbols-outlined">apartment</span>Departments</button>
+          <button class="ctr-tab" data-tab="analytics"><span class="material-symbols-outlined">bar_chart</span>Analytics</button>
+          <button class="ctr-tab" data-tab="budget"><span class="material-symbols-outlined">account_balance</span>Budget</button>
+          <button class="ctr-tab" data-tab="insights"><span class="material-symbols-outlined">lightbulb</span>AI Insights</button>
         </nav>
-        <div class="cc-sidebar-foot">
-          <button id="cc-dark-toggle" class="cc-darkbtn">
-            <span class="material-symbols-outlined">dark_mode</span><span>Dark Mode</span>
-          </button>
-          <div class="cc-profile">
-            <div class="cc-avatar">{(user.name || 'A')[0]}</div>
-            <div class="cc-profile-meta">
-              <b>{user.name}</b>
-              <small>Municipal Commissioner</small>
-            </div>
-            <a href="/logout" title="Switch role" class="cc-logout"><span class="material-symbols-outlined">logout</span></a>
-          </div>
+        <div class="ctr-topbar-right">
+          <div id="cc-weather" class="ctr-chip"><span class="material-symbols-outlined">partly_cloudy_day</span><span id="cc-weather-text">—</span></div>
+          <button id="cc-ai-btn" class="ctr-chip" title="Ask the AI assistant"><span class="material-symbols-outlined">support_agent</span></button>
+          <div class="ctr-profile"><div class="ctr-avatar">{(user.name || 'A')[0]}</div>
+            <div class="ctr-profile-meta"><b>{user.name}</b><small>Commissioner</small></div></div>
+          <a href="/logout" class="ctr-switch" title="Switch role"><span class="material-symbols-outlined">logout</span></a>
         </div>
-      </aside>
+      </header>
 
-      {/* ---------- MAIN ---------- */}
-      <div class="cc-main">
-        {/* Role identity ribbon (inline-styled so it shows even with cached CSS) */}
-        <div style="background:linear-gradient(90deg,#1d4ed8,#2563eb);color:#fff;padding:8px 24px;font-weight:800;font-size:12px;letter-spacing:1.5px;display:flex;align-items:center;gap:8px;text-transform:uppercase;">
+      <main class="ctr-main">
+        <div style="background:linear-gradient(90deg,#1d4ed8,#2563eb);color:#fff;padding:8px 20px;font-weight:800;font-size:12px;letter-spacing:1.5px;display:flex;align-items:center;gap:8px;text-transform:uppercase;border-radius:0 0 14px 14px;margin-bottom:6px;">
           <span class="material-symbols-outlined" style="font-size:18px;">apartment</span>Municipal Command Center · Commissioner view
         </div>
-        {/* TOP NAVBAR */}
-        <header class="cc-topbar">
-          <div class="cc-search">
-            <span class="material-symbols-outlined">search</span>
-            <input id="cc-search-input" placeholder="Search issues, contractors, departments…" autocomplete="off" />
-            <div id="cc-search-results" class="cc-search-results hidden"></div>
+
+        {/* ===================== DASHBOARD ===================== */}
+        <section class="ctr-view" id="cview-dashboard">
+          <div class="ctr-hero">
+            <div class="ctr-hero-text">
+              <p class="ctr-eyebrow">Welcome back</p>
+              <h1>Municipal Commissioner</h1>
+              <p id="cc-hero-sub" class="ctr-hero-sub">AI is monitoring civic issues across the city.</p>
+              <div class="ctr-hero-actions" style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+                <button id="cc-backlog-btn" class="ctr-btn ctr-btn-ghost-w"><span class="material-symbols-outlined">bolt</span> Run AI Triage</button>
+                <button id="cc-report-btn" class="ctr-btn ctr-btn-ghost-w"><span class="material-symbols-outlined">summarize</span> Weekly Report</button>
+              </div>
+            </div>
+            <div class="ctr-card-plain mc-health">
+              <div class="mc-gauge">
+                <svg viewBox="0 0 36 36" class="mc-gauge-svg">
+                  <path class="mc-gauge-bg" d="M18 2.5a15.5 15.5 0 1 1 0 31 15.5 15.5 0 0 1 0-31" />
+                  <path id="cc-health-arc" class="mc-gauge-arc" d="M18 2.5a15.5 15.5 0 1 1 0 31 15.5 15.5 0 0 1 0-31" stroke-dasharray="0 100" />
+                </svg>
+                <div class="mc-gauge-label"><span id="cc-health-score">—</span><small>Health</small></div>
+              </div>
+              <div class="mc-health-text">
+                <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">auto_awesome</span> AI Insight</span>
+                <p id="cc-health-text">Generating city health insight…</p>
+              </div>
+            </div>
           </div>
-          <div class="cc-topbar-right">
-            <button id="cc-ai-btn" class="cc-chip cc-chip-ai"><span class="material-symbols-outlined">auto_awesome</span> AI Assistant</button>
-            <div id="cc-weather" class="cc-chip"><span class="material-symbols-outlined">partly_cloudy_day</span><span id="cc-weather-text">—</span></div>
-            <div class="cc-chip"><span class="material-symbols-outlined">location_on</span> Chandigarh</div>
-            <div class="cc-avatar cc-avatar-sm">{(user.name || 'A')[0]}</div>
+
+          <section id="cc-cards" class="mc-cards"></section>
+
+          <div class="mc-grid-2">
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">auto_awesome</span> Top Priority Issues</h2>
+              <button class="ctr-link" data-goto="issues">View all</button></div>
+              <div id="cc-queue-mini" class="mc-list"><div class="ctr-skel"></div></div></div>
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">history</span> Live Activity</h2></div>
+              <div id="cc-activity" class="mc-tl mc-scrolly"></div></div>
           </div>
-        </header>
 
-        <main class="cc-content">
-          {/* ===================== DASHBOARD ===================== */}
-          <section class="cc-view" id="view-dashboard">
-            <section class="cc-hero">
-              <div class="cc-hero-left">
-                <p class="cc-eyebrow">Welcome back</p>
-                <h1>Municipal Commissioner</h1>
-                <p id="cc-hero-sub" class="cc-hero-sub">AI is monitoring civic issues across the city.</p>
-                <div class="cc-hero-actions">
-                  <button id="cc-backlog-btn" class="cc-btn cc-btn-primary"><span class="material-symbols-outlined">bolt</span> Run AI Triage</button>
-                  <button id="cc-report-btn" class="cc-btn cc-btn-ghost"><span class="material-symbols-outlined">summarize</span> Weekly Report</button>
-                </div>
-              </div>
-              <div class="cc-card cc-health">
-                <div class="cc-health-gauge">
-                  <svg viewBox="0 0 36 36" class="cc-gauge-svg">
-                    <path class="cc-gauge-bg" d="M18 2.5a15.5 15.5 0 1 1 0 31 15.5 15.5 0 0 1 0-31" />
-                    <path id="cc-health-arc" class="cc-gauge-arc" d="M18 2.5a15.5 15.5 0 1 1 0 31 15.5 15.5 0 0 1 0-31" stroke-dasharray="0 100" />
-                  </svg>
-                  <div class="cc-gauge-label"><span id="cc-health-score">—</span><small>City Health</small></div>
-                </div>
-                <div class="cc-health-insight">
-                  <div class="cc-tag cc-tag-ai"><span class="material-symbols-outlined">auto_awesome</span> AI Insight</div>
-                  <p id="cc-health-text">Generating city health insight…</p>
-                </div>
-              </div>
-            </section>
+          <div class="mc-grid-2">
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">emergency</span> Today's Emergencies</h2></div>
+              <div id="cc-emergencies" class="mc-alerts"></div></div>
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">warning</span> High-Risk Zones</h2></div>
+              <div id="cc-risk" class="mc-alerts"></div></div>
+          </div>
+        </section>
 
-            <section id="cc-cards" class="cc-cards"></section>
+        {/* ===================== ISSUES ===================== */}
+        <section class="ctr-view hidden" id="cview-issues">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">inbox</span> Issue Management</h1>
+            <div class="ctr-filters" id="cc-issue-filters">
+              <button class="ctr-filter active" data-filter="all">All</button>
+              <button class="ctr-filter" data-filter="open">Open</button>
+              <button class="ctr-filter" data-filter="critical">Critical</button>
+              <button class="ctr-filter" data-filter="resolved">Resolved</button>
+            </div></div>
+          <div class="ctr-card-plain"><div class="ctr-table-wrap">
+            <table class="ctr-table">
+              <thead><tr><th>Issue</th><th>Category</th><th>Sev</th><th>Status</th><th>Dept</th><th></th></tr></thead>
+              <tbody id="cc-issues-table"><tr><td colspan="6"><div class="ctr-skel"></div></td></tr></tbody>
+            </table></div></div>
+        </section>
 
-            <div class="cc-grid-2">
-              <div class="cc-card"><div class="cc-card-head"><h2><span class="material-symbols-outlined">auto_awesome</span> Top Priority Issues</h2>
-                <button class="cc-link" data-goto="queue">View all</button></div>
-                <div id="cc-queue-mini" class="cc-queue cc-scrolly"><div class="cc-skel-list"></div></div></div>
-              <div class="cc-card"><div class="cc-card-head"><h2><span class="material-symbols-outlined">history</span> Real-time Activity</h2></div>
-                <div id="cc-activity" class="cc-timeline cc-scrolly"></div></div>
-            </div>
-          </section>
+        {/* ===================== MAP ===================== */}
+        <section class="ctr-view hidden" id="cview-map">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">map</span> Live Issue Map</h1>
+            <div class="ctr-legend"><span><i style="background:#EF4444"></i>Critical</span><span><i style="background:#F59E0B"></i>High</span><span><i style="background:#FACC15"></i>Medium</span><span><i style="background:#10B981"></i>Resolved</span></div></div>
+          <div class="ctr-card-plain"><div id="cc-map" class="ctr-map"></div></div>
+        </section>
 
-          {/* ===================== LIVE MAP ===================== */}
-          <section class="cc-view hidden" id="view-map">
-            <div class="cc-view-head"><h1><span class="material-symbols-outlined">map</span> Live Issue Map</h1>
-              <div class="cc-legend">
-                <span><i style="background:#EF4444"></i>Critical</span><span><i style="background:#F59E0B"></i>High</span>
-                <span><i style="background:#FACC15"></i>Medium</span><span><i style="background:#10B981"></i>Resolved</span>
-              </div></div>
-            <div class="cc-card"><div id="cc-map" class="cc-map cc-map-tall"></div></div>
-          </section>
+        {/* ===================== CONTRACTORS ===================== */}
+        <section class="ctr-view hidden" id="cview-contractors">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">engineering</span> Contractor RADAR</h1>
+            <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">radar</span> Nearby &amp; ranked by Gemini</span></div>
+          <div id="cc-contractors" class="ctr-grid"><div class="ctr-skel"></div></div>
+        </section>
 
-          {/* ===================== ISSUE MANAGEMENT ===================== */}
-          <section class="cc-view hidden" id="view-issues">
-            <div class="cc-view-head"><h1><span class="material-symbols-outlined">inbox</span> Issue Management</h1>
-              <div class="cc-filters" id="cc-issue-filters">
-                <button class="cc-filter active" data-filter="all">All</button>
-                <button class="cc-filter" data-filter="open">Open</button>
-                <button class="cc-filter" data-filter="critical">Critical</button>
-                <button class="cc-filter" data-filter="resolved">Resolved</button>
-              </div></div>
-            <div class="cc-card">
-              <div class="cc-table-wrap">
-                <table class="cc-table">
-                  <thead><tr><th>Issue</th><th>Category</th><th>Severity</th><th>Status</th><th>Assigned</th><th></th></tr></thead>
-                  <tbody id="cc-issues-table"><tr><td colspan="6"><div class="cc-skel-list"></div></td></tr></tbody>
-                </table>
-              </div>
-            </div>
-          </section>
+        {/* ===================== DEPARTMENTS ===================== */}
+        <section class="ctr-view hidden" id="cview-departments">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">apartment</span> Departments</h1></div>
+          <div id="cc-departments" class="ctr-grid"><div class="ctr-skel"></div></div>
+        </section>
 
-          {/* ===================== PRIORITY QUEUE ===================== */}
-          <section class="cc-view hidden" id="view-queue">
-            <div class="cc-view-head"><h1><span class="material-symbols-outlined">auto_awesome</span> AI Priority Queue</h1>
-              <span class="cc-tag cc-tag-ai"><span class="material-symbols-outlined">smart_toy</span> Ranked by Gemini</span></div>
-            <div class="cc-card"><div id="cc-queue" class="cc-queue"><div class="cc-skel-list"></div></div></div>
-          </section>
+        {/* ===================== ANALYTICS ===================== */}
+        <section class="ctr-view hidden" id="cview-analytics">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">bar_chart</span> Analytics</h1></div>
+          <div class="mc-grid-2">
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">donut_large</span> Issues by Category</h2></div><canvas id="cc-cat-chart" height="240"></canvas></div>
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">stacked_bar_chart</span> Department Performance</h2></div><canvas id="cc-dept-chart" height="240"></canvas></div>
+          </div>
+          <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">trending_up</span> Monthly Trend</h2></div><canvas id="cc-trend-chart" height="200"></canvas></div>
+        </section>
 
-          {/* ===================== CONTRACTORS ===================== */}
-          <section class="cc-view hidden" id="view-contractors">
-            <div class="cc-view-head"><h1><span class="material-symbols-outlined">engineering</span> Smart Contractor Management</h1>
-              <span class="cc-tag cc-tag-ai"><span class="material-symbols-outlined">radar</span> RADAR — nearby contractors</span></div>
-            <div id="cc-contractors" class="cc-contractor-grid"><div class="cc-skel-list"></div></div>
-          </section>
+        {/* ===================== BUDGET ===================== */}
+        <section class="ctr-view hidden" id="cview-budget">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">account_balance</span> Budget &amp; Quotations</h1>
+            <span class="ctr-tag">Simulated figures</span></div>
+          <div class="mc-grid-2">
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">savings</span> Budget Utilisation</h2></div>
+              <div id="cc-budgets" class="mc-budget-list"></div></div>
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">how_to_reg</span> Pending Approvals</h2></div>
+              <div id="cc-bud-approvals" class="mc-list mc-scrolly"></div></div>
+          </div>
+        </section>
 
-          {/* ===================== VOLUNTEERS ===================== */}
-          <section class="cc-view hidden" id="view-volunteers">
-            <div class="cc-view-head"><h1><span class="material-symbols-outlined">volunteer_activism</span> Community Volunteers</h1></div>
-            <div class="cc-card"><div id="cc-volunteers" class="cc-vol-list"></div></div>
-          </section>
+        {/* ===================== AI INSIGHTS ===================== */}
+        <section class="ctr-view hidden" id="cview-insights">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">lightbulb</span> AI Insights</h1>
+            <button id="cc-report-btn2" class="ctr-btn ctr-btn-primary ctr-btn-sm"><span class="material-symbols-outlined">summarize</span> Weekly Report</button></div>
+          <div class="mc-grid-2">
+            <div class="ctr-card-plain mc-predict"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">insights</span> Predictive Forecast</h2><span class="ctr-tag ctr-tag-blue">Gemini</span></div>
+              <p id="cc-predict-text" class="mc-predict-text">Forecasting…</p>
+              <div id="cc-predict-tags" class="mc-predict-tags"></div></div>
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">volunteer_activism</span> Top Volunteers</h2></div>
+              <div id="cc-volunteers" class="mc-list mc-scrolly"></div></div>
+          </div>
+        </section>
 
-          {/* ===================== DEPARTMENTS ===================== */}
-          <section class="cc-view hidden" id="view-departments">
-            <div class="cc-view-head"><h1><span class="material-symbols-outlined">apartment</span> Departments</h1></div>
-            <div id="cc-departments" class="cc-dept-grid"><div class="cc-skel-list"></div></div>
-          </section>
-
-          {/* ===================== ANALYTICS ===================== */}
-          <section class="cc-view hidden" id="view-analytics">
-            <div class="cc-view-head"><h1><span class="material-symbols-outlined">bar_chart</span> Analytics</h1></div>
-            <div class="cc-grid-2">
-              <div class="cc-card"><div class="cc-card-head"><h2><span class="material-symbols-outlined">donut_large</span> Issues by Category</h2></div><canvas id="cc-cat-chart" height="240"></canvas></div>
-              <div class="cc-card"><div class="cc-card-head"><h2><span class="material-symbols-outlined">stacked_bar_chart</span> Department Performance</h2></div><canvas id="cc-dept-chart" height="240"></canvas></div>
-            </div>
-            <div class="cc-card"><div class="cc-card-head"><h2><span class="material-symbols-outlined">trending_up</span> Monthly Trend</h2></div><canvas id="cc-trend-chart" height="200"></canvas></div>
-          </section>
-
-          {/* ===================== AI INSIGHTS ===================== */}
-          <section class="cc-view hidden" id="view-insights">
-            <div class="cc-view-head"><h1><span class="material-symbols-outlined">lightbulb</span> AI Insights</h1>
-              <button id="cc-report-btn2" class="cc-btn cc-btn-primary cc-btn-sm"><span class="material-symbols-outlined">summarize</span> Weekly Report</button></div>
-            <div class="cc-card cc-predict"><div class="cc-card-head"><h2><span class="material-symbols-outlined">insights</span> Predictive Forecast</h2>
-              <span class="cc-tag cc-tag-ai">Gemini</span></div>
-              <p id="cc-predict-text" class="cc-predict-text">Forecasting…</p>
-              <div id="cc-predict-tags" class="cc-predict-tags"></div>
-            </div>
-          </section>
-
-          {/* ===================== BUDGET & QUOTATIONS ===================== */}
-          <section class="cc-view hidden" id="view-budgets">
-            <div class="cc-view-head"><h1><span class="material-symbols-outlined">account_balance</span> Budget &amp; Quotations</h1>
-              <span class="cc-tag">Simulated figures</span></div>
-            <div class="cc-grid-2">
-              <div class="cc-card"><div class="cc-card-head"><h2><span class="material-symbols-outlined">savings</span> Budget Utilisation</h2></div>
-                <div id="cc-budgets" class="cc-budget-list"></div></div>
-              <div class="cc-card"><div class="cc-card-head"><h2><span class="material-symbols-outlined">how_to_reg</span> Pending Quotation Approvals</h2></div>
-                <div id="cc-bud-approvals" class="cc-approvals-list cc-scrolly"></div></div>
-            </div>
-          </section>
-
-          <p class="cc-footnote">Powered by <b>Gemini 2.5 Flash</b> · Maps © OpenStreetMap · Budget &amp; some contractor figures are simulated demo data.</p>
-        </main>
-      </div>
-
-      {/* ---------- RIGHT ALERTS RAIL ---------- */}
-      <aside class="cc-rail">
-        <h3><span class="material-symbols-outlined">notifications_active</span> Alerts</h3>
-        <div class="cc-rail-block"><h4>Today's Emergencies</h4><div id="cc-emergencies" class="cc-rail-list"></div></div>
-        <div class="cc-rail-block"><h4>Weather</h4><div id="cc-rail-weather" class="cc-rail-list"></div></div>
-        <div class="cc-rail-block"><h4>High-Risk Zones</h4><div id="cc-risk" class="cc-rail-list"></div></div>
-        <div class="cc-rail-block"><h4>Pending Approvals</h4><div id="cc-approvals" class="cc-rail-list"></div></div>
-      </aside>
+        <p class="ctr-footnote">Powered by <b>Gemini</b> · Maps © OpenStreetMap · Budget &amp; some contractor figures are simulated demo data.</p>
+      </main>
 
       {/* ---------- ASSIGN / QUOTATION MODAL ---------- */}
-      <div id="cc-modal" class="cc-modal hidden">
-        <div class="cc-modal-card">
-          <div class="cc-modal-head"><h3 id="cc-modal-title">Assign Job</h3><button id="cc-modal-close" class="cc-icon-btn"><span class="material-symbols-outlined">close</span></button></div>
-          <div id="cc-modal-body" class="cc-modal-body"></div>
+      <div id="cc-modal" class="ctr-modal hidden">
+        <div class="ctr-modal-card">
+          <div class="ctr-modal-head"><h3 id="cc-modal-title">Assign Job</h3><button id="cc-modal-close" class="ctr-icon-btn"><span class="material-symbols-outlined">close</span></button></div>
+          <div id="cc-modal-body" class="ctr-modal-body"></div>
         </div>
       </div>
 
       {/* ---------- WEEKLY REPORT MODAL ---------- */}
-      <div id="cc-report-modal" class="cc-modal hidden">
-        <div class="cc-modal-card">
-          <div class="cc-modal-head"><h3><span class="material-symbols-outlined">summarize</span> AI Weekly Report</h3><button id="cc-report-close" class="cc-icon-btn"><span class="material-symbols-outlined">close</span></button></div>
-          <div id="cc-report-body" class="cc-modal-body"><div class="cc-skel-list"></div></div>
+      <div id="cc-report-modal" class="ctr-modal hidden">
+        <div class="ctr-modal-card">
+          <div class="ctr-modal-head"><h3><span class="material-symbols-outlined">summarize</span> AI Weekly Report</h3><button id="cc-report-close" class="ctr-icon-btn"><span class="material-symbols-outlined">close</span></button></div>
+          <div id="cc-report-body" class="ctr-modal-body"><div class="ctr-skel"></div></div>
         </div>
       </div>
 
       {/* ---------- MANAGE ISSUE MODAL ---------- */}
-      <div id="cc-manage-modal" class="cc-modal hidden">
-        <div class="cc-modal-card">
-          <div class="cc-modal-head"><h3 id="cc-manage-title">Manage Issue</h3><button id="cc-manage-close" class="cc-icon-btn"><span class="material-symbols-outlined">close</span></button></div>
-          <div class="cc-modal-body">
-            <p id="cc-manage-sub" class="cc-manage-sub"></p>
-            <label class="cc-field-label">Assign to department authority</label>
-            <select id="cc-manage-authority" class="cc-input"><option value="">— Select authority —</option></select>
-            <label class="cc-field-label">Or set status directly</label>
-            <select id="cc-manage-status" class="cc-input">
+      <div id="cc-manage-modal" class="ctr-modal hidden">
+        <div class="ctr-modal-card ctr-modal-sm">
+          <div class="ctr-modal-head"><h3 id="cc-manage-title">Manage Issue</h3><button id="cc-manage-close" class="ctr-icon-btn"><span class="material-symbols-outlined">close</span></button></div>
+          <div class="ctr-modal-body">
+            <p id="cc-manage-sub" class="ctr-proof-title"></p>
+            <label class="ctr-field-label">Assign to department authority</label>
+            <select id="cc-manage-authority" class="ctr-input"><option value="">— Select authority —</option></select>
+            <label class="ctr-field-label">Or set status directly</label>
+            <select id="cc-manage-status" class="ctr-input">
               <option>Reported</option><option>Verified</option><option>Assigned</option><option>In Progress</option><option>Resolved</option>
             </select>
-            <label class="cc-field-label">Official note (optional)</label>
-            <textarea id="cc-manage-note" rows={2} class="cc-input" placeholder="Message shown to citizens…"></textarea>
-            <div class="cc-modal-actions">
-              <button id="cc-manage-cancel" class="cc-btn cc-btn-ghost-line">Cancel</button>
-              <button id="cc-manage-save" class="cc-btn cc-btn-primary">Save changes</button>
+            <label class="ctr-field-label">Official note (optional)</label>
+            <textarea id="cc-manage-note" rows={2} class="ctr-input" placeholder="Message shown to citizens…"></textarea>
+            <div class="ctr-modal-actions">
+              <button id="cc-manage-cancel" class="ctr-btn ctr-btn-line">Cancel</button>
+              <button id="cc-manage-save" class="ctr-btn ctr-btn-primary">Save changes</button>
             </div>
           </div>
         </div>
