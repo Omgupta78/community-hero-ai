@@ -1314,13 +1314,17 @@ app.get('/command', async (c) => {
         {/* ===================== CONTRACTORS ===================== */}
         <section class="ctr-view hidden" id="cview-contractors">
           <div class="ctr-view-head"><h1><span class="material-symbols-outlined">engineering</span> Contractor RADAR</h1>
-            <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">radar</span> Nearby &amp; ranked by Gemini</span></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">radar</span> Nearby &amp; ranked by Gemini</span>
+              <button id="cc-add-contractor" class="ctr-btn ctr-btn-primary ctr-btn-sm"><span class="material-symbols-outlined">add</span> Add contractor</button>
+            </div></div>
           <div id="cc-contractors" class="ctr-grid"><div class="ctr-skel"></div></div>
         </section>
 
         {/* ===================== DEPARTMENTS ===================== */}
         <section class="ctr-view hidden" id="cview-departments">
-          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">apartment</span> Departments</h1></div>
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">apartment</span> Departments</h1>
+            <button id="cc-add-dept" class="ctr-btn ctr-btn-primary ctr-btn-sm"><span class="material-symbols-outlined">add</span> Add department</button></div>
           <div id="cc-departments" class="ctr-grid"><div class="ctr-skel"></div></div>
         </section>
 

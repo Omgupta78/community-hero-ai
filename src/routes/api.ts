@@ -995,6 +995,54 @@ api.get('/contractors/nearby', requireRole('admin'), async (c) => {
   })
 })
 
+// Add a contractor (admin): creates the user account (role=contractor) + profile.
+api.post('/contractors', requireRole('admin'), async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  const name = (b.name || '').toString().trim()
+  const email = (b.email || '').toString().trim().toLowerCase()
+  if (!name || !email) return c.json({ error: 'Name and email are required' }, 400)
+
+  const existing = await c.env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(email).first<any>()
+  if (existing) return c.json({ error: 'A user with this email already exists' }, 409)
+
+  const pwd = b.password && String(b.password).length >= 6 ? String(b.password) : 'Build@123'
+  const hash = await hashPassword(pwd)
+  const res = await c.env.DB.prepare(
+    `INSERT INTO users (name, email, role, password_hash) VALUES (?, ?, 'contractor', ?)`
+  ).bind(name, email, hash).run()
+  const userId = res.meta.last_row_id as number
+
+  const skills = Array.isArray(b.skills) ? b.skills.join(',') : (b.skills || '').toString().trim()
+  const lat = b.lat != null && b.lat !== '' ? Number(b.lat) : 30.7415
+  const lng = b.lng != null && b.lng !== '' ? Number(b.lng) : 76.7822
+  await c.env.DB.prepare(
+    `INSERT INTO contractors (user_id, company, skills, base_address, lat, lng, availability, rating)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 4.5)`
+  ).bind(
+    userId,
+    (b.company || '').toString().trim() || null,
+    skills || null,
+    (b.base_address || '').toString().trim() || null,
+    lat, lng,
+    (b.availability || 'available').toString()
+  ).run()
+
+  return c.json({ ok: true, user_id: userId })
+})
+
+// Remove a contractor (admin): deletes the profile, and the user account too if
+// they have no historical job assignments (keeps the audit trail when they do).
+api.delete('/contractors/:id', requireRole('admin'), async (c) => {
+  const userId = Number(c.req.param('id'))
+  if (!userId) return c.json({ error: 'Invalid id' }, 400)
+  await c.env.DB.prepare(`DELETE FROM contractors WHERE user_id = ?`).bind(userId).run()
+  const jobs = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM job_assignments WHERE contractor_id = ?`).bind(userId).first<{ n: number }>()
+  if (!jobs || !jobs.n) {
+    await c.env.DB.prepare(`DELETE FROM users WHERE id = ? AND role = 'contractor'`).bind(userId).run()
+  }
+  return c.json({ ok: true })
+})
+
 // Quotations for an issue, with AI value scores + best pick.
 api.get('/issues/:id/quotations', requireRole('admin'), async (c) => {
   const id = Number(c.req.param('id'))
@@ -1333,7 +1381,41 @@ api.get('/departments', requireRole('admin'), async (c) => {
       utilization: allocated ? Math.round((spent / allocated) * 100) : 0,
     }
   })
+  // Include departments that exist only as a budget line (newly added, no issues yet).
+  const present = new Set(depts.map((d) => d.department))
+  for (const [name, b] of bmap) {
+    if (name && !present.has(name)) {
+      const allocated = (b as any).allocated || 0
+      const spent = (b as any).spent || 0
+      depts.push({
+        department: name, total: 0, resolved: 0, open: 0,
+        allocated, spent, committed: (b as any).committed || 0,
+        utilization: allocated ? Math.round((spent / allocated) * 100) : 0,
+      })
+    }
+  }
   return c.json({ departments: depts })
+})
+
+// Add a department (admin) — represented by a budget line so it appears even with no issues yet.
+api.post('/departments', requireRole('admin'), async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  const department = (b.department || '').toString().trim()
+  if (!department) return c.json({ error: 'Department name is required' }, 400)
+  const allocated = Math.max(0, Math.round(Number(b.allocated) || 0))
+  await c.env.DB.prepare(
+    `INSERT INTO budgets (department, fiscal_year, allocated, spent, committed)
+     VALUES (?, '2024-25', ?, 0, 0)
+     ON CONFLICT(department, fiscal_year) DO UPDATE SET allocated = excluded.allocated`
+  ).bind(department, allocated).run()
+  return c.json({ ok: true, department })
+})
+
+// Remove a department (admin) — deletes its budget line(s). Existing issues keep their text label.
+api.delete('/departments/:name', requireRole('admin'), async (c) => {
+  const name = decodeURIComponent(c.req.param('name'))
+  await c.env.DB.prepare(`DELETE FROM budgets WHERE department = ?`).bind(name).run()
+  return c.json({ ok: true })
 })
 
 // Budgets per department.

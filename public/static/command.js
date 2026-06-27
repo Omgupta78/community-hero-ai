@@ -188,6 +188,7 @@
       const { data } = await api.get('/contractors/nearby?lat=30.7415&lng=76.7822&radius_km=30')
       el.innerHTML = (data.contractors || []).map((c, idx) => `
         <div class="ctr-card mc-contractor ${idx === 0 ? 'top' : ''}">
+          <button class="mc-remove" data-remove-contractor="${c.user_id}" title="Remove contractor"><span class="material-symbols-outlined">delete</span></button>
           ${idx === 0 ? '<div class="ctr-card-flag" style="background:linear-gradient(90deg,#1d4ed8,#3b82f6)"><span class="material-symbols-outlined">auto_awesome</span> Gemini pick</div>' : ''}
           <div class="ctr-card-body">
             <div class="ctr-avatar">${esc((c.name || '?')[0])}</div>
@@ -200,8 +201,37 @@
             <span class="mc-avail ${c.availability}">${c.availability}</span></div>
           <div class="mc-c-skills">${(c.skills || []).map((s) => `<i>${esc(s)}</i>`).join('')}</div>
           ${idx === 0 && c.ai_recommendation ? `<div class="mc-c-ai"><span class="material-symbols-outlined">auto_awesome</span>${esc(c.ai_recommendation)}</div>` : ''}
-        </div>`).join('') || '<p class="ctr-empty">No contractors on RADAR.</p>'
+        </div>`).join('') || '<p class="ctr-empty">No contractors yet. Use “Add contractor” to onboard one.</p>'
+      el.querySelectorAll('[data-remove-contractor]').forEach((b) => b.addEventListener('click', async (e) => {
+        e.stopPropagation()
+        if (!window.confirm('Remove this contractor from the roster?')) return
+        try { await api.delete('/contractors/' + b.dataset.removeContractor); window.CH.toast('Contractor removed'); loadContractors() }
+        catch (err) { window.CH.toast('Could not remove', false) }
+      }))
     } catch (e) {}
+  }
+
+  function openContractorForm() {
+    const body = $('cc-modal-body')
+    $('cc-modal-title').textContent = 'Add contractor'
+    body.innerHTML = `
+      <label class="ctr-field-label">Name</label><input id="nc-name" class="ctr-input" placeholder="e.g. RoadCare Crew"/>
+      <label class="ctr-field-label">Email</label><input id="nc-email" class="ctr-input" type="email" placeholder="crew@city.gov"/>
+      <label class="ctr-field-label">Company</label><input id="nc-company" class="ctr-input" placeholder="RoadCare Infra"/>
+      <label class="ctr-field-label">Skills (comma separated)</label><input id="nc-skills" class="ctr-input" placeholder="Pothole, Water Leak"/>
+      <label class="ctr-field-label">Base address</label><input id="nc-addr" class="ctr-input" placeholder="Sector 17, Chandigarh"/>
+      <div class="ctr-modal-actions"><button id="nc-cancel" class="ctr-btn ctr-btn-line">Cancel</button><button id="nc-save" class="ctr-btn ctr-btn-primary">Add contractor</button></div>`
+    $('cc-modal').classList.remove('hidden')
+    $('nc-cancel').addEventListener('click', () => $('cc-modal').classList.add('hidden'))
+    $('nc-save').addEventListener('click', async () => {
+      const name = $('nc-name').value.trim(), email = $('nc-email').value.trim()
+      if (!name || !email) return window.CH.toast('Name and email are required', false)
+      const btn = $('nc-save'); btn.disabled = true
+      try {
+        await api.post('/contractors', { name, email, company: $('nc-company').value.trim(), skills: $('nc-skills').value.trim(), base_address: $('nc-addr').value.trim() })
+        window.CH.toast('Contractor added'); $('cc-modal').classList.add('hidden'); loadContractors()
+      } catch (e) { window.CH.toast((e.response && e.response.data && e.response.data.error) || 'Could not add contractor', false); btn.disabled = false }
+    })
   }
 
   // ---------- departments ----------
@@ -212,14 +242,41 @@
       el.innerHTML = (data.departments || []).map((d) => {
         const rate = d.total ? Math.round((d.resolved / d.total) * 100) : 0
         return `<div class="ctr-card mc-dept">
+          <button class="mc-remove" data-remove-dept="${esc(d.department)}" title="Remove department"><span class="material-symbols-outlined">delete</span></button>
           <div class="mc-dept-top"><span class="mc-dept-ic material-symbols-outlined">apartment</span>
             <div><b>${esc(d.department)}</b><small>${d.total} issues · ${d.open} open</small></div></div>
           <div class="mc-bar-row"><span>Resolution</span><b>${rate}%</b></div><div class="mc-bar"><i style="width:${rate}%;background:#10B981"></i></div>
           <div class="mc-bar-row"><span>Budget used</span><b>${d.utilization}%</b></div><div class="mc-bar"><i style="width:${Math.min(100, d.utilization)}%;background:${d.utilization > 85 ? '#EF4444' : '#2563EB'}"></i></div>
           <div class="mc-dept-meta">${inr(d.spent)} of ${inr(d.allocated)}</div>
         </div>`
-      }).join('') || '<p class="ctr-empty">No department data.</p>'
+      }).join('') || '<p class="ctr-empty">No departments yet. Use “Add department” to create one.</p>'
+      el.querySelectorAll('[data-remove-dept]').forEach((b) => b.addEventListener('click', async (e) => {
+        e.stopPropagation()
+        if (!window.confirm('Remove this department?')) return
+        try { await api.delete('/departments/' + encodeURIComponent(b.dataset.removeDept)); window.CH.toast('Department removed'); loadDepartments() }
+        catch (err) { window.CH.toast('Could not remove', false) }
+      }))
     } catch (e) {}
+  }
+
+  function openDeptForm() {
+    const body = $('cc-modal-body')
+    $('cc-modal-title').textContent = 'Add department'
+    body.innerHTML = `
+      <label class="ctr-field-label">Department name</label><input id="nd-name" class="ctr-input" placeholder="e.g. Water Works"/>
+      <label class="ctr-field-label">Annual budget (₹)</label><input id="nd-budget" class="ctr-input" type="number" min="0" placeholder="5000000"/>
+      <div class="ctr-modal-actions"><button id="nd-cancel" class="ctr-btn ctr-btn-line">Cancel</button><button id="nd-save" class="ctr-btn ctr-btn-primary">Add department</button></div>`
+    $('cc-modal').classList.remove('hidden')
+    $('nd-cancel').addEventListener('click', () => $('cc-modal').classList.add('hidden'))
+    $('nd-save').addEventListener('click', async () => {
+      const department = $('nd-name').value.trim()
+      if (!department) return window.CH.toast('Department name is required', false)
+      const btn = $('nd-save'); btn.disabled = true
+      try {
+        await api.post('/departments', { department, allocated: Number($('nd-budget').value) || 0 })
+        window.CH.toast('Department added'); $('cc-modal').classList.add('hidden'); loadDepartments()
+      } catch (e) { window.CH.toast((e.response && e.response.data && e.response.data.error) || 'Could not add department', false); btn.disabled = false }
+    })
   }
 
   // ---------- analytics ----------
@@ -335,6 +392,8 @@
     $('cc-manage-save') && $('cc-manage-save').addEventListener('click', saveManage)
     ;['cc-modal', 'cc-report-modal', 'cc-manage-modal'].forEach((id) => { const m = $(id); if (m) m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden') }) })
     const ai = $('cc-ai-btn'); if (ai) ai.addEventListener('click', () => { const fab = document.querySelector('#ch-chat-fab, #chat-fab, .chat-fab'); if (fab) fab.click() })
+    const addC = $('cc-add-contractor'); if (addC) addC.addEventListener('click', openContractorForm)
+    const addD = $('cc-add-dept'); if (addD) addD.addEventListener('click', openDeptForm)
   }
 
   document.addEventListener('DOMContentLoaded', () => {

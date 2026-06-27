@@ -1052,3 +1052,15 @@ main button[class*="rounded-xl"]:hover {
   transition: background 0.15s ease;
 }
 .tl-menu-item:hover { background: #F0EDDF; }
+
+/* ===================== Command Center — add/remove roster controls ===================== */
+.mc-contractor, .mc-dept { position: relative; }
+.mc-remove {
+  position: absolute; top: 10px; right: 10px; z-index: 5;
+  width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; cursor: pointer;
+  color: #9a968a; transition: all 0.15s ease;
+}
+.mc-remove:hover { background: rgba(192, 57, 43, 0.1); color: #C0392B; }
+.mc-remove .material-symbols-outlined { font-size: 18px; }
