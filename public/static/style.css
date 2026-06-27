@@ -1007,3 +1007,37 @@ main button[class*="rounded-xl"]:hover {
 .voice-on { background: #1D9E75 !important; color: #fff !important; border-color: #1D9E75 !important; }
 .voice-on .material-symbols-outlined { color: #fff !important; animation: tl-mic 1s ease-in-out infinite; }
 @keyframes tl-mic { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+
+/* ===================== TopBar — centered nav + avatar dropdown ===================== */
+.tl-nav-link {
+  position: relative;
+  color: #6B7280;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  padding-bottom: 2px;
+  transition: all 0.2s ease;
+}
+.tl-nav-link:hover { color: #1D9E75; }
+.tl-nav-link.active { color: #1D9E75; font-weight: 600; }
+.tl-nav-link.active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #1D9E75;
+}
+.tl-menu-item {
+  display: block;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1A1A1A;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.tl-menu-item:hover { background: #F0EDDF; }

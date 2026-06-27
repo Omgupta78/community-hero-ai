@@ -93,25 +93,54 @@ window.CH = (function () {
     }
   })
 
-  // Reflect the Firebase citizen auth state in the TopBar chip.
+  // Reflect the Firebase citizen auth state in the TopBar (avatar dropdown vs. login buttons).
   function updateCitizenChip(user) {
     const chip = document.getElementById('citizen-auth-chip')
-    if (!chip) return
+    const out = document.getElementById('citizen-auth-out')
+    if (!chip && !out) return
     if (user) {
-      chip.classList.remove('hidden')
-      chip.classList.add('flex')
+      if (chip) { chip.classList.remove('hidden'); chip.classList.add('block') }
+      if (out) out.classList.add('hidden')
+      const display = user.displayName || (user.email ? user.email.split('@')[0] : 'You')
+      const first = display.split(/[\s@.]+/)[0] || display
       const nameEl = document.getElementById('citizen-name')
-      if (nameEl) nameEl.textContent = user.displayName || (user.email ? user.email.split('@')[0] : 'You')
+      if (nameEl) nameEl.textContent = first
       const av = document.getElementById('citizen-avatar')
-      if (av && user.photoURL) {
-        av.innerHTML = `<img src="${user.photoURL}" class="w-full h-full object-cover" alt="" referrerpolicy="no-referrer" />`
+      if (av) {
+        if (user.photoURL) av.innerHTML = `<img src="${user.photoURL}" class="w-full h-full object-cover" alt="" referrerpolicy="no-referrer" />`
+        else av.textContent = (first[0] || 'U').toUpperCase()
       }
     } else {
-      chip.classList.add('hidden')
-      chip.classList.remove('flex')
+      if (chip) { chip.classList.add('hidden'); chip.classList.remove('block') }
+      if (out) out.classList.remove('hidden')
     }
   }
   document.addEventListener('ch-auth-changed', (e) => updateCitizenChip(e.detail && e.detail.user))
+
+  // TopBar avatar dropdown + active nav link highlight.
+  document.addEventListener('DOMContentLoaded', () => {
+    // Active nav link (Home · Map · Leaderboard)
+    const path = window.location.pathname
+    document.querySelectorAll('.tl-nav-link[data-path]').forEach((a) => {
+      if (a.getAttribute('data-path') === path) a.classList.add('active')
+    })
+    // Avatar dropdown toggle
+    const menuBtn = document.getElementById('citizen-menu-btn')
+    const menu = document.getElementById('citizen-menu')
+    if (menuBtn && menu) {
+      menuBtn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('hidden') })
+      document.addEventListener('click', () => menu.classList.add('hidden'))
+      menu.addEventListener('click', (e) => e.stopPropagation())
+    }
+    // Log Out from the dropdown (Firebase citizen sign-out)
+    const navLogout = document.getElementById('nav-logout')
+    if (navLogout) {
+      navLogout.addEventListener('click', async () => {
+        try { if (window.CHAuth && window.CHAuth.signOut) await window.CHAuth.signOut() } catch (e) {}
+        window.location.href = '/home'
+      })
+    }
+  })
 
   // Scroll-reveal: gently animate page sections into view (respects reduced-motion).
   function initReveal() {

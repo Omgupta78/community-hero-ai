@@ -3,8 +3,8 @@
 export const TopBar = ({ title, admin, authority }: { title?: string; admin?: boolean; authority?: boolean }) => {
   const staff = admin || authority
   return (
-    <header class="fixed top-0 left-0 right-0 z-[1000] bg-surface-lowest/90 backdrop-blur border-b border-outline-variant">
-      <div class="max-w-5xl mx-auto h-[64px] flex items-center gap-3 px-container-margin">
+    <header class="fixed top-0 left-0 right-0 z-[1000] bg-surface-lowest/90 backdrop-blur" style="border-bottom:1px solid rgba(0,0,0,0.06)">
+      <div class="relative h-[64px] flex items-center gap-3 px-4">
         <a href="/" class="flex items-center gap-2 text-primary shrink-0">
           <img src="/static/logo.svg" alt="TrustLens AI" class="w-7 h-7" />
           {!title && <span class="font-bold text-[18px] text-on-surface hidden sm:block">TrustLens AI</span>}
@@ -14,7 +14,17 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
         ) : (
           <span class="font-bold text-[18px] text-on-surface sm:hidden">TrustLens AI</span>
         )}
-        <div class="ml-auto flex items-center gap-1">
+
+        {/* Centered nav (citizen portal, desktop) */}
+        {!staff && (
+          <nav class="hidden md:flex items-center gap-7 absolute left-1/2 -translate-x-1/2">
+            <a href="/home" data-path="/home" class="tl-nav-link">Home</a>
+            <a href="/map" data-path="/map" class="tl-nav-link">Map</a>
+            <a href="/leaderboard" data-path="/leaderboard" class="tl-nav-link">Leaderboard</a>
+          </nav>
+        )}
+
+        <div class="ml-auto flex items-center gap-2">
           {staff ? (
             <>
               <a href="/" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
@@ -29,31 +39,51 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
                 <span class="material-symbols-outlined text-[18px]">logout</span>
                 <span class="hidden sm:inline">Logout</span>
               </button>
+              <span id="live-dot" class="flex items-center gap-1 text-[10px] font-bold uppercase text-secondary px-2">
+                <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span> Live
+              </span>
             </>
           ) : (
             <>
-              {/* Notifications bell — citizen status updates */}
-              <button id="notif-btn" aria-label="Notifications" class="relative w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant">
+              {/* Notifications bell */}
+              <button id="notif-btn" aria-label="Notifications" class="relative w-9 h-9 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-all">
                 <span class="material-symbols-outlined text-[22px]">notifications</span>
                 <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center">0</span>
               </button>
-              {/* Citizen auth chip — updated client-side by Firebase auth state */}
-              <a href="/profile" id="citizen-auth-chip" class="hidden items-center gap-1 px-2 py-1 rounded-full hover:bg-surface-container">
-                <span id="citizen-avatar" class="w-7 h-7 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center overflow-hidden">
-                  <span class="material-symbols-outlined text-[18px]">person</span>
-                </span>
-                <span id="citizen-name" class="text-xs font-bold text-on-surface hidden sm:inline max-w-[100px] truncate"></span>
-              </a>
-              {/* Single, clear way to reach the other portals */}
+              <span class="w-px h-5 bg-black/10 hidden sm:block"></span>
+              {/* Switch Role — unchanged style */}
               <a href="/" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1" title="Switch role">
                 <span class="material-symbols-outlined text-[18px]">swap_horiz</span>
                 <span class="hidden sm:inline">Switch Role</span>
               </a>
+              <span class="w-px h-5 bg-black/10 hidden sm:block"></span>
+              {/* LIVE badge — unchanged style */}
+              <span id="live-dot" class="flex items-center gap-1 text-[10px] font-bold uppercase text-secondary px-2">
+                <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span> Live
+              </span>
+              {/* Logged-IN: avatar + name dropdown */}
+              <div id="citizen-auth-chip" class="hidden relative">
+                <button id="citizen-menu-btn" class="flex items-center gap-1.5 rounded-full pl-0.5 pr-1 py-0.5 hover:bg-surface-container transition-all">
+                  <span id="citizen-avatar" class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center overflow-hidden font-bold text-sm">O</span>
+                  <span id="citizen-name" class="text-sm font-semibold text-on-surface hidden sm:inline max-w-[90px] truncate"></span>
+                  <span class="material-symbols-outlined text-[18px] text-on-surface-variant">arrow_drop_down</span>
+                </button>
+                <div id="citizen-menu" class="hidden absolute right-0 top-[115%] w-44 bg-surface-lowest border border-outline-variant rounded-xl py-1 z-50" style="box-shadow:0 12px 28px rgba(0,0,0,0.12)">
+                  <a href="/profile" class="tl-menu-item">My Profile</a>
+                  <a href="/my-reports" class="tl-menu-item">My Reports</a>
+                  <a href="/profile" class="tl-menu-item">Settings</a>
+                  <button id="nav-logout" type="button" class="tl-menu-item w-full text-left text-error">Log Out</button>
+                </div>
+              </div>
+              {/* Logged-OUT: auth buttons */}
+              <div id="citizen-auth-out" class="flex items-center gap-2">
+                <a href="/profile" class="text-sm font-bold text-primary border border-primary rounded-full px-4 py-1.5 hover:bg-primary-fixed transition-all">Log in</a>
+                <a href="/profile" class="text-sm font-bold bg-primary text-on-primary rounded-full px-4 py-1.5 shadow-sm hover:bg-primary-container hover:text-on-primary-container transition-all flex items-center gap-1">
+                  Get Started <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </a>
+              </div>
             </>
           )}
-          <span id="live-dot" class="flex items-center gap-1 text-[10px] font-bold uppercase text-secondary px-2">
-            <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span> Live
-          </span>
         </div>
       </div>
     </header>
