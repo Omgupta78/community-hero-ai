@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { analyzeIssue, generateInsight, generateResolutionPlan, predictTrends, generateCityHealthInsight, verifyFix, computePriority, recommendContractorReason, quotationReason, generateWeeklyReport, geminiPing } from '../lib/gemini'
+import { analyzeIssue, generateInsight, generateResolutionPlan, predictTrends, generateCityHealthInsight, verifyFix, computePriority, recommendContractorReason, quotationReason, generateWeeklyReport, geminiPing, GEMINI_MODELS } from '../lib/gemini'
 import { runTriageAgent } from '../lib/agent'
 import { rankContractors, scoreQuotations, parseSkills, type ContractorRow, type Quote } from '../lib/assignment'
 import { aiCache, budgetedKey } from '../lib/cache'
@@ -779,7 +779,7 @@ api.get('/ai-health', async (c) => {
   return c.json({
     ...ping,
     mode: ping.ok ? 'gemini' : 'heuristic-fallback',
-    model_chain: ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'],
+    model_chain: GEMINI_MODELS,
     checked_at: new Date().toISOString(),
   })
 })

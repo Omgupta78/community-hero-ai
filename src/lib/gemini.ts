@@ -14,6 +14,7 @@ const geminiHeaders = (key: string) => ({ 'Content-Type': 'application/json', 'x
 // all are exhausted every gemini.ts function falls back to its heuristic.
 const GEMINI_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest']
 const GEMINI_MODEL = GEMINI_MODELS[0]
+export { GEMINI_MODELS }
 
 async function geminiFetch(apiKey: string, init: { body: string }): Promise<Response> {
   let last: Response | null = null
@@ -36,8 +37,8 @@ async function geminiFetch(apiKey: string, init: { body: string }): Promise<Resp
 // so a silent fallback-to-heuristic situation is caught immediately, not at demo time.
 export async function geminiPing(
   apiKey: string | undefined
-): Promise<{ key_present: boolean; ok: boolean; model: string | null; status: number | null; detail?: string }> {
-  if (!apiKey) return { key_present: false, ok: false, model: null, status: null, detail: 'GEMINI_API_KEY not set' }
+): Promise<{ key_present: boolean; ok: boolean; model: string | null; status: number | null; detail?: string; source: 'gemini' | 'heuristic' }> {
+  if (!apiKey) return { key_present: false, ok: false, model: null, status: null, detail: 'GEMINI_API_KEY not set', source: 'heuristic' }
   let lastStatus: number | null = null
   let detail = ''
   for (const model of GEMINI_MODELS) {
@@ -51,14 +52,14 @@ export async function geminiPing(
         }
       )
       lastStatus = res.status
-      if (res.ok) return { key_present: true, ok: true, model, status: res.status }
+      if (res.ok) return { key_present: true, ok: true, model, status: res.status, source: 'gemini' }
       try { const j: any = await res.json(); detail = j?.error?.status || '' } catch {}
     } catch (e) {
       lastStatus = -1
       detail = (e as Error).message
     }
   }
-  return { key_present: true, ok: false, model: null, status: lastStatus, detail }
+  return { key_present: true, ok: false, model: null, status: lastStatus, detail, source: 'heuristic' }
 }
 
 const CATEGORIES = ['Pothole', 'Illegal Dumping', 'Streetlight', 'Water Leak', 'Graffiti', 'Other']
