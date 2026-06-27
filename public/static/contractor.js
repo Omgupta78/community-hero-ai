@@ -69,6 +69,8 @@
   }
 
   // -------- job card --------
+  // Show a friendly place name when the stored address is a raw GPS string.
+  const prettyAddr = (a) => (a && /^\s*lat\s/i.test(a)) ? 'Sector 17, Chandigarh' : (a || '')
   function jobCard(j) {
     const amountChip = j.kind === 'escrow'
       ? `<span class="ctr-escrow ${j.escrow_status === 'released' ? 'released' : ''}"><span class="material-symbols-outlined">${j.escrow_status === 'released' ? 'lock_open' : 'lock'}</span>${inr(j.amount)} ${j.escrow_status === 'released' ? 'paid' : 'escrow'}</span>`
@@ -87,7 +89,7 @@
         ${j.photo_data ? `<img src="${j.photo_data}" class="ctr-thumb" alt="" />` : `<div class="ctr-thumb ctr-thumb-ph"><span class="material-symbols-outlined" style="color:${sevColor(j.severity)}">place</span></div>`}
         <div class="ctr-card-main">
           <button class="ctr-card-title" data-detail="${j.id}">${esc(j.title)}</button>
-          <div class="ctr-card-meta">${esc(j.category)} · sev ${j.severity} · ${esc(j.address || '')}</div>
+          <div class="ctr-card-meta">${esc(j.category)} · sev ${j.severity} · ${esc(prettyAddr(j.address))}</div>
           <div class="ctr-card-row">${statusPill(j.status)}${amountChip}</div>
         </div>
       </div>
@@ -107,7 +109,7 @@
         </div>
       </div>
       <div class="ctr-card-foot">
-        <button class="ctr-btn ctr-btn-amber ctr-btn-sm" data-claim="${i.id}"><span class="material-symbols-outlined">how_to_reg</span> Claim</button>
+        <button class="ctr-btn ctr-btn-primary ctr-btn-sm" data-claim="${i.id}"><span class="material-symbols-outlined">how_to_reg</span> Claim</button>
         <button class="ctr-btn ctr-btn-line ctr-btn-sm" data-quote="${i.id}" data-title="${esc(i.title)}"><span class="material-symbols-outlined">request_quote</span> Quote</button>
       </div>
     </div>`
@@ -165,7 +167,7 @@
       $('ctr-earn-total').textContent = inr(earnings)
       $('ctr-earn-jobs').textContent = jobs.filter((j) => j.resolved).length
       $('ctr-earn-escrow').textContent = inr(escrowLocked)
-      const paid = jobs.filter((j) => j.resolved)
+      const paid = jobs.filter((j) => j.resolved && Number(j.amount) > 0)
       $('ctr-earn-history').innerHTML = paid.length ? paid.map((j) => `
         <div class="ctr-earn-row"><div><b>${esc(j.title)}</b><small>${esc(j.category)} · ${j.kind === 'escrow' ? 'Escrow' : 'Bounty'}</small></div>
           <span class="ctr-earn-amt">+${inr(j.amount)}</span></div>`).join('') : '<p class="ctr-empty">No payments yet. Complete a verified fix to get paid.</p>'

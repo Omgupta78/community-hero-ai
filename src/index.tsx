@@ -1036,10 +1036,6 @@ app.get('/contractor', async (c) => {
       </header>
 
       <main class="ctr-main">
-        {/* Role identity ribbon (inline-styled so it shows even with cached CSS) */}
-        <div style="background:#ecfdf5;color:#0f766e;padding:7px 18px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #e2e8f0;border-radius:0 0 12px 12px;margin-bottom:8px;">
-          <span class="material-symbols-outlined" style="font-size:16px;">construction</span>Contractor · Field Ops · Responder view
-        </div>
         {/* ===================== DASHBOARD ===================== */}
         <section class="ctr-view" id="cview-dashboard">
           <div class="ctr-hero">
