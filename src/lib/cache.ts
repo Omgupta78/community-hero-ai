@@ -28,17 +28,23 @@ export async function aiCache<T>(
   // 2. Produce a fresh value (this is where the Gemini call happens).
   const fresh = await producer()
 
-  // 3. Best-effort store (ignore failures, e.g. table missing).
-  try {
-    await db
-      .prepare(
-        `INSERT INTO ai_cache (cache_key, payload, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)
-         ON CONFLICT(cache_key) DO UPDATE SET payload = excluded.payload, created_at = CURRENT_TIMESTAMP`
-      )
-      .bind(key, JSON.stringify(fresh))
-      .run()
-  } catch (e) {
-    /* ignore */
+  // 3. Best-effort store — but NEVER cache a heuristic/fallback result. Otherwise
+  // a single transient Gemini failure (e.g. a brief 429) would "lock in" the
+  // non-AI answer for the whole TTL. Skipping it means the next request retries
+  // Gemini and the cache self-heals as soon as the model is reachable again.
+  const isHeuristic = fresh && typeof fresh === 'object' && (fresh as any).source === 'heuristic'
+  if (!isHeuristic) {
+    try {
+      await db
+        .prepare(
+          `INSERT INTO ai_cache (cache_key, payload, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(cache_key) DO UPDATE SET payload = excluded.payload, created_at = CURRENT_TIMESTAMP`
+        )
+        .bind(key, JSON.stringify(fresh))
+        .run()
+    } catch (e) {
+      /* ignore */
+    }
   }
   return fresh
 }
@@ -69,13 +75,14 @@ export async function geminiUsageToday(db: D1Database): Promise<number> {
 /**
  * Returns the Gemini API key ONLY if we're under the daily budget; otherwise
  * undefined (→ heuristic fallback). Increments the day's counter when it hands
- * out the key. Default cap 180/day (safely under the 200/day free tier of
- * gemini-2.0-flash); override with the GEMINI_DAILY_CAP env var.
+ * out the key. Default cap 1000/day — generous because caching keeps real usage
+ * tiny and the 3-model fallback chain spreads load across separate quotas; it's
+ * a runaway-protection backstop, not a throttle. Override via GEMINI_DAILY_CAP.
  */
 export async function budgetedKey(env: BudgetEnv): Promise<string | undefined> {
   const key = env.GEMINI_API_KEY
   if (!key) return undefined
-  const cap = Number(env.GEMINI_DAILY_CAP) || 180
+  const cap = Number(env.GEMINI_DAILY_CAP) || 1000
   const k = todayCountKey()
 
   let used = 0
