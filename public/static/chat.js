@@ -108,7 +108,7 @@
       history.push({ role: 'user', content: text })
       typing()
       try {
-        const { data } = await api.post('/chat', { messages: history })
+        const { data } = await api.post('/chat', { messages: history.slice(-6) })
         clearTyping()
         bubble('assistant', esc(data.reply))
         history.push({ role: 'assistant', content: data.reply })

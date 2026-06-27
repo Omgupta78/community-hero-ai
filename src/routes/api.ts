@@ -764,13 +764,14 @@ api.post('/chat', async (c) => {
   const messages = Array.isArray(body.messages) ? body.messages : []
   if (!messages.length) return c.json({ error: 'messages required' }, 400)
 
-  // Basic sanitation + bound the payload.
+  // Basic sanitation + bound the payload. Only the last few turns are needed —
+  // resending the whole transcript every message wastes input tokens.
   const clean = messages
     .filter((m: any) => m && typeof m.content === 'string' && m.content.trim())
-    .slice(-12)
+    .slice(-6)
     .map((m: any) => ({
       role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: String(m.content).slice(0, 1000),
+      content: String(m.content).slice(0, 600),
     }))
   if (!clean.length) return c.json({ error: 'messages required' }, 400)
 
@@ -782,7 +783,14 @@ api.post('/chat', async (c) => {
     open: (total?.n || 0) - (resolved?.n || 0),
   }
 
-  const result = await chatReply(await budgetedKey(c.env), clean, ctx)
+  // Greetings and the canned FAQ chips are answered by the built-in heuristic
+  // with NO Gemini call (no tokens, no quota). Only genuine, open-ended
+  // questions reach the model.
+  const last = clean[clean.length - 1].content.toLowerCase()
+  const isFaq = /^(hi|hello|hey|yo|help|thanks|thank you)\b|how do i report|report a pothole|how does verif|verification work|how do i earn|earn (points|community)|what can you/i.test(last)
+  const key = isFaq ? undefined : await budgetedKey(c.env)
+
+  const result = await chatReply(key, clean, ctx)
   return c.json(result)
 })
 

@@ -604,27 +604,7 @@ Output STRICT minified JSON only: {"forecast":"2-sentence prediction of what's l
 export type ChatMessage = { role: 'user' | 'assistant'; content: string }
 
 const ASSISTANT_SYSTEM = (ctx: { total: number; resolved: number; open: number }) =>
-  `You are "TrustLens Assistant", the friendly in-app guide for **TrustLens AI**, a civic issue
-reporting platform where citizens report local problems (potholes, water leaks, broken
-streetlights, illegal dumping, graffiti) with a photo. Google Gemini triages each report
-(category, severity, department, priority) and the community verifies them; municipal staff
-resolve them.
-
-How the app works (use this to help users):
-- Report: open the Report tab, take/upload a photo, add a description, tap "Analyze with AI",
-  then Submit. Reporting earns +10 community points.
-- Verify: confirm neighbors' reports on the Verify page or an issue page (+5 points). After 3
-  confirmations a report is auto-promoted to "Verified" and rises in the AI priority queue.
-- Track: the Map shows live markers; each issue page has an official status timeline and an
-  on-demand "AI Resolution Plan".
-- Sign in on Profile (Google or email) to keep your reports and score.
-- Categories: Pothole, Illegal Dumping, Streetlight, Water Leak, Graffiti, Other.
-
-Live community stats right now: ${ctx.total} total reports, ${ctx.resolved} resolved, ${ctx.open} open.
-
-Rules: Be concise (2-4 sentences), warm and encouraging. Guide users to the right page/action.
-Only discuss this app and civic reporting. If asked something unrelated, gently steer back.
-Never invent issue data you weren't given. Plain text only, no markdown headings.`
+  `You are "TrustLens Assistant" for TrustLens AI, a civic issue platform. Citizens photo-report problems (pothole, water leak, streetlight, illegal dumping, graffiti); Gemini triages them, the community verifies (3 confirms → "Verified"), staff resolve. Report=+10 pts, verify=+5. Pages: Report, Map, Verify, Profile, My Reports. Stats now: ${ctx.total} reports, ${ctx.resolved} resolved, ${ctx.open} open. Be concise (2-3 sentences), warm, on-topic (civic app only). Plain text, no markdown.`
 
 export async function chatReply(
   apiKey: string | undefined,
@@ -635,7 +615,7 @@ export async function chatReply(
 
   if (apiKey) {
     try {
-      const contents = messages.slice(-12).map((m) => ({
+      const contents = messages.slice(-5).map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }],
       }))
@@ -645,7 +625,7 @@ export async function chatReply(
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: ASSISTANT_SYSTEM(ctx) }] },
           contents,
-          generationConfig: { temperature: 0.5, maxOutputTokens: 400 },
+          generationConfig: { temperature: 0.5, maxOutputTokens: 220 },
         }),
       })
       if (res.ok) {
