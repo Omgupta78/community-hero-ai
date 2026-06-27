@@ -17,17 +17,32 @@ const GEMINI_MODEL = GEMINI_MODELS[0]
 export { GEMINI_MODELS }
 
 async function geminiFetch(apiKey: string, init: { body: string }): Promise<Response> {
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+  const RETRYABLE = [429, 403, 404, 500, 502, 503, 504]
   let last: Response | null = null
-  for (const model of GEMINI_MODELS) {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      { method: 'POST', headers: geminiHeaders(apiKey), body: init.body }
-    )
-    if (res.ok) return res
-    last = res
-    // 400 = malformed request (retrying other models won't help) → stop.
-    if (![429, 403, 404, 500, 503].includes(res.status)) break
-    try { console.error(`Gemini ${model} -> HTTP ${res.status}; trying fallback model`) } catch {}
+  // Two passes over the chain with a short backoff. The working model (usually
+  // gemini-2.5-flash-lite) sometimes returns a TRANSIENT 503 "overloaded" — a
+  // single retry ~1.2s later almost always succeeds. Rejected calls (429/503)
+  // don't consume quota, so the extra attempts are effectively free.
+  for (let pass = 0; pass < 2; pass++) {
+    for (const model of GEMINI_MODELS) {
+      let res: Response
+      try {
+        res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          { method: 'POST', headers: geminiHeaders(apiKey), body: init.body }
+        )
+      } catch (e) {
+        try { console.error(`Gemini ${model} -> network error; trying next`) } catch {}
+        continue
+      }
+      if (res.ok) return res
+      last = res
+      // 400 = malformed request (retrying won't help) → return immediately.
+      if (!RETRYABLE.includes(res.status)) return res
+      try { console.error(`Gemini ${model} -> HTTP ${res.status}; trying fallback model`) } catch {}
+    }
+    if (pass === 0) await sleep(1200) // brief backoff, then retry the whole chain once
   }
   return last as Response
 }

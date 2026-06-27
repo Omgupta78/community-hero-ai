@@ -144,7 +144,7 @@
     btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Triaging…'
     const scan = $('scan-line'); if (scan) scan.classList.remove('hidden') // start scan sweep
     try {
-      const { data } = await api.post('/analyze', { description, category: $('category-select').value, imageBase64, mimeType })
+      const { data } = await api.post('/analyze', { description, imageBase64, mimeType })
       lastAnalysis = data
       // Auto-fill editable fields
       $('category-select').value = data.category
