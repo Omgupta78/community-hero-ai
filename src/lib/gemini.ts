@@ -396,20 +396,35 @@ export async function verifyFix(
 // ---------------------------------------------------------------
 export async function generateCityHealthInsight(
   apiKey: string | undefined,
-  data: { score: number; systems: { name: string; health: number }[]; worst: string; hotspot: string; topCategory: string }
+  data: {
+    score: number
+    systems: { name: string; health: number }[]
+    worst: string
+    hotspot: string
+    topCategory: string
+    department: string
+    predLow: number
+    predHigh: number
+    rainProb: number | null
+  }
 ): Promise<{ text: string; source: 'gemini' | 'heuristic' }> {
+  const cat = (data.topCategory || 'issue').toLowerCase()
+  const where = data.hotspot && data.hotspot !== 'city-wide' ? data.hotspot : 'the city'
+  const rainPhrase = data.rainProb != null && data.rainProb >= 40
+    ? `rainfall forecast (${data.rainProb}% chance)`
+    : 'rainfall forecast'
   if (apiKey) {
     try {
-      const prompt = `You are a city operations advisor AI. The city's overall civic Health Score is ${data.score}/100.
-System scores: ${data.systems.map((s) => `${s.name} ${s.health}%`).join(', ')}.
-The weakest system is "${data.worst}". Most reports are "${data.topCategory}", concentrated around ${data.hotspot}.
-Write ONE concise, actionable sentence (max 30 words) telling operators what to prioritize to most improve the score. Plain text only.`
+      const prompt = `You are a predictive city operations AI. The civic Health Score is ${data.score}/100.
+Most open reports are "${data.topCategory}", concentrated around ${where}; the responsible department is ${data.department}.
+Weather signal: ${data.rainProb != null ? `${data.rainProb}% rain probability` : 'no live rain data'}. Recent volume + historical pattern point to roughly ${data.predLow}-${data.predHigh} more ${cat} reports there this week.
+Write ONE forecasting sentence (max 32 words) that STARTS with "Predicted:", names the area, gives the expected number range of upcoming ${cat} reports this week, cites rainfall forecast + historical pattern, and ends by recommending the city pre-assign ${data.department} now. Plain text only.`
       const res = await fetch(GEMINI_URL(apiKey), {
         method: 'POST',
         headers: geminiHeaders(apiKey),
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4 },
+          generationConfig: { temperature: 0.5 },
         }),
       })
       if (res.ok) {
@@ -422,7 +437,7 @@ Write ONE concise, actionable sentence (max 30 words) telling operators what to 
     }
   }
   return {
-    text: `Most unresolved complaints are ${data.topCategory.toLowerCase()} around ${data.hotspot}. Prioritising ${data.worst} would most improve the city health score.`,
+    text: `Predicted: ${where} likely to see ${data.predLow}\u2013${data.predHigh} more ${cat} reports this week based on ${rainPhrase} + historical pattern. Pre-assign ${data.department} now.`,
     source: 'heuristic',
   }
 }

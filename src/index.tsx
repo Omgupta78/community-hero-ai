@@ -1170,8 +1170,8 @@ app.get('/command', async (c) => {
                 <div class="mc-gauge-label"><span id="cc-health-score">—</span><small>Health</small></div>
               </div>
               <div class="mc-health-text">
-                <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">auto_awesome</span> AI Insight</span>
-                <p id="cc-health-text">Generating city health insight…</p>
+                <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">trending_up</span> Predictive Insight</span>
+                <p id="cc-health-text">Forecasting the week ahead…</p>
               </div>
             </div>
           </div>

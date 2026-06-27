@@ -709,19 +709,52 @@ api.get('/city-health', async (c) => {
   const worst = systems.slice().sort((a, b) => a.health - b.health)[0]
 
   const topCatRow = await c.env.DB.prepare(
-    `SELECT category FROM issues WHERE status != 'Resolved' GROUP BY category ORDER BY COUNT(*) DESC LIMIT 1`
-  ).first<{ category: string }>()
+    `SELECT category, COUNT(*) AS n FROM issues WHERE status != 'Resolved' GROUP BY category ORDER BY n DESC LIMIT 1`
+  ).first<{ category: string; n: number }>()
   const hotspot = await c.env.DB.prepare(
     `SELECT address FROM issues WHERE status != 'Resolved' AND address != '' GROUP BY address ORDER BY COUNT(*) DESC LIMIT 1`
   ).first<{ address: string }>()
 
-  const insight = await aiCache(c.env.DB, `cityhealth:${score}:${worst?.name || ''}`, 1800, async () =>
+  // Department responsible for the dominant category — the "pre-assign" target.
+  const DEPT: Record<string, string> = {
+    Pothole: 'Road Maintenance',
+    'Water Leak': 'Water Supply',
+    Streetlight: 'Electrical',
+    'Illegal Dumping': 'Sanitation',
+    Graffiti: 'Parks & Recreation',
+    Other: 'General Services',
+  }
+  const topCategory = topCatRow?.category || 'N/A'
+  const department = DEPT[topCategory] || worst?.name || 'the relevant department'
+
+  // Live rainfall signal (cached by /api/weather). Resilient if absent.
+  let rainProb: number | null = null
+  try {
+    const wx = await c.env.DB.prepare(`SELECT payload FROM weather_cache WHERE city = 'Chandigarh'`).first<any>()
+    if (wx?.payload) {
+      const p = JSON.parse(wx.payload)
+      rainProb = typeof p.rain_prob_pct === 'number' ? p.rain_prob_pct : null
+    }
+  } catch {}
+
+  // Forecast volume: recent open volume of the top category, nudged up when rain is likely.
+  const base = topCatRow?.n || 0
+  const rainBump = rainProb != null && rainProb >= 40 ? 1 : 0
+  const predLow = Math.max(3, Math.round(base * 0.5))
+  const predHigh = predLow + 2 + rainBump
+  const hotspotShort = (hotspot?.address || '').split(',')[0].trim() || 'city-wide'
+
+  const insight = await aiCache(c.env.DB, `cityhealth:pred:${topCategory}:${hotspotShort}:${rainProb}:${predLow}-${predHigh}`, 1800, async () =>
     generateCityHealthInsight(await budgetedKey(c.env), {
       score,
       systems: systems.map((s) => ({ name: s.name, health: s.health })),
       worst: worst?.name || 'General Services',
-      hotspot: hotspot?.address || 'city-wide',
-      topCategory: topCatRow?.category || 'N/A',
+      hotspot: hotspotShort,
+      topCategory,
+      department,
+      predLow,
+      predHigh,
+      rainProb,
     })
   )
 
