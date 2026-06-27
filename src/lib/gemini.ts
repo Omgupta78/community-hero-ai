@@ -1,11 +1,15 @@
 // Real Gemini AI integration for Community Hero AI
 // Uses the Google Generative Language REST API (works on Cloudflare Workers via fetch).
 
-// gemini-2.0-flash has a much higher free-tier daily quota than 2.5-flash
-// (which is only ~20 requests/day). Change here if you use a billed key.
-const GEMINI_MODEL = 'gemini-2.0-flash'
-const GEMINI_URL = (key: string) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`
+// This key/project has free quota on gemini-2.5-flash (gemini-2.0-flash shows
+// limit 0 for AI Studio "AQ." keys). 2.5-flash-lite has even more headroom if needed.
+const GEMINI_MODEL = 'gemini-2.5-flash'
+// IMPORTANT: the API key is sent via the `x-goog-api-key` HEADER, not the
+// `?key=` query param. Newer Google AI Studio keys (the `AQ.` format) are
+// rejected as `?key=` ("ACCESS_TOKEN_TYPE_UNSUPPORTED") but work as a header.
+const GEMINI_URL = (_key?: string) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
+const geminiHeaders = (key: string) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key })
 
 const CATEGORIES = ['Pothole', 'Illegal Dumping', 'Streetlight', 'Water Leak', 'Graffiti', 'Other']
 const DEPARTMENTS: Record<string, string> = {
@@ -92,7 +96,7 @@ Citizen description: "${description || '(none provided)'}"${
 
   const res = await fetch(GEMINI_URL(apiKey), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: geminiHeaders(apiKey),
     body: JSON.stringify(body),
   })
 
@@ -179,7 +183,7 @@ export async function generateInsight(
       const prompt = `You are a city civic-analytics assistant. Write a concise, encouraging 2-3 sentence weekly summary for residents based on this data: total reports ${stats.total}, resolved ${stats.resolved} (${rate}% resolution rate), most reported category "${stats.topCategory}", hotspot area "${stats.hotspot}". Mention one actionable insight. Plain text only.`
       const res = await fetch(GEMINI_URL(apiKey), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: geminiHeaders(apiKey),
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.6 },
@@ -233,7 +237,7 @@ Citizen description: "${issue.description || '(none)'}"`
 
       const res = await fetch(GEMINI_URL(apiKey), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: geminiHeaders(apiKey),
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.3, responseMimeType: 'application/json' },
@@ -354,7 +358,7 @@ export async function verifyFix(
 
       const res = await fetch(GEMINI_URL(apiKey), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: geminiHeaders(apiKey),
         body: JSON.stringify({
           contents: [{ role: 'user', parts }],
           generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
@@ -402,7 +406,7 @@ The weakest system is "${data.worst}". Most reports are "${data.topCategory}", c
 Write ONE concise, actionable sentence (max 30 words) telling operators what to prioritize to most improve the score. Plain text only.`
       const res = await fetch(GEMINI_URL(apiKey), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: geminiHeaders(apiKey),
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.4 },
@@ -468,7 +472,7 @@ Respond ONLY as: {"duplicate_of": <existing issue id or null>, "duplicate_reason
 
       const res = await fetch(GEMINI_URL(apiKey), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: geminiHeaders(apiKey),
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
@@ -566,7 +570,7 @@ Recent reports: ${data.recent.map((r) => `${r.category}@${r.address}`).slice(0, 
 Output STRICT minified JSON only: {"forecast":"2-sentence prediction of what's likely to rise next week","emerging_hotspot":"area name likely to need attention","rising_category":"category likely to increase","recommendation":"one preventive action the city should take"}`
       const res = await fetch(GEMINI_URL(apiKey), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: geminiHeaders(apiKey),
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.4, responseMimeType: 'application/json' },
@@ -621,7 +625,7 @@ export async function chatReply(
       }))
       const res = await fetch(GEMINI_URL(apiKey), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: geminiHeaders(apiKey),
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: ASSISTANT_SYSTEM(ctx) }] },
           contents,
@@ -680,7 +684,7 @@ export async function recommendContractorReason(
       const prompt = `You are a municipal dispatch assistant. In ONE concise sentence (max 28 words, plain text, start with "Suggested by Gemini:"), justify assigning contractor "${top.name}" (${top.rating}/5 rating, ${dist}, skills: ${top.skills.join(', ')}) to a "${issue.category}" issue${issue.address ? ' at ' + issue.address : ''}.`
       const res = await fetch(GEMINI_URL(apiKey), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: geminiHeaders(apiKey),
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 80 } }),
       })
       if (res.ok) {
@@ -706,7 +710,7 @@ export async function quotationReason(
       const prompt = `You are a municipal procurement assistant. In ONE concise sentence (max 28 words, plain text), explain why contractor "${best.name}"'s quote of ₹${best.est_cost} over ${best.est_days} days at ${best.past_rating}/5 rating is the best value pick.`
       const res = await fetch(GEMINI_URL(apiKey), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: geminiHeaders(apiKey),
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 80 } }),
       })
       if (res.ok) {
@@ -733,7 +737,7 @@ export async function generateWeeklyReport(
       const prompt = `You are a municipal AI analyst. Write a concise 4-5 sentence weekly operations report for a City Commissioner from this data: total reports ${data.total}, resolved ${data.resolved} (${rate}%), open ${data.open}, critical ${data.critical}, top category "${data.topCategory}", hotspot "${data.hotspot}", avg resolution ~${data.avgHours}h, busiest department "${data.topDept}". Include one clear recommendation. Plain text, no markdown headings.`
       const res = await fetch(GEMINI_URL(apiKey), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: geminiHeaders(apiKey),
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.5, maxOutputTokens: 320 } }),
       })
       if (res.ok) {
