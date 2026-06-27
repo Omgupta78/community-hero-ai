@@ -70,7 +70,8 @@
       const score = Math.round(data.score || 0)
       if ($('cc-health-score')) $('cc-health-score').textContent = score
       const arc = $('cc-health-arc'); if (arc) arc.setAttribute('stroke-dasharray', `${score} 100`)
-      if ($('cc-health-text')) $('cc-health-text').textContent = data.insight || data.summary || '—'
+      // The AI Insight card shows a curated predictive drainage forecast rendered
+      // server-side (see /command markup) — intentionally not overwritten here.
       const sub = $('cc-hero-sub'); if (sub && data.total != null) sub.textContent = `AI is monitoring ${data.total} civic issues across the city.`
     } catch (e) {}
   }

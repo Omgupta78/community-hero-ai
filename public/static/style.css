@@ -791,11 +791,71 @@ main button[class*="rounded-xl"]:hover {
 .mr-step span { font-size: 9px; font-weight: 700; color: #9a968a; text-transform: uppercase; letter-spacing: .2px; }
 .mr-step::before { content: ''; position: absolute; top: 5px; left: -50%; width: 100%; height: 3px; background: #E0DDD4; z-index: 1; }
 .mr-step:first-child::before { display: none; }
-.mr-step.done i { background: #27AE60; }
+.mr-step.done i { background: #1D9E75; position: relative; }
+.mr-step.done i::after { content: ''; position: absolute; left: 4px; top: 1.5px; width: 3px; height: 6px; border: solid #fff; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
 .mr-step.done span { color: #1F8A4C; }
-.mr-step.done::before { background: #27AE60; }
-.mr-step.cur i { background: #E67E22; box-shadow: 0 0 0 4px rgba(245,158,11,.2); }
-.mr-step.cur span { color: #b45309; }
+.mr-step.done::before { background: #1D9E75; }
+.mr-step.cur i { background: #1D9E75; box-shadow: 0 0 0 4px rgba(29,158,117,.2); animation: mr-pulse 1.5s infinite; }
+.mr-step.cur span { color: #0F6E56; }
+@keyframes mr-pulse { 0%,100% { box-shadow: 0 0 0 4px rgba(29,158,117,.2); } 50% { box-shadow: 0 0 0 7px rgba(29,158,117,.07); } }
+
+/* 7-stage tracker: tighter labels so all stages fit */
+.mr-track-7 .mr-step span { font-size: 8px; letter-spacing: 0; white-space: nowrap; }
+
+/* Confirm-this-fix CTA on resolved + AI-verified reports */
+.mr-confirm-cta { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; background: #1D9E75; color: #fff; border-radius: 10px; padding: 9px 12px; font-size: 13px; font-weight: 600; text-decoration: none; }
+.mr-confirm-cta:hover { background: #0F6E56; }
+
+/* Watch the agent — expandable AI decision log */
+.mr-card-link { display: block; text-decoration: none; color: inherit; }
+.mr-agent-toggle { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 12px; background: transparent; border: none; cursor: pointer; color: #5A5A52; font-family: inherit; font-size: 12px; font-weight: 600; padding: 4px 0; }
+.mr-agent-toggle .mr-chev { margin-left: auto; transition: transform .2s; }
+.mr-agent-toggle.open .mr-chev { transform: rotate(180deg); }
+.mr-agent-toggle .material-symbols-outlined:first-child { color: #1D9E75; }
+.mr-agent { margin-top: 8px; background: #F0EDDF; border-left: 3px solid #1D9E75; border-radius: 0 8px 8px 0; padding: 10px 12px; }
+.mr-agent-line { font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace; font-size: 11px; line-height: 1.7; color: #1A1A1A; word-break: break-word; }
+
+/* Profile — trust tier roadmap */
+.trust-roadmap { display: flex; margin-top: 16px; }
+.trust-tier { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; text-align: center; }
+.trust-tier i { width: 13px; height: 13px; border-radius: 50%; background: #E0DDD4; z-index: 2; }
+.trust-tier b { font-size: 10px; font-weight: 600; color: #9a968a; }
+.trust-tier small { font-size: 9px; color: #9a968a; }
+.trust-tier::before { content: ''; position: absolute; top: 6px; left: -50%; width: 100%; height: 3px; background: #E0DDD4; z-index: 1; }
+.trust-tier:first-child::before { display: none; }
+.trust-tier.done i, .trust-tier.cur i { background: #1D9E75; }
+.trust-tier.done::before, .trust-tier.cur::before { background: #1D9E75; }
+.trust-tier.done b, .trust-tier.cur b { color: #0F6E56; }
+.trust-tier.cur i { box-shadow: 0 0 0 4px rgba(29,158,117,.2); animation: mr-pulse 1.5s infinite; }
+.trust-tier.cur small { color: #0F6E56; }
+
+/* Confirm this fix — dedicated verify screen */
+.vf-subtitle { font-size: 14px; color: #5A5A52; margin: 0 0 16px; }
+.vf-issue { display: flex; align-items: center; gap: 12px; background: #FAFAF7; border: 1px solid #E0DDD4; border-radius: 14px; padding: 14px; margin-bottom: 16px; }
+.vf-issue-ic { color: #1D9E75; font-size: 26px; }
+.vf-issue-title { font-size: 16px; font-weight: 600; color: #1A1A1A; margin: 0; }
+.vf-issue-loc { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #5A5A52; margin: 2px 0 0; }
+.vf-issue-loc .material-symbols-outlined { font-size: 15px; }
+.vf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.vf-photo-card { background: #FAFAF7; border: 1px solid #E0DDD4; border-radius: 14px; padding: 10px; }
+.vf-photo-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #5A5A52; margin: 0 0 8px; text-align: center; }
+.vf-photo { aspect-ratio: 4/3; border-radius: 10px; overflow: hidden; background: #F0EDDF; display: flex; align-items: center; justify-content: center; }
+.vf-photo img { width: 100%; height: 100%; object-fit: cover; }
+.vf-photo-ph .material-symbols-outlined { font-size: 34px; color: #c9c5b8; }
+.vf-checks { background: #FAFAF7; border: 1px solid #E0DDD4; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.vf-check { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #1A1A1A; }
+.vf-check .material-symbols-outlined { font-size: 20px; }
+.vf-check.ok { color: #1A1A1A; }
+.vf-check.ok .material-symbols-outlined { color: #1D9E75; font-variation-settings: 'FILL' 1; }
+.vf-check.pending { color: #5A5A52; }
+.vf-check.pending .material-symbols-outlined { color: #E67E22; }
+.vf-approve { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: #1D9E75; color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.vf-approve:hover { background: #0F6E56; }
+.vf-approve:disabled { opacity: .7; }
+.vf-deny { width: 100%; background: none; border: none; color: #C0392B; font-size: 14px; font-weight: 600; cursor: pointer; padding: 14px; font-family: inherit; }
+.vf-deny:hover { text-decoration: underline; }
+.vf-donebox { display: flex; align-items: center; gap: 8px; background: #E1F5EE; color: #0F6E56; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 600; }
+.vf-donebox .material-symbols-outlined { color: #1D9E75; }
 
 /* =====================================================================
    MUNICIPAL COMMAND CENTER — reuses the Field Ops (.ctr-scope) design

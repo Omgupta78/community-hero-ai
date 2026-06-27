@@ -22,6 +22,21 @@
       $('p-score').textContent = me.score ?? 0
       $('p-reports').textContent = me.reports ?? 0
 
+      // Trusted Reporter tag (high trust) + tier roadmap highlight.
+      const score = me.score ?? 0
+      const tag = $('p-trusted-tag')
+      if (tag) tag.classList.toggle('hidden', !(score > 300))
+      const roadmap = $('p-roadmap')
+      if (roadmap) {
+        const tiers = Array.from(roadmap.querySelectorAll('.trust-tier'))
+        let curIdx = 0
+        tiers.forEach((t, k) => { if (score >= Number(t.dataset.floor)) curIdx = k })
+        tiers.forEach((t, k) => {
+          t.classList.toggle('done', k < curIdx)
+          t.classList.toggle('cur', k === curIdx)
+        })
+      }
+
       // Reputation tier + progress
       if (me.tier) {
         const t = me.tier

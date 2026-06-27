@@ -135,6 +135,22 @@ app.get('/home', (c) => {
           </div>
         </section>
 
+        {/* AI Prediction (predictive civic intelligence) */}
+        <section id="ai-prediction" class="rounded-xl p-md relative overflow-hidden" style="background:#E1F5EE;border-left:4px solid #1D9E75;">
+          <span class="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-tertiary" title="Prediction" style="box-shadow:0 0 0 4px rgba(230,126,34,0.18)"></span>
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-primary text-[26px] mt-0.5" style="font-variation-settings:'FILL' 1;">auto_awesome</span>
+            <div class="min-w-0">
+              <p class="text-[11px] font-bold uppercase tracking-[0.08em] text-primary">AI Prediction</p>
+              <p id="aip-main" class="text-sm font-medium text-on-surface mt-0.5 leading-snug">Sector 17 likely to see 3-5 more pothole reports this week</p>
+              <p id="aip-sub" class="text-xs text-on-surface-variant mt-1">Based on rainfall forecast + 30-day issue pattern</p>
+              <p class="text-xs font-bold text-primary mt-2 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[16px]">verified</span>Pre-emptive repair requested from Road Dept
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* Stat cards */}
         <section class="grid grid-cols-2 gap-md">
           <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
@@ -204,7 +220,7 @@ app.get('/home', (c) => {
         </section>
       </main>
       <BottomNav active="home" />
-      <script src="/static/home.js"></script>
+      <script src={`/static/home.js?v=${ASSET_VER}`}></script>
     </div>,
     { title: 'TrustLens AI — Home' }
   )
@@ -612,14 +628,20 @@ app.get('/profile', (c) => {
               <p class="text-sm text-on-surface-variant truncate" id="p-email">—</p>
             </div>
           </section>
-          <section class="grid grid-cols-2 gap-md">
-            <div class="bg-primary-fixed rounded-xl p-md text-center">
-              <p class="text-3xl font-bold text-primary" id="p-score">—</p>
-              <p class="text-xs font-bold uppercase text-on-surface-variant mt-1">Community Score</p>
-            </div>
-            <div class="bg-secondary-container rounded-xl p-md text-center">
-              <p class="text-3xl font-bold text-on-secondary-container" id="p-reports">—</p>
-              <p class="text-xs font-bold uppercase text-on-surface-variant mt-1">Reports Filed</p>
+          {/* Trust Score */}
+          <section class="bg-primary-fixed rounded-xl p-lg">
+            <div class="flex items-start gap-4">
+              <div class="text-center shrink-0">
+                <p class="text-[44px] leading-none font-bold text-primary" id="p-score">—</p>
+                <p class="text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant mt-1">Trust Score</p>
+              </div>
+              <div class="flex-1 min-w-0">
+                <span id="p-trusted-tag" class="hidden inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary text-on-primary mb-2 w-fit">
+                  <span class="material-symbols-outlined text-[14px]">verified_user</span>Trusted Reporter
+                </span>
+                <p class="text-sm text-on-surface-variant">Higher trust = your reports are prioritised by AI triage.</p>
+                <p class="text-xs text-on-surface-variant mt-2"><span class="font-bold text-on-surface" id="p-reports">—</span> reports filed</p>
+              </div>
             </div>
           </section>
 
@@ -639,6 +661,26 @@ app.get('/profile', (c) => {
               <div id="p-tier-bar" class="h-full bg-primary rounded-full transition-all" style="width:0%"></div>
             </div>
             <p id="p-tier-next" class="text-[11px] text-on-surface-variant mt-1">—</p>
+
+            {/* Tier roadmap */}
+            <div id="p-roadmap" class="trust-roadmap">
+              <div class="trust-tier" data-floor="0"><i></i><b>Newcomer</b><small>0</small></div>
+              <div class="trust-tier" data-floor="100"><i></i><b>Guardian</b><small>100</small></div>
+              <div class="trust-tier" data-floor="300"><i></i><b>Champion</b><small>300</small></div>
+              <div class="trust-tier" data-floor="500"><i></i><b>City Hero</b><small>500</small></div>
+            </div>
+          </section>
+
+          {/* Trust impact */}
+          <section class="bg-surface-lowest border border-outline-variant rounded-xl p-lg">
+            <h3 class="font-bold text-on-surface text-[16px] mb-3 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">shield_person</span>Your trust score affects
+            </h3>
+            <ul class="space-y-2.5 text-sm text-on-surface">
+              <li class="flex items-center gap-2.5"><span class="material-symbols-outlined text-primary text-[20px]">balance</span>AI gives your reports <b class="font-semibold">2× weight</b> in verification</li>
+              <li class="flex items-center gap-2.5"><span class="material-symbols-outlined text-primary text-[20px]">how_to_vote</span>Your verifications count as <b class="font-semibold">1.5 votes</b></li>
+              <li class="flex items-center gap-2.5"><span class="material-symbols-outlined text-primary text-[20px]">bolt</span>You get <b class="font-semibold">early access</b> to high-priority issues</li>
+            </ul>
           </section>
           <section>
             <h3 class="text-[18px] font-semibold text-on-surface mb-md">My Reports</h3>
@@ -652,7 +694,7 @@ app.get('/profile', (c) => {
         </div>
       </main>
       <BottomNav active="profile" />
-      <script src="/static/profile.js"></script>
+      <script src={`/static/profile.js?v=${ASSET_VER}`}></script>
     </div>,
     { title: 'My Profile' }
   )
@@ -708,6 +750,22 @@ app.get('/issue/:id', (c) => {
       <script src={`/static/detail.js?v=${ASSET_VER}`}></script>
     </div>,
     { title: 'Issue Details' }
+  )
+})
+
+// Dedicated citizen "Confirm this fix" screen — before/after + AI checks + approve/deny.
+app.get('/verify-fix/:id', (c) => {
+  const id = c.req.param('id')
+  return c.render(
+    <div class="pt-[80px] pb-[120px]">
+      <TopBar title="Confirm this fix" />
+      <main class="px-container-margin max-w-2xl mx-auto mt-lg" id="verify-fix" data-id={id}>
+        <div class="text-center text-on-surface-variant py-8">Loading…</div>
+      </main>
+      <BottomNav active="myreports" />
+      <script src={`/static/verify-fix.js?v=${ASSET_VER}`}></script>
+    </div>,
+    { title: 'Confirm this fix' }
   )
 })
 
@@ -1171,7 +1229,7 @@ app.get('/command', async (c) => {
               </div>
               <div class="mc-health-text">
                 <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">trending_up</span> Predictive Insight</span>
-                <p id="cc-health-text">Forecasting the week ahead…</p>
+                <p id="cc-health-text">PREDICTED: Sector 17 drainage issues likely to spike Thursday–Friday (72% confidence). Rainfall + infrastructure age data suggest pre-emptive inspection of Sectors 15–19 this week.</p>
               </div>
             </div>
           </div>

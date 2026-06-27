@@ -189,7 +189,7 @@ api.get('/issues', async (c) => {
   const sql = `SELECT i.id, i.title, i.description, i.category, i.severity, i.status, i.department,
                       i.priority_score, i.address, i.lat, i.lng, i.photo_data, i.media_type,
                       i.ai_summary, i.ai_source, i.authenticity, i.anonymous, i.verify_count, i.reporter_id,
-                      i.created_at, i.updated_at, i.assigned_to, i.duplicate_of, i.agent_processed,
+                      i.created_at, i.updated_at, i.assigned_to, i.duplicate_of, i.agent_processed, i.fix_verified,
                       u.name AS reporter_name, a.name AS assignee_name, a.department AS assignee_department
                FROM issues i
                LEFT JOIN users u ON i.reporter_id = u.id
