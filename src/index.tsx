@@ -238,29 +238,55 @@ app.get('/report', (c) => {
         </div>
 
         {/* Photo / video upload + AI triage */}
-        <section class="bg-surface-container-low border-2 border-dashed border-outline-variant rounded-xl p-lg text-center">
+        <section>
           <input type="file" id="photo-input" accept="image/*,video/*" capture="environment" class="hidden" />
-          <div id="photo-zone" class="cursor-pointer">
-            <div id="photo-placeholder">
-              <div class="w-16 h-16 mx-auto rounded-full bg-primary-fixed flex items-center justify-center mb-3">
-                <span class="material-symbols-outlined text-primary text-[32px]">add_a_photo</span>
-              </div>
-              <p class="text-on-surface font-semibold text-[16px]">Add a photo or short video</p>
-              <p class="text-sm text-on-surface-variant mt-1">Clear evidence helps Gemini fill the form automatically.</p>
+          <div id="photo-zone" class="relative min-h-[280px] rounded-xl overflow-hidden border-2 border-dashed border-outline-variant bg-surface-container-low cursor-pointer flex items-center justify-center">
+            <img id="photo-preview" class="hidden absolute inset-0 w-full h-full object-cover" />
+            <video id="video-preview" class="hidden absolute inset-0 w-full h-full object-cover bg-black" controls playsinline></video>
+
+            {/* Top pill — category · severity (after triage) */}
+            <div id="photo-pill" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-black/70 text-white rounded-full px-3 py-1 text-[11px] font-bold tracking-wide flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">search</span><span id="photo-pill-text"></span>
             </div>
-            <img id="photo-preview" class="hidden w-full rounded-lg max-h-72 object-cover" />
-            <video id="video-preview" class="hidden w-full rounded-lg max-h-72 bg-black" controls playsinline></video>
+
+            {/* Scanning line during triage */}
+            <div id="scan-line" class="hidden scan-line"></div>
+
+            {/* Centered overlay: placeholder + action buttons */}
+            <div class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 px-4 pointer-events-none">
+              <div id="photo-placeholder" class="text-center pointer-events-none">
+                <div class="w-16 h-16 mx-auto rounded-full bg-primary-fixed flex items-center justify-center mb-3">
+                  <span class="material-symbols-outlined text-primary text-[32px]">add_a_photo</span>
+                </div>
+                <p class="text-on-surface font-semibold text-[16px]">Add a photo or short video</p>
+                <p class="text-sm text-on-surface-variant mt-1">Clear evidence helps Gemini fill the form automatically.</p>
+              </div>
+              <div class="flex gap-2 pointer-events-auto">
+                <button id="upload-btn" class="bg-black/55 text-white backdrop-blur rounded-full px-4 py-2.5 font-bold text-sm flex items-center gap-1.5 active:scale-95 transition hover:bg-black/70">
+                  <span class="material-symbols-outlined text-[18px]">upload</span> Upload photo
+                </button>
+                <button id="analyze-btn" class="bg-black/55 text-white backdrop-blur rounded-full px-4 py-2.5 font-bold text-sm flex items-center gap-1.5 active:scale-95 transition hover:bg-black/70">
+                  <span class="material-symbols-outlined text-[18px]">auto_awesome</span> AI triage
+                </button>
+              </div>
+            </div>
           </div>
-          <p id="media-note" class="hidden text-xs text-on-surface-variant mt-2"></p>
-          <div class="flex gap-2 justify-center mt-4">
-            <button id="upload-btn" class="bg-primary text-on-primary rounded-full px-5 py-2.5 font-bold text-sm flex items-center gap-2 active:scale-95 transition">
-              <span class="material-symbols-outlined text-[18px]">upload</span> Upload photo
-            </button>
-            <button id="analyze-btn" class="bg-secondary text-white rounded-full px-5 py-2.5 font-bold text-sm flex items-center gap-2 active:scale-95 transition">
-              <span class="material-symbols-outlined text-[18px]">auto_awesome</span> AI triage
-            </button>
-          </div>
+          <p id="media-note" class="hidden text-xs text-on-surface-variant mt-2 text-center"></p>
         </section>
+
+        {/* AI result card — primary AI output (after triage) */}
+        <div id="ai-card" class="hidden rounded-xl p-md" style="background:#F0FAF6;border:1px solid #1D9E75;border-left-width:4px;">
+          <div class="flex items-start gap-2">
+            <span class="material-symbols-outlined text-primary mt-0.5">auto_awesome</span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start gap-2">
+                <p id="ai-card-title" class="font-semibold text-on-surface flex-1 min-w-0"></p>
+                <span id="ai-card-badge" class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary text-on-primary whitespace-nowrap"></span>
+              </div>
+              <p class="text-sm text-on-surface-variant mt-1">Routes to → <span id="ai-card-dept" class="font-bold text-primary"></span></p>
+            </div>
+          </div>
+        </div>
 
         {/* AI verification banner (genuine / needs evidence / suspect) */}
         <div id="ai-verify" class="hidden rounded-xl p-3 text-sm flex items-start gap-2"></div>
@@ -269,7 +295,7 @@ app.get('/report', (c) => {
         <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md space-y-md">
           <div>
             <div class="flex items-center justify-between">
-              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Describe it</label>
+              <label class="text-sm font-semibold text-on-surface">Describe it</label>
               <span class="text-[11px] font-bold text-secondary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">auto_awesome</span>AI-assisted</span>
             </div>
             <textarea
@@ -278,17 +304,33 @@ app.get('/report', (c) => {
               placeholder="The AI fills this from your photo. Edit if needed."
               class="mt-2 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary resize-none"
             ></textarea>
+            {/* Voice input */}
+            <div class="flex items-center gap-2 mt-2 flex-wrap">
+              <span class="text-xs text-on-surface-variant">Or speak it</span>
+              <span class="inline-flex items-center gap-1 text-xs text-on-surface bg-surface-container-low rounded-full pl-2 pr-1 py-1">
+                <span class="material-symbols-outlined text-[15px] text-primary">language</span>
+                <select id="voice-lang" class="bg-transparent border-0 text-xs font-semibold focus:ring-0 py-0 pr-5">
+                  <option value="en-US">English</option>
+                  <option value="hi-IN">हिन्दी</option>
+                  <option value="pa-IN">ਪੰਜਾਬੀ</option>
+                  <option value="bn-IN">বাংলা</option>
+                </select>
+              </span>
+              <button id="voice-btn" type="button" class="inline-flex items-center gap-1.5 text-xs font-bold text-primary border border-primary rounded-full px-3 py-1.5 active:scale-95 transition hover:bg-primary-fixed">
+                <span class="material-symbols-outlined text-[16px]">mic</span><span id="voice-label">Voice report</span>
+              </button>
+            </div>
           </div>
 
           <div class="grid grid-cols-2 gap-md">
             <div>
-              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Category · <span class="text-secondary">AI</span></label>
+              <label class="text-sm font-semibold text-on-surface">Category · <span class="text-secondary">AI</span></label>
               <select id="category-select" class="mt-2 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary">
                 {['Pothole', 'Illegal Dumping', 'Streetlight', 'Water Leak', 'Graffiti', 'Other'].map((x) => <option>{x}</option>)}
               </select>
             </div>
             <div>
-              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Severity · <span class="text-secondary">AI</span></label>
+              <label class="text-sm font-semibold text-on-surface">Severity · <span class="text-secondary">AI</span></label>
               <select id="severity-select" class="mt-2 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary">
                 <option value="5">Critical (5)</option>
                 <option value="4">High (4)</option>
@@ -299,21 +341,20 @@ app.get('/report', (c) => {
             </div>
           </div>
 
-          {/* Gemini routing strip */}
-          <div id="ai-result" class="hidden bg-primary-fixed rounded-lg p-3">
+          {/* Gemini routing card */}
+          <div id="ai-result" class="hidden rounded-lg p-3" style="background:#F0FAF6;border-left:4px solid #1D9E75;">
             <div class="flex items-center gap-2 text-primary mb-1">
               <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
               <span class="font-bold text-sm">Gemini routing</span>
-              <span id="ai-source" class="ml-auto text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-white/60 text-primary"></span>
             </div>
             <div id="ai-content" class="text-sm text-on-surface"></div>
           </div>
 
           <div>
             <div class="flex justify-between items-center">
-              <label class="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Location</label>
+              <label class="text-sm font-semibold text-on-surface">Location</label>
               <button id="gps-btn" class="text-xs font-bold text-primary flex items-center gap-1 hover:underline">
-                <span class="material-symbols-outlined text-[16px]">my_location</span> Update Location
+                <span class="material-symbols-outlined text-[16px]">my_location</span> Update location
               </button>
             </div>
             <input
@@ -322,28 +363,33 @@ app.get('/report', (c) => {
               value="Sector 17, Chandigarh"
               class="mt-2 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-primary"
             />
-            <p class="text-xs text-on-surface-variant mt-1" id="gps-status">Auto-detected from GPS</p>
+            <p class="text-xs text-on-surface-variant mt-1 flex items-center gap-1.5" id="gps-status">
+              <span class="w-2 h-2 rounded-full bg-secondary" style="box-shadow:0 0 0 3px rgba(39,174,96,0.18)"></span>Auto-detected from GPS
+            </p>
           </div>
 
           <div class="flex items-center justify-between border-t border-surface-variant pt-md">
-            <div>
-              <p class="font-semibold text-on-surface">Report Anonymously</p>
-              <p class="text-xs text-on-surface-variant">Your name will not be shared publicly.</p>
+            <div class="flex items-start gap-2">
+              <span class="material-symbols-outlined text-primary text-[20px] mt-0.5">shield</span>
+              <div>
+                <p class="font-semibold text-on-surface">Report anonymously</p>
+                <p class="text-xs text-on-surface-variant">Your identity stays private. AI still processes the full report.</p>
+              </div>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer">
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
               <input type="checkbox" id="anon-toggle" class="sr-only peer" />
               <div class="w-11 h-6 bg-surface-variant rounded-full peer peer-checked:bg-primary peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
             </label>
           </div>
         </section>
 
-        <button id="submit-btn" class="w-full bg-secondary text-white rounded-xl py-4 font-bold text-[16px] active:scale-[0.98] transition flex items-center justify-center gap-2">
-          <span class="material-symbols-outlined">send</span> Submit Report
+        <button id="submit-btn" class="tl-pulse w-full bg-primary text-on-primary rounded-xl py-4 font-bold text-[16px] active:scale-[0.98] transition flex items-center justify-center gap-2">
+          Submit to TrustLens Agent <span class="material-symbols-outlined">arrow_forward</span>
         </button>
       </main>
       <BottomNav active="report" />
       <input type="hidden" id="lat" /><input type="hidden" id="lng" />
-      <script src="/static/report.js"></script>
+      <script src={`/static/report.js?v=${ASSET_VER}`}></script>
     </div>,
     { title: 'Report Issue' }
   )

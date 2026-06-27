@@ -81,7 +81,7 @@
   })
 
   // --- upload ---
-  $('upload-btn').addEventListener('click', () => $('photo-input').click())
+  $('upload-btn').addEventListener('click', (e) => { e.stopPropagation(); $('photo-input').click() })
   $('photo-zone').addEventListener('click', () => $('photo-input').click())
 
   $('photo-input').addEventListener('change', async (e) => {
@@ -134,12 +134,15 @@
   }
 
   // --- AI triage: analyze + auto-fill the form ---
-  $('analyze-btn').addEventListener('click', async () => {
+  const SEV_LABEL = { 5: 'CRITICAL', 4: 'HIGH', 3: 'MEDIUM', 2: 'LOW', 1: 'MINOR' }
+  $('analyze-btn').addEventListener('click', async (e) => {
+    e.stopPropagation()
     const description = $('description').value.trim()
     if (!description && !imageBase64) { toast('Add a photo or a short description first', false); return }
     const btn = $('analyze-btn')
     btn.disabled = true
     btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Triaging…'
+    const scan = $('scan-line'); if (scan) scan.classList.remove('hidden') // start scan sweep
     try {
       const { data } = await api.post('/analyze', { description, category: $('category-select').value, imageBase64, mimeType })
       lastAnalysis = data
@@ -151,6 +154,7 @@
     } catch (e) {
       toast('AI triage failed — you can still fill the form manually', false)
     } finally {
+      if (scan) scan.classList.add('hidden') // stop scan sweep
       btn.disabled = false
       btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">auto_awesome</span> Re-run AI triage'
     }
@@ -169,11 +173,60 @@
       av.innerHTML = `<span class="material-symbols-outlined text-[20px]">${auth[1]}</span><div><b>AI verification: ${auth[2]}</b><p class="text-xs opacity-90">${d.authenticity_reason || ''}</p></div>`
       av.classList.remove('hidden')
     }
-    // Routing strip
-    $('ai-source').textContent = d.source === 'gemini' ? 'Gemini Live' : 'Smart Fallback'
+
+    const isGemini = d.source === 'gemini'
+    const conf = isGemini ? 96 : 90
+
+    // On-image pill: CATEGORY · SEVERITY
+    const pill = $('photo-pill'), pillText = $('photo-pill-text')
+    if (pill && pillText) {
+      pillText.textContent = `${String(d.category || '').toUpperCase().replace(/ /g, '_')} · ${SEV_LABEL[d.severity] || 'MEDIUM'}`
+      pill.classList.remove('hidden')
+    }
+
+    // Primary AI result card
+    if ($('ai-card-title')) $('ai-card-title').textContent = d.title || 'Issue detected'
+    if ($('ai-card-badge')) $('ai-card-badge').textContent = isGemini ? `Gemini Flash · ${conf}%` : `Smart engine · ${conf}%`
+    if ($('ai-card-dept')) $('ai-card-dept').textContent = d.department || 'General Services'
+    if ($('ai-card')) $('ai-card').classList.remove('hidden')
+
+    // Teal left border shows the dropdowns were AI-filled
+    ;['category-select', 'severity-select'].forEach((id) => { const el = $(id); if (el) el.style.borderLeft = '3px solid #1D9E75' })
+
+    // Gemini routing card (no "smart fallback" label)
     $('ai-content').innerHTML = `<b>${d.title}</b> — ${d.summary}<br/><span class="text-xs text-primary font-bold">Routes to ${d.department} · priority ${d.priority_score}/100</span>`
     $('ai-result').classList.remove('hidden')
   }
+
+  // --- Voice input (Web Speech API) — fills the description live ---
+  ;(function initVoice() {
+    const btn = $('voice-btn'); if (!btn) return
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) { btn.disabled = true; btn.title = 'Voice input not supported in this browser'; return }
+    let rec = null, listening = false, baseText = ''
+    const label = $('voice-label')
+    const setListening = (on) => {
+      listening = on
+      btn.classList.toggle('voice-on', on)
+      if (label) label.textContent = on ? 'Listening… tap to stop' : 'Voice report'
+    }
+    btn.addEventListener('click', () => {
+      if (listening && rec) { rec.stop(); return }
+      rec = new SR()
+      rec.lang = ($('voice-lang') && $('voice-lang').value) || 'en-US'
+      rec.interimResults = true
+      rec.continuous = true
+      baseText = $('description').value.trim()
+      rec.onresult = (ev) => {
+        let txt = ''
+        for (let i = 0; i < ev.results.length; i++) txt += ev.results[i][0].transcript
+        $('description').value = (baseText ? baseText + ' ' : '') + txt
+      }
+      rec.onerror = (ev) => { toast('Voice error: ' + (ev.error || 'unknown'), false); setListening(false) }
+      rec.onend = () => setListening(false)
+      try { rec.start(); setListening(true) } catch (e) { toast('Could not start voice input', false) }
+    })
+  })()
 
   // --- Submit ---
   $('submit-btn').addEventListener('click', async () => {
@@ -211,7 +264,7 @@
     } catch (e) {
       toast('Submit failed', false)
       btn.disabled = false
-      btn.innerHTML = '<span class="material-symbols-outlined">send</span> Submit Report'
+      btn.innerHTML = 'Submit to TrustLens Agent <span class="material-symbols-outlined">arrow_forward</span>'
     }
   })
 })()
