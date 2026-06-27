@@ -7,9 +7,29 @@ const GEMINI_MODEL = 'gemini-2.5-flash'
 // IMPORTANT: the API key is sent via the `x-goog-api-key` HEADER, not the
 // `?key=` query param. Newer Google AI Studio keys (the `AQ.` format) are
 // rejected as `?key=` ("ACCESS_TOKEN_TYPE_UNSUPPORTED") but work as a header.
-const GEMINI_URL = (_key?: string) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 const geminiHeaders = (key: string) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key })
+
+// Model fallback chain: if the primary model returns a quota/availability error
+// (429/403/404/5xx), transparently retry the request on the next model. This
+// keeps real AI responses flowing even when one model's free quota is drained
+// (e.g. gemini-2.0-flash shows limit 0 / 429 for AI Studio "AQ." keys).
+const GEMINI_MODELS = [GEMINI_MODEL, 'gemini-flash-latest', 'gemini-2.5-flash-lite']
+
+async function geminiFetch(apiKey: string, init: { body: string }): Promise<Response> {
+  let last: Response | null = null
+  for (const model of GEMINI_MODELS) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      { method: 'POST', headers: geminiHeaders(apiKey), body: init.body }
+    )
+    if (res.ok) return res
+    last = res
+    // 400 = malformed request (retrying other models won't help) → stop.
+    if (![429, 403, 404, 500, 503].includes(res.status)) break
+    try { console.error(`Gemini ${model} -> HTTP ${res.status}; trying fallback model`) } catch {}
+  }
+  return last as Response
+}
 
 const CATEGORIES = ['Pothole', 'Illegal Dumping', 'Streetlight', 'Water Leak', 'Graffiti', 'Other']
 const DEPARTMENTS: Record<string, string> = {
@@ -94,10 +114,8 @@ Citizen description: "${description || '(none provided)'}"${
     generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
   }
 
-  const res = await fetch(GEMINI_URL(apiKey), {
-    method: 'POST',
-    headers: geminiHeaders(apiKey),
-    body: JSON.stringify(body),
+  const res = await geminiFetch(apiKey, {
+        body: JSON.stringify(body),
   })
 
   if (!res.ok) {
@@ -181,9 +199,7 @@ export async function generateInsight(
   if (apiKey) {
     try {
       const prompt = `You are a city civic-analytics assistant. Write a concise, encouraging 2-3 sentence weekly summary for residents based on this data: total reports ${stats.total}, resolved ${stats.resolved} (${rate}% resolution rate), most reported category "${stats.topCategory}", hotspot area "${stats.hotspot}". Mention one actionable insight. Plain text only.`
-      const res = await fetch(GEMINI_URL(apiKey), {
-        method: 'POST',
-        headers: geminiHeaders(apiKey),
+      const res = await geminiFetch(apiKey, {
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.6 },
@@ -235,9 +251,7 @@ export async function generateResolutionPlan(
 Issue: title="${issue.title}", category="${issue.category}", severity=${issue.severity}/5, department="${issue.department || 'General Services'}", location="${issue.address || 'unknown'}".
 Citizen description: "${issue.description || '(none)'}"`
 
-      const res = await fetch(GEMINI_URL(apiKey), {
-        method: 'POST',
-        headers: geminiHeaders(apiKey),
+      const res = await geminiFetch(apiKey, {
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.3, responseMimeType: 'application/json' },
@@ -356,9 +370,7 @@ export async function verifyFix(
       if (beforeBase64) parts.push({ inline_data: { mime_type: 'image/jpeg', data: beforeBase64 } })
       parts.push({ inline_data: { mime_type: afterMime || 'image/jpeg', data: afterBase64 } })
 
-      const res = await fetch(GEMINI_URL(apiKey), {
-        method: 'POST',
-        headers: geminiHeaders(apiKey),
+      const res = await geminiFetch(apiKey, {
         body: JSON.stringify({
           contents: [{ role: 'user', parts }],
           generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
@@ -419,9 +431,7 @@ export async function generateCityHealthInsight(
 Most open reports are "${data.topCategory}", concentrated around ${where}; the responsible department is ${data.department}.
 Weather signal: ${data.rainProb != null ? `${data.rainProb}% rain probability` : 'no live rain data'}. Recent volume + historical pattern point to roughly ${data.predLow}-${data.predHigh} more ${cat} reports there this week.
 Write ONE forecasting sentence (max 32 words) that STARTS with "Predicted:", names the area, gives the expected number range of upcoming ${cat} reports this week, cites rainfall forecast + historical pattern, and ends by recommending the city pre-assign ${data.department} now. Plain text only.`
-      const res = await fetch(GEMINI_URL(apiKey), {
-        method: 'POST',
-        headers: geminiHeaders(apiKey),
+      const res = await geminiFetch(apiKey, {
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.5 },
@@ -485,9 +495,7 @@ Decide:
 3) Which department should own it.
 Respond ONLY as: {"duplicate_of": <existing issue id or null>, "duplicate_reason": "...", "priority_score": <0-100>, "priority_reason": "...", "department": "<dept>", "route_reason": "...", "conclusion": "<one sentence>"}`
 
-      const res = await fetch(GEMINI_URL(apiKey), {
-        method: 'POST',
-        headers: geminiHeaders(apiKey),
+      const res = await geminiFetch(apiKey, {
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
@@ -583,9 +591,7 @@ By category: ${data.byCategory.map((c) => `${c.category}:${c.n}`).join(', ')}.
 Current hotspot: ${data.hotspot}.
 Recent reports: ${data.recent.map((r) => `${r.category}@${r.address}`).slice(0, 10).join('; ')}.
 Output STRICT minified JSON only: {"forecast":"2-sentence prediction of what's likely to rise next week","emerging_hotspot":"area name likely to need attention","rising_category":"category likely to increase","recommendation":"one preventive action the city should take"}`
-      const res = await fetch(GEMINI_URL(apiKey), {
-        method: 'POST',
-        headers: geminiHeaders(apiKey),
+      const res = await geminiFetch(apiKey, {
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.4, responseMimeType: 'application/json' },
@@ -638,9 +644,7 @@ export async function chatReply(
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }],
       }))
-      const res = await fetch(GEMINI_URL(apiKey), {
-        method: 'POST',
-        headers: geminiHeaders(apiKey),
+      const res = await geminiFetch(apiKey, {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: ASSISTANT_SYSTEM(ctx) }] },
           contents,
@@ -697,9 +701,7 @@ export async function recommendContractorReason(
   if (apiKey) {
     try {
       const prompt = `You are a municipal dispatch assistant. In ONE concise sentence (max 28 words, plain text, start with "Suggested by Gemini:"), justify assigning contractor "${top.name}" (${top.rating}/5 rating, ${dist}, skills: ${top.skills.join(', ')}) to a "${issue.category}" issue${issue.address ? ' at ' + issue.address : ''}.`
-      const res = await fetch(GEMINI_URL(apiKey), {
-        method: 'POST',
-        headers: geminiHeaders(apiKey),
+      const res = await geminiFetch(apiKey, {
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 80 } }),
       })
       if (res.ok) {
@@ -723,9 +725,7 @@ export async function quotationReason(
   if (apiKey) {
     try {
       const prompt = `You are a municipal procurement assistant. In ONE concise sentence (max 28 words, plain text), explain why contractor "${best.name}"'s quote of ₹${best.est_cost} over ${best.est_days} days at ${best.past_rating}/5 rating is the best value pick.`
-      const res = await fetch(GEMINI_URL(apiKey), {
-        method: 'POST',
-        headers: geminiHeaders(apiKey),
+      const res = await geminiFetch(apiKey, {
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 80 } }),
       })
       if (res.ok) {
@@ -750,9 +750,7 @@ export async function generateWeeklyReport(
   if (apiKey) {
     try {
       const prompt = `You are a municipal AI analyst. Write a concise 4-5 sentence weekly operations report for a City Commissioner from this data: total reports ${data.total}, resolved ${data.resolved} (${rate}%), open ${data.open}, critical ${data.critical}, top category "${data.topCategory}", hotspot "${data.hotspot}", avg resolution ~${data.avgHours}h, busiest department "${data.topDept}". Include one clear recommendation. Plain text, no markdown headings.`
-      const res = await fetch(GEMINI_URL(apiKey), {
-        method: 'POST',
-        headers: geminiHeaders(apiKey),
+      const res = await geminiFetch(apiKey, {
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.5, maxOutputTokens: 320 } }),
       })
       if (res.ok) {
