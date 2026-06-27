@@ -1400,4 +1400,83 @@ api.post('/contractor/availability', requireRole('contractor'), async (c) => {
   return c.json({ ok: true, availability: v })
 })
 
+// Contractor profile (Field Ops "Profile" tab). Resilient to migration 0010
+// not yet being applied (service_radius_km column may be absent).
+api.get('/contractor/profile', requireRole('contractor'), async (c) => {
+  const me = c.get('staff')
+  let row: any = null
+  try {
+    row = await c.env.DB.prepare(
+      `SELECT u.name, u.email, u.earnings, c.company, c.skills, c.rating, c.jobs_completed,
+              c.availability, c.active_tasks, c.base_address, c.lat, c.lng, c.service_radius_km
+       FROM users u LEFT JOIN contractors c ON c.user_id = u.id WHERE u.id = ?`
+    ).bind(me.id).first<any>()
+  } catch (e) {
+    row = await c.env.DB.prepare(
+      `SELECT u.name, u.email, u.earnings, c.company, c.skills, c.rating, c.jobs_completed,
+              c.availability, c.active_tasks, c.base_address, c.lat, c.lng
+       FROM users u LEFT JOIN contractors c ON c.user_id = u.id WHERE u.id = ?`
+    ).bind(me.id).first<any>()
+  }
+  return c.json({
+    name: row?.name, email: row?.email, earnings: row?.earnings || 0,
+    company: row?.company || '', skills: parseSkills(row?.skills),
+    rating: row?.rating ?? 4.0, jobs_completed: row?.jobs_completed || 0,
+    availability: row?.availability || 'available', active_tasks: row?.active_tasks || 0,
+    base_address: row?.base_address || '', lat: row?.lat ?? null, lng: row?.lng ?? null,
+    service_radius_km: row?.service_radius_km ?? 10,
+  })
+})
+
+// Upsert contractor profile.
+api.post('/contractor/profile', requireRole('contractor'), async (c) => {
+  const me = c.get('staff')
+  const b = await c.req.json().catch(() => ({}))
+  const skills = Array.isArray(b.skills) ? b.skills.join(',') : (typeof b.skills === 'string' ? b.skills : '')
+  const radius = Math.max(1, Math.min(100, Number(b.service_radius_km) || 10))
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO contractors (user_id, company, skills, base_address, lat, lng, service_radius_km)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET
+         company = excluded.company, skills = excluded.skills, base_address = excluded.base_address,
+         lat = COALESCE(excluded.lat, contractors.lat), lng = COALESCE(excluded.lng, contractors.lng),
+         service_radius_km = excluded.service_radius_km`
+    ).bind(me.id, b.company || null, skills || null, b.base_address || null, b.lat ?? null, b.lng ?? null, radius).run()
+  } catch (e) {
+    // Fallback if migration 0010 (service_radius_km) hasn't been applied yet.
+    await c.env.DB.prepare(
+      `INSERT INTO contractors (user_id, company, skills, base_address, lat, lng)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET
+         company = excluded.company, skills = excluded.skills, base_address = excluded.base_address,
+         lat = COALESCE(excluded.lat, contractors.lat), lng = COALESCE(excluded.lng, contractors.lng)`
+    ).bind(me.id, b.company || null, skills || null, b.base_address || null, b.lat ?? null, b.lng ?? null).run()
+  }
+  return c.json({ ok: true })
+})
+
+// Accept an assigned escrow job → moves it into active work.
+api.post('/issues/:id/accept', requireRole('contractor'), async (c) => {
+  const me = c.get('staff')
+  const id = Number(c.req.param('id'))
+  const issue = await c.env.DB.prepare(`SELECT contractor_id, status FROM issues WHERE id = ?`).bind(id).first<any>()
+  if (!issue) return c.json({ error: 'Not found' }, 404)
+  if (Number(issue.contractor_id) !== Number(me.id)) return c.json({ error: 'This job is not assigned to you' }, 403)
+
+  const job = await c.env.DB.prepare(
+    `SELECT id, state FROM job_assignments WHERE issue_id = ? AND state != 'Cancelled'`
+  ).bind(id).first<any>()
+  if (job && job.state === 'JobAssigned') {
+    await c.env.DB.prepare(`UPDATE job_assignments SET state = 'InProgress', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(job.id).run()
+  }
+  if (issue.status !== 'Resolved') {
+    await c.env.DB.prepare(`UPDATE issues SET status = 'In Progress', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run()
+    await c.env.DB.prepare(
+      `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'In Progress', ?, ?)`
+    ).bind(id, `Responder ${me.name} accepted the job and is on the way.`, me.name).run()
+  }
+  return c.json({ ok: true, state: 'InProgress', status: 'In Progress' })
+})
+
 export default api

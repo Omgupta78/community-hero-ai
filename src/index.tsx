@@ -858,6 +858,14 @@ app.get('/contractor', async (c) => {
           <img src="/static/logo.svg" class="w-8 h-8" alt="TrustLens AI" />
           <span><b>Trust</b>Lens<span class="ctr-badge">Field Ops</span></span>
         </a>
+        <nav class="ctr-tabs" id="ctr-tabs">
+          <button class="ctr-tab active" data-tab="dashboard"><span class="material-symbols-outlined">grid_view</span>Dashboard</button>
+          <button class="ctr-tab" data-tab="jobs"><span class="material-symbols-outlined">assignment</span>My Jobs</button>
+          <button class="ctr-tab" data-tab="board"><span class="material-symbols-outlined">work</span>Job Board</button>
+          <button class="ctr-tab" data-tab="map"><span class="material-symbols-outlined">map</span>Map</button>
+          <button class="ctr-tab" data-tab="earnings"><span class="material-symbols-outlined">account_balance_wallet</span>Earnings</button>
+          <button class="ctr-tab" data-tab="profile"><span class="material-symbols-outlined">badge</span>Profile</button>
+        </nav>
         <div class="ctr-topbar-right">
           <div class="ctr-avail" id="ctr-avail">
             <span class="ctr-avail-dot"></span>
@@ -867,7 +875,7 @@ app.get('/contractor', async (c) => {
               <option value="offline">Offline</option>
             </select>
           </div>
-          <button id="ctr-ai-btn" class="ctr-chip"><span class="material-symbols-outlined">support_agent</span> Help</button>
+          <button id="ctr-ai-btn" class="ctr-chip" title="Ask the AI assistant"><span class="material-symbols-outlined">support_agent</span></button>
           <div class="ctr-profile"><div class="ctr-avatar">{(user.name || 'C')[0]}</div>
             <div class="ctr-profile-meta"><b>{user.name}</b><small>Civic Responder</small></div></div>
           <a href="/logout" class="ctr-switch" title="Switch role"><span class="material-symbols-outlined">logout</span></a>
@@ -875,60 +883,135 @@ app.get('/contractor', async (c) => {
       </header>
 
       <main class="ctr-main">
-        {/* HERO / EARNINGS */}
-        <section class="ctr-hero">
-          <div class="ctr-hero-text">
-            <p class="ctr-eyebrow">Welcome back</p>
-            <h1>{user.name}</h1>
-            <p class="ctr-hero-sub">Win jobs from the city, prove the fix with a photo, get paid the moment AI verifies it.</p>
+        {/* ===================== DASHBOARD ===================== */}
+        <section class="ctr-view" id="cview-dashboard">
+          <div class="ctr-hero">
+            <div class="ctr-hero-text">
+              <p class="ctr-eyebrow">Welcome back</p>
+              <h1>{user.name}</h1>
+              <p class="ctr-hero-sub">Win jobs from the city, prove the fix with a photo, get paid the moment AI verifies it.</p>
+            </div>
+            <div class="ctr-earn-card">
+              <p class="ctr-earn-label"><span class="material-symbols-outlined">account_balance_wallet</span> Total earned</p>
+              <p class="ctr-earn-val" id="ctr-earnings">₹—</p>
+              <div class="ctr-earn-foot"><span id="ctr-rating">★ —</span><span id="ctr-jobs-done">— jobs completed</span></div>
+            </div>
           </div>
-          <div class="ctr-earn-card">
-            <p class="ctr-earn-label"><span class="material-symbols-outlined">account_balance_wallet</span> Total earned</p>
-            <p class="ctr-earn-val" id="ctr-earnings">₹—</p>
-            <div class="ctr-earn-foot"><span id="ctr-rating">★ —</span><span id="ctr-jobs-done">— jobs completed</span></div>
-          </div>
+
+          <section class="ctr-kpis">
+            <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#2563EB;background:#2563EB1a">verified_user</span>
+              <div><p class="ctr-kpi-val" id="ctr-k-assigned">—</p><p class="ctr-kpi-label">Assigned by City</p></div></div>
+            <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#F59E0B;background:#F59E0B1a">pending_actions</span>
+              <div><p class="ctr-kpi-val" id="ctr-k-active">—</p><p class="ctr-kpi-label">In Progress</p></div></div>
+            <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#10B981;background:#10B9811a">task_alt</span>
+              <div><p class="ctr-kpi-val" id="ctr-k-done">—</p><p class="ctr-kpi-label">Completed</p></div></div>
+            <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#8B5CF6;background:#8B5CF61a">lock</span>
+              <div><p class="ctr-kpi-val" id="ctr-k-escrow">₹—</p><p class="ctr-kpi-label">In Escrow</p></div></div>
+          </section>
+
+          <div class="ctr-block-head"><h2><span class="material-symbols-outlined">bolt</span> Jobs needing action</h2>
+            <button class="ctr-link" data-goto="jobs">View all my jobs</button></div>
+          <div id="ctr-active-list" class="ctr-grid"><div class="ctr-skel"></div></div>
         </section>
 
-        {/* KPI CARDS */}
-        <section class="ctr-kpis">
-          <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#2563EB;background:#2563EB1a">verified_user</span>
-            <div><p class="ctr-kpi-val" id="ctr-k-assigned">—</p><p class="ctr-kpi-label">Assigned by City</p></div></div>
-          <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#F59E0B;background:#F59E0B1a">pending_actions</span>
-            <div><p class="ctr-kpi-val" id="ctr-k-active">—</p><p class="ctr-kpi-label">In Progress</p></div></div>
-          <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#10B981;background:#10B9811a">task_alt</span>
-            <div><p class="ctr-kpi-val" id="ctr-k-done">—</p><p class="ctr-kpi-label">Completed</p></div></div>
-          <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#8B5CF6;background:#8B5CF61a">paid</span>
-            <div><p class="ctr-kpi-val" id="ctr-k-escrow">₹—</p><p class="ctr-kpi-label">In Escrow</p></div></div>
+        {/* ===================== MY JOBS ===================== */}
+        <section class="ctr-view hidden" id="cview-jobs">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">assignment</span> My Jobs</h1>
+            <div class="ctr-filters" id="ctr-job-filters">
+              <button class="ctr-filter active" data-jf="all">All</button>
+              <button class="ctr-filter" data-jf="city">Assigned by City</button>
+              <button class="ctr-filter" data-jf="active">Active</button>
+              <button class="ctr-filter" data-jf="done">Completed</button>
+            </div></div>
+          <div id="ctr-jobs-list" class="ctr-grid"><div class="ctr-skel"></div></div>
         </section>
 
-        {/* ASSIGNED BY MUNICIPALITY (escrow) */}
-        <section class="ctr-block">
-          <div class="ctr-block-head">
-            <h2><span class="material-symbols-outlined">apartment</span> Assigned by the Municipality</h2>
-            <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">lock</span> Escrow-backed</span>
+        {/* ===================== JOB BOARD ===================== */}
+        <section class="ctr-view hidden" id="cview-board">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">work</span> Open Job Board</h1>
+            <span class="ctr-tag">Ranked by bounty &amp; priority</span></div>
+          <p class="ctr-block-sub">Claim a job outright, or submit a quotation (bid) and let the City's AI compare your value against other responders.</p>
+          <div id="ctr-board-list" class="ctr-grid"><div class="ctr-skel"></div></div>
+        </section>
+
+        {/* ===================== MAP ===================== */}
+        <section class="ctr-view hidden" id="cview-map">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">map</span> Job Map</h1>
+            <div class="ctr-legend"><span><i style="background:#2563EB"></i>My jobs</span><span><i style="background:#F59E0B"></i>Open jobs</span></div></div>
+          <div class="ctr-card-plain"><div id="ctr-map" class="ctr-map"></div></div>
+        </section>
+
+        {/* ===================== EARNINGS ===================== */}
+        <section class="ctr-view hidden" id="cview-earnings">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">account_balance_wallet</span> Earnings</h1></div>
+          <div class="ctr-wallet">
+            <div class="ctr-wallet-main"><p class="ctr-earn-label"><span class="material-symbols-outlined">payments</span> Total earned</p>
+              <p class="ctr-earn-val" id="ctr-earn-total">₹—</p>
+              <div class="ctr-wallet-stats"><div><b id="ctr-earn-jobs">—</b><span>paid jobs</span></div><div><b id="ctr-earn-escrow">₹—</b><span>in escrow</span></div></div></div>
           </div>
-          <p class="ctr-block-sub">The City Command Center assigned these jobs to you and locked the payment in escrow. Complete the work, submit an "after" photo — Gemini verifies it and the escrow is released to you instantly.</p>
-          <div id="ctr-assigned" class="ctr-grid"><div class="ctr-skel"></div></div>
+          <div class="ctr-block-head"><h2><span class="material-symbols-outlined">receipt_long</span> Payment history</h2></div>
+          <div id="ctr-earn-history" class="ctr-earn-list"><div class="ctr-skel"></div></div>
         </section>
 
-        {/* OPEN JOBS BOARD */}
-        <section class="ctr-block">
-          <div class="ctr-block-head">
-            <h2><span class="material-symbols-outlined">work</span> Open Jobs Board</h2>
-            <span class="ctr-tag">Ranked by bounty &amp; priority</span>
+        {/* ===================== PROFILE ===================== */}
+        <section class="ctr-view hidden" id="cview-profile">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">badge</span> My Profile</h1></div>
+          <div class="ctr-profile-grid">
+            <div class="ctr-card-plain ctr-profile-card">
+              <div class="ctr-prof-top"><div class="ctr-avatar ctr-avatar-lg">{(user.name || 'C')[0]}</div>
+                <div><b id="ctr-prof-name">{user.name}</b><small id="ctr-prof-company">Contractor</small>
+                  <div class="ctr-prof-stars" id="ctr-prof-rating">★ —</div></div></div>
+              <div class="ctr-prof-stats">
+                <div><b id="ctr-prof-jobs">—</b><span>jobs done</span></div>
+                <div><b id="ctr-prof-active">—</b><span>active</span></div>
+                <div><b id="ctr-prof-radius">—</b><span>km radius</span></div>
+              </div>
+            </div>
+            <div class="ctr-card-plain">
+              <h3 class="ctr-form-title">Edit profile</h3>
+              <label class="ctr-field-label">Company / crew name</label>
+              <input id="ctr-f-company" class="ctr-input" placeholder="e.g. FixIt Civic Works" />
+              <label class="ctr-field-label">Skills (comma separated)</label>
+              <input id="ctr-f-skills" class="ctr-input" placeholder="Pothole, Water Leak, Streetlight" />
+              <label class="ctr-field-label">Base location</label>
+              <div class="ctr-row"><input id="ctr-f-address" class="ctr-input" placeholder="Sector 17, Chandigarh" />
+                <button id="ctr-f-gps" class="ctr-btn ctr-btn-line" title="Use my location"><span class="material-symbols-outlined">my_location</span></button></div>
+              <label class="ctr-field-label">Service radius: <b id="ctr-f-radius-val">10</b> km</label>
+              <input id="ctr-f-radius" type="range" min="1" max="50" value="10" class="ctr-range" />
+              <button id="ctr-f-save" class="ctr-btn ctr-btn-primary ctr-btn-block"><span class="material-symbols-outlined">save</span> Save profile</button>
+            </div>
           </div>
-          <p class="ctr-block-sub">Self-serve jobs anyone can claim. First responder to claim and verify the fix earns the bounty.</p>
-          <div id="ctr-open" class="ctr-grid"><div class="ctr-skel"></div></div>
-        </section>
-
-        {/* MY CLAIMED JOBS */}
-        <section class="ctr-block">
-          <div class="ctr-block-head"><h2><span class="material-symbols-outlined">construction</span> My Active Jobs</h2></div>
-          <div id="ctr-mine" class="ctr-grid"><p class="ctr-empty">No claimed jobs yet.</p></div>
         </section>
 
         <p class="ctr-footnote">Powered by <b>Gemini 2.5 Flash</b> · Before/after fixes are AI-verified · Escrow released automatically on verification.</p>
       </main>
+
+      {/* ---------- JOB DETAIL DRAWER ---------- */}
+      <div id="ctr-drawer" class="ctr-drawer hidden">
+        <div class="ctr-drawer-card">
+          <div class="ctr-drawer-head"><h3 id="ctr-drawer-title">Job</h3>
+            <button id="ctr-drawer-close" class="ctr-icon-btn"><span class="material-symbols-outlined">close</span></button></div>
+          <div id="ctr-drawer-body" class="ctr-drawer-body"></div>
+        </div>
+      </div>
+
+      {/* ---------- QUOTE MODAL ---------- */}
+      <div id="ctr-quote-modal" class="ctr-modal hidden">
+        <div class="ctr-modal-card ctr-modal-sm">
+          <div class="ctr-modal-head"><h3>Submit a quotation</h3><button id="ctr-quote-close" class="ctr-icon-btn"><span class="material-symbols-outlined">close</span></button></div>
+          <div class="ctr-modal-body">
+            <p id="ctr-quote-title" class="ctr-proof-title"></p>
+            <label class="ctr-field-label">Estimated cost (₹)</label>
+            <input id="ctr-q-cost" type="number" class="ctr-input" placeholder="18000" />
+            <label class="ctr-field-label">Completion time (days)</label>
+            <input id="ctr-q-days" type="number" step="0.5" class="ctr-input" placeholder="2" />
+            <div class="ctr-modal-actions">
+              <button id="ctr-quote-cancel" class="ctr-btn ctr-btn-line">Cancel</button>
+              <button id="ctr-quote-submit" class="ctr-btn ctr-btn-primary"><span class="material-symbols-outlined">send</span> Submit bid</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ---------- PROOF-OF-FIX MODAL ---------- */}
       <div id="ctr-proof-modal" class="ctr-modal hidden">
