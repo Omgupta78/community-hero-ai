@@ -15,14 +15,7 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
           <span class="font-bold text-[18px] text-on-surface sm:hidden">TrustLens AI</span>
         )}
 
-        {/* Centered nav (citizen portal, desktop) */}
-        {!staff && (
-          <nav class="hidden md:flex items-center gap-7 absolute left-1/2 -translate-x-1/2">
-            <a href="/home" data-path="/home" class="tl-nav-link">Home</a>
-            <a href="/map" data-path="/map" class="tl-nav-link">Map</a>
-            <a href="/leaderboard" data-path="/leaderboard" class="tl-nav-link">Leaderboard</a>
-          </nav>
-        )}
+        {/* Centered nav removed per request */}
 
         <div class="ml-auto flex items-center gap-2">
           {staff ? (
