@@ -31,6 +31,36 @@ async function geminiFetch(apiKey: string, init: { body: string }): Promise<Resp
   return last as Response
 }
 
+// Live AI health probe: confirms the key is present and finds the first model
+// in the fallback chain that responds. Powers /api/ai-health and `npm run check:ai`
+// so a silent fallback-to-heuristic situation is caught immediately, not at demo time.
+export async function geminiPing(
+  apiKey: string | undefined
+): Promise<{ key_present: boolean; ok: boolean; model: string | null; status: number | null; detail?: string }> {
+  if (!apiKey) return { key_present: false, ok: false, model: null, status: null, detail: 'GEMINI_API_KEY not set' }
+  let lastStatus: number | null = null
+  let detail = ''
+  for (const model of GEMINI_MODELS) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: geminiHeaders(apiKey),
+          body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }], generationConfig: { maxOutputTokens: 1 } }),
+        }
+      )
+      lastStatus = res.status
+      if (res.ok) return { key_present: true, ok: true, model, status: res.status }
+      try { const j: any = await res.json(); detail = j?.error?.status || '' } catch {}
+    } catch (e) {
+      lastStatus = -1
+      detail = (e as Error).message
+    }
+  }
+  return { key_present: true, ok: false, model: null, status: lastStatus, detail }
+}
+
 const CATEGORIES = ['Pothole', 'Illegal Dumping', 'Streetlight', 'Water Leak', 'Graffiti', 'Other']
 const DEPARTMENTS: Record<string, string> = {
   Pothole: 'Road Maintenance',

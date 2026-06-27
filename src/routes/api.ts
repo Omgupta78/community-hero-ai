@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { analyzeIssue, generateInsight, generateResolutionPlan, predictTrends, generateCityHealthInsight, verifyFix, computePriority, recommendContractorReason, quotationReason, generateWeeklyReport } from '../lib/gemini'
+import { analyzeIssue, generateInsight, generateResolutionPlan, predictTrends, generateCityHealthInsight, verifyFix, computePriority, recommendContractorReason, quotationReason, generateWeeklyReport, geminiPing } from '../lib/gemini'
 import { runTriageAgent } from '../lib/agent'
 import { rankContractors, scoreQuotations, parseSkills, type ContractorRow, type Quote } from '../lib/assignment'
 import { aiCache, budgetedKey } from '../lib/cache'
@@ -759,6 +759,19 @@ api.get('/city-health', async (c) => {
   )
 
   return c.json({ score, systems, worst: worst?.name || null, insight: insight.text, insight_source: insight.source })
+})
+
+// Live AI health check — confirms the Gemini key is loaded and which model is
+// responding. Cached 60s so polling can't burn quota. Use this (or `npm run
+// check:ai`) before a demo to verify AI is live instead of silently on heuristic.
+api.get('/ai-health', async (c) => {
+  const ping = await aiCache(c.env.DB, 'ai_health_probe', 60, async () => geminiPing(c.env.GEMINI_API_KEY))
+  return c.json({
+    ...ping,
+    mode: ping.ok ? 'gemini' : 'heuristic-fallback',
+    model_chain: ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'],
+    checked_at: new Date().toISOString(),
+  })
 })
 
 // Environmental & civic impact metrics derived from resolved issues.
