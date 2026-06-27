@@ -944,8 +944,8 @@ app.get('/contractor', async (c) => {
 
       <main class="ctr-main">
         {/* Role identity ribbon (inline-styled so it shows even with cached CSS) */}
-        <div style="background:linear-gradient(90deg,#0f766e,#0d9488);color:#fff;padding:8px 20px;font-weight:800;font-size:12px;letter-spacing:1.5px;display:flex;align-items:center;gap:8px;text-transform:uppercase;border-radius:0 0 14px 14px;margin-bottom:6px;">
-          <span class="material-symbols-outlined" style="font-size:18px;">construction</span>Contractor · Field Ops · Responder view
+        <div style="background:#ecfdf5;color:#0f766e;padding:7px 18px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #e2e8f0;border-radius:0 0 12px 12px;margin-bottom:8px;">
+          <span class="material-symbols-outlined" style="font-size:16px;">construction</span>Contractor · Field Ops · Responder view
         </div>
         {/* ===================== DASHBOARD ===================== */}
         <section class="ctr-view" id="cview-dashboard">
@@ -963,13 +963,13 @@ app.get('/contractor', async (c) => {
           </div>
 
           <section class="ctr-kpis">
-            <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#2563EB;background:#2563EB1a">verified_user</span>
+            <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#0D9488;background:#0D94881a">verified_user</span>
               <div><p class="ctr-kpi-val" id="ctr-k-assigned">—</p><p class="ctr-kpi-label">Assigned by City</p></div></div>
             <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#F59E0B;background:#F59E0B1a">pending_actions</span>
               <div><p class="ctr-kpi-val" id="ctr-k-active">—</p><p class="ctr-kpi-label">In Progress</p></div></div>
             <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#10B981;background:#10B9811a">task_alt</span>
               <div><p class="ctr-kpi-val" id="ctr-k-done">—</p><p class="ctr-kpi-label">Completed</p></div></div>
-            <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#8B5CF6;background:#8B5CF61a">lock</span>
+            <div class="ctr-kpi"><span class="ctr-kpi-ic material-symbols-outlined" style="color:#0D9488;background:#0D94881a">lock</span>
               <div><p class="ctr-kpi-val" id="ctr-k-escrow">₹—</p><p class="ctr-kpi-label">In Escrow</p></div></div>
           </section>
 
@@ -1145,8 +1145,8 @@ app.get('/command', async (c) => {
       </header>
 
       <main class="ctr-main">
-        <div style="background:linear-gradient(90deg,#1d4ed8,#2563eb);color:#fff;padding:8px 20px;font-weight:800;font-size:12px;letter-spacing:1.5px;display:flex;align-items:center;gap:8px;text-transform:uppercase;border-radius:0 0 14px 14px;margin-bottom:6px;">
-          <span class="material-symbols-outlined" style="font-size:18px;">apartment</span>Municipal Command Center · Commissioner view
+        <div style="background:#eef3ff;color:#1d4ed8;padding:7px 18px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #e2e8f0;border-radius:0 0 12px 12px;margin-bottom:8px;">
+          <span class="material-symbols-outlined" style="font-size:16px;">apartment</span>Municipal Command Center · Commissioner view
         </div>
 
         {/* ===================== DASHBOARD ===================== */}

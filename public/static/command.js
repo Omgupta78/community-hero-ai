@@ -36,13 +36,13 @@
   // ---------- summary cards ----------
   const CARD_META = {
     total_reports: ['Total Reports', 'summarize', '#2563EB'],
-    open_issues: ['Open Issues', 'pending_actions', '#F59E0B'],
+    open_issues: ['Open Issues', 'pending_actions', '#2563EB'],
     critical_issues: ['Critical Issues', 'priority_high', '#EF4444'],
     resolved_today: ['Resolved Today', 'task_alt', '#10B981'],
     avg_resolution_hours: ['Avg Resolution', 'schedule', '#2563EB'],
-    citizen_satisfaction: ['Satisfaction', 'sentiment_satisfied', '#10B981'],
-    budget_utilized: ['Budget Used', 'account_balance', '#F59E0B'],
-    pending_approvals: ['Approvals', 'how_to_reg', '#8B5CF6'],
+    citizen_satisfaction: ['Satisfaction', 'sentiment_satisfied', '#2563EB'],
+    budget_utilized: ['Budget Used', 'account_balance', '#2563EB'],
+    pending_approvals: ['Approvals', 'how_to_reg', '#2563EB'],
   }
   function sparkline(series, color) {
     const w = 70, h = 26, max = Math.max(...series, 1), min = Math.min(...series, 0), r = max - min || 1

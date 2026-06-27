@@ -429,14 +429,11 @@ main button[class*="rounded-xl"]:hover {
    ===================================================================== */
 .ctr-scope {
   --c-primary: #0D9488; --c-primary-d: #0F766E; --c-emerald: #10B981; --c-amber: #F59E0B;
-  --c-blue: #2563EB; --c-ink: #0F172A; --c-muted: #64748B; --c-line: rgba(15,23,42,0.08);
-  --c-bg: #F2F8F6; --c-surface: #ffffff; --c-radius: 20px;
+  --c-blue: #2563EB; --c-ink: #0F172A; --c-muted: #64748B; --c-line: rgba(15,23,42,0.07);
+  --c-bg: #F6F8FB; --c-surface: #ffffff; --c-radius: 18px;
   position: fixed; inset: 0; overflow-y: auto; color: var(--c-ink);
   font-family: Inter, system-ui, sans-serif;
-  background:
-    radial-gradient(1100px 500px at 100% -8%, #cffafe 0%, transparent 55%),
-    radial-gradient(900px 460px at -10% 0%, #d1fae5 0%, transparent 55%),
-    var(--c-bg);
+  background: var(--c-bg);
 }
 .ctr-scope * { box-sizing: border-box; }
 .ctr-scope .hidden { display: none !important; }
@@ -469,7 +466,7 @@ main button[class*="rounded-xl"]:hover {
 
 /* Hero */
 .ctr-hero { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: stretch; }
-.ctr-hero-text { background: linear-gradient(135deg, var(--c-primary-d), var(--c-primary) 55%, #14b8a6); color: #fff; border-radius: var(--c-radius); padding: 28px; position: relative; overflow: hidden; box-shadow: 0 14px 40px rgba(13,148,136,0.3); }
+.ctr-hero-text { background: linear-gradient(135deg, var(--c-primary-d), var(--c-primary)); color: #fff; border-radius: var(--c-radius); padding: 28px; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(13,148,136,0.18); }
 .ctr-hero-text::after { content: ''; position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; }
 .ctr-eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; opacity: .85; margin: 0; }
 .ctr-hero-text h1 { font-size: 28px; font-weight: 800; margin: 4px 0 10px; }
@@ -588,10 +585,7 @@ main button[class*="rounded-xl"]:hover {
   --t-ink: #0F172A; --t-muted: #64748B; --t-line: rgba(15,23,42,0.08); --t-surface: #fff;
   position: fixed; inset: 0; overflow-y: auto; color: var(--t-ink);
   font-family: Inter, system-ui, sans-serif;
-  background:
-    radial-gradient(1100px 520px at 12% -10%, #dbeafe 0%, transparent 55%),
-    radial-gradient(900px 460px at 100% 0%, #d1fae5 0%, transparent 55%),
-    #F6F8FC;
+  background: #F6F8FC;
   display: flex; flex-direction: column;
 }
 .tour-scope * { box-sizing: border-box; }
@@ -812,7 +806,7 @@ main button[class*="rounded-xl"]:hover {
    system with a BLUE theme override (.cc-blue). Same clean look, blue.
    ===================================================================== */
 .ctr-scope.cc-blue { --c-primary: #2563EB; --c-primary-d: #1d4ed8; }
-.cc-blue .ctr-hero-text { background: linear-gradient(135deg, #1e3a8a, #2563EB 60%, #1d4ed8); box-shadow: 0 14px 40px rgba(37,99,235,.3); }
+.cc-blue .ctr-hero-text { background: linear-gradient(135deg, #1d4ed8, #2563EB); box-shadow: 0 10px 30px rgba(37,99,235,.18); }
 .cc-blue .ctr-avatar, .cc-blue .ctr-badge-blue { background: linear-gradient(135deg, #1d4ed8, #3b82f6); }
 .ctr-badge-blue { color: #fff; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 7px; margin-left: 6px; text-transform: uppercase; letter-spacing: .5px; }
 .ctr-tag-blue { background: rgba(37,99,235,.12); color: #1d4ed8; }
