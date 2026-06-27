@@ -119,18 +119,40 @@ app.get('/home', (c) => {
     <div class="pt-[80px] pb-[100px]">
       <TopBar />
       <main class="px-container-margin max-w-3xl mx-auto space-y-xl">
-        {/* Hero stats */}
+        {/* Neighbourhood Pulse */}
         <section class="mt-lg">
-          <div class="bg-surface-container-low rounded-xl p-lg border border-outline-variant relative overflow-hidden">
-            <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary-container rounded-full opacity-20 blur-2xl"></div>
-            <h2 class="text-[18px] font-semibold text-on-surface mb-sm">Community Impact</h2>
-            <div class="flex items-end gap-sm">
-              <span class="text-[32px] font-bold leading-none text-primary" id="stat-resolved">—</span>
-              <span class="text-sm text-on-surface-variant mb-1">Issues resolved in your area</span>
+          <div class="bg-surface-lowest rounded-xl p-lg border border-outline-variant" style="border-left:4px solid #1D9E75;">
+            <div class="flex items-center gap-2 mb-md">
+              <h2 class="text-[18px] font-bold text-on-surface">Sector 17 Pulse</h2>
+              <span class="w-2.5 h-2.5 rounded-full bg-secondary" style="box-shadow:0 0 0 4px rgba(39,174,96,0.18)"></span>
+              <span class="text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">Live</span>
             </div>
-            <div class="mt-md flex items-center gap-xs text-secondary">
-              <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">trending_up</span>
-              <span class="text-xs font-bold tracking-wide">AI-powered civic problem solving</span>
+            <div class="grid grid-cols-3 gap-sm">
+              <div class="text-center">
+                <p class="text-[22px] font-bold leading-none text-error" id="np-open">7</p>
+                <p class="text-[11px] text-on-surface-variant mt-1">Open issues</p>
+              </div>
+              <div class="text-center border-x border-outline-variant">
+                <p class="text-[22px] font-bold leading-none text-secondary" id="np-resolved">3</p>
+                <p class="text-[11px] text-on-surface-variant mt-1">Resolved this week</p>
+              </div>
+              <div class="text-center">
+                <p class="text-[22px] font-bold leading-none text-primary" id="np-rank">#2</p>
+                <p class="text-[11px] text-on-surface-variant mt-1">Your rank</p>
+              </div>
+            </div>
+            <p class="text-sm text-on-surface mt-md flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[18px] text-primary">volunteer_activism</span>
+              Your reports helped <span class="font-bold" id="np-helped">3</span> neighbours this week
+            </p>
+            <div class="mt-md">
+              <div class="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.08em] text-on-surface-variant mb-1">
+                <span>Community Health</span>
+                <span class="text-primary" id="np-health-pct">72%</span>
+              </div>
+              <div class="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+                <div id="np-health-bar" class="h-full rounded-full transition-all" style="width:72%;background:#1D9E75;"></div>
+              </div>
             </div>
           </div>
         </section>

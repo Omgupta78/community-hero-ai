@@ -2,15 +2,37 @@
 (function () {
   const { api, issueCard } = window.CH
 
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val }
+
   async function loadStats() {
     try {
       const { data } = await api.get('/stats')
-      document.getElementById('stat-resolved').textContent = data.resolved
-      document.getElementById('stat-open').textContent = data.open
-      document.getElementById('stat-resolved2').textContent = data.resolved
-      document.getElementById('stat-mine').textContent = data.mine
-      document.getElementById('stat-score').textContent = data.score
+      // Stat cards
+      set('stat-open', data.open)
+      set('stat-resolved2', data.resolved)
+      set('stat-mine', data.mine)
+      set('stat-score', data.score)
+      // Neighbourhood Pulse
+      set('np-open', data.open)
+      set('np-resolved', data.resolved)
+      set('np-helped', data.resolved)
     } catch (e) { console.error(e) }
+  }
+
+  async function loadPulse() {
+    try {
+      const [me, health] = await Promise.all([
+        api.get('/me').catch(() => ({ data: {} })),
+        api.get('/city-health').catch(() => ({ data: {} })),
+      ])
+      if (me.data && me.data.rank) set('np-rank', '#' + me.data.rank)
+      const score = Math.round((health.data && health.data.score) || 0)
+      if (score) {
+        set('np-health-pct', score + '%')
+        const bar = document.getElementById('np-health-bar')
+        if (bar) bar.style.width = score + '%'
+      }
+    } catch (e) { /* keep static fallbacks */ }
   }
 
   async function loadRecent() {
@@ -47,6 +69,7 @@
   function refresh() { loadStats(); loadRecent() }
   refresh()
   loadPrediction()
+  loadPulse()
   // Real-time: poll every 5s so new reports/verifications appear automatically
   setInterval(refresh, 5000)
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh() })
