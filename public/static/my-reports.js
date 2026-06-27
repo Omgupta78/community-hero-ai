@@ -147,4 +147,9 @@
     load()
     setInterval(load, 8000)
   })
+
+  // Reload the instant Firebase auth resolves, so a signed-in citizen's reports
+  // appear immediately instead of waiting for the next 8s poll (the first
+  // DOMContentLoaded load fires before the Firebase SDK has restored the session).
+  document.addEventListener('ch-auth-changed', load)
 })();
