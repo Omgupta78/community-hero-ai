@@ -64,7 +64,6 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
                 <div id="citizen-menu" class="hidden absolute right-0 top-[115%] w-44 bg-surface-lowest border border-outline-variant rounded-xl py-1 z-50" style="box-shadow:0 12px 28px rgba(0,0,0,0.12)">
                   <a href="/profile" class="tl-menu-item">My Profile</a>
                   <a href="/my-reports" class="tl-menu-item">My Reports</a>
-                  <a href="/profile" class="tl-menu-item">Settings</a>
                   <button id="nav-logout" type="button" class="tl-menu-item w-full text-left text-error">Log Out</button>
                 </div>
               </div>

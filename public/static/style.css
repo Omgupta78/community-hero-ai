@@ -996,8 +996,19 @@ main button[class*="rounded-xl"]:hover {
   100% { top: 100%; opacity: .3; }
 }
 
-/* Subtle attention pulse on the submit button */
-.tl-pulse { animation: tl-btn-pulse 2.4s ease-in-out infinite; }
+/* Subtle attention pulse on the submit button.
+   Runs on a ::after ring so it doesn't occupy the button's own `animation`
+   property — otherwise it would override the global scroll-reveal (tl-in) and
+   leave the button stuck at opacity:0 (invisible). */
+.tl-pulse { position: relative; }
+.tl-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: tl-btn-pulse 2.4s ease-in-out infinite;
+}
 @keyframes tl-btn-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(29, 158, 117, 0.45); }
   70% { box-shadow: 0 0 0 10px rgba(29, 158, 117, 0); }
