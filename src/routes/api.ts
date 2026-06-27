@@ -1099,34 +1099,102 @@ api.post('/issues/:id/assign-job', requireRole('admin'), async (c) => {
   })
 })
 
-// Citizen confirmation closes the loop: release escrow exactly once.
+// Citizen confirmation closes the loop. Works whether or not an escrow is still
+// locked: the contractor's AI-verified proof may already have released it, in
+// which case this simply records the reporter's sign-off. Falls back to the
+// demo citizen so the flow works for anonymous demo visitors too.
 api.post('/issues/:id/confirm', async (c) => {
-  const citizenId = await requireCitizen(c)
+  const citizenId = (await requireCitizen(c)) ?? DEMO_USER_ID
   const id = Number(c.req.param('id'))
+
+  const issue = await c.env.DB.prepare(`SELECT department FROM issues WHERE id = ?`).bind(id).first<any>()
+  if (!issue) return c.json({ error: 'Not found' }, 404)
+  const citizen = await c.env.DB.prepare(`SELECT name FROM users WHERE id = ?`).bind(citizenId).first<any>()
+
+  // If an escrow is still locked (citizen confirming before any auto-release),
+  // release it now: pay the contractor, settle the budget, close the job.
   const job = await c.env.DB.prepare(
     `SELECT id, contractor_id, escrow_amount FROM job_assignments WHERE issue_id = ? AND escrow_status = 'locked'`
   ).bind(id).first<any>()
-  if (!job) return c.json({ error: 'No locked escrow for this issue' }, 409)
-
-  const issue = await c.env.DB.prepare(`SELECT department FROM issues WHERE id = ?`).bind(id).first<any>()
-  const citizen = citizenId ? await c.env.DB.prepare(`SELECT name FROM users WHERE id = ?`).bind(citizenId).first<any>() : null
-
-  await c.env.DB.prepare(
-    `UPDATE job_assignments SET citizen_confirmed = 1, escrow_status = 'released', state = 'Resolved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-  ).bind(job.id).run()
-  await c.env.DB.prepare(`UPDATE users SET earnings = earnings + ? WHERE id = ?`).bind(job.escrow_amount, job.contractor_id).run()
-  await c.env.DB.prepare(`UPDATE contractors SET active_tasks = MAX(0, active_tasks - 1), jobs_completed = jobs_completed + 1 WHERE user_id = ?`).bind(job.contractor_id).run()
-  if (issue?.department) {
+  let released = 0
+  if (job) {
+    released = job.escrow_amount || 0
     await c.env.DB.prepare(
-      `UPDATE budgets SET spent = spent + ?, committed = MAX(0, committed - ?) WHERE department = ?`
-    ).bind(job.escrow_amount, job.escrow_amount, issue.department).run()
+      `UPDATE job_assignments SET citizen_confirmed = 1, escrow_status = 'released', state = 'Resolved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).bind(job.id).run()
+    await c.env.DB.prepare(`UPDATE users SET earnings = earnings + ? WHERE id = ?`).bind(released, job.contractor_id).run()
+    await c.env.DB.prepare(`UPDATE contractors SET active_tasks = MAX(0, active_tasks - 1), jobs_completed = jobs_completed + 1 WHERE user_id = ?`).bind(job.contractor_id).run()
+    if (issue.department) {
+      await c.env.DB.prepare(
+        `UPDATE budgets SET spent = spent + ?, committed = MAX(0, committed - ?) WHERE department = ?`
+      ).bind(released, released, issue.department).run()
+    }
   }
-  await c.env.DB.prepare(`UPDATE issues SET status = 'Resolved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run()
+
+  // Mark the issue resolved + record the citizen sign-off. Resilient to the
+  // citizen_confirmed column not existing yet (migration 0012 not applied).
+  try {
+    await c.env.DB.prepare(
+      `UPDATE issues SET citizen_confirmed = 1, status = 'Resolved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).bind(id).run()
+  } catch {
+    await c.env.DB.prepare(`UPDATE issues SET status = 'Resolved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run()
+  }
+
+  const msg = released
+    ? `Citizen confirmed the fix is complete. ✓ ₹${released.toLocaleString('en-IN')} released to the contractor.`
+    : `Citizen confirmed the fix is complete. ✓`
   await c.env.DB.prepare(
     `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'Resolved', ?, ?)`
-  ).bind(id, `Citizen confirmed the fix; ₹${job.escrow_amount.toLocaleString('en-IN')} released to the contractor.`, citizen?.name || 'Citizen').run()
+  ).bind(id, msg, citizen?.name || 'Citizen').run()
 
-  return c.json({ ok: true, released: job.escrow_amount })
+  return c.json({ ok: true, released, citizen_confirmed: true })
+})
+
+// "No, it's still broken." The original reporter reopens a Resolved issue with
+// fresh evidence: the new photo becomes the current before-photo, the proof is
+// cleared and the issue goes back to In Progress for the crew to re-attempt.
+api.post('/issues/:id/reopen', async (c) => {
+  const citizenId = (await requireCitizen(c)) ?? DEMO_USER_ID
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json().catch(() => ({}))
+  const photo = body.photo_data || body.after_photo || null
+  const reason = (body.reason || '').toString().trim()
+
+  const issue = await c.env.DB.prepare(`SELECT id FROM issues WHERE id = ?`).bind(id).first<any>()
+  if (!issue) return c.json({ error: 'Not found' }, 404)
+  const citizen = await c.env.DB.prepare(`SELECT name FROM users WHERE id = ?`).bind(citizenId).first<any>()
+
+  // Clear the proof-of-fix and reopen. New photo (if provided) replaces the
+  // before-photo so the crew sees the latest state of the problem.
+  try {
+    await c.env.DB.prepare(
+      `UPDATE issues SET status = 'In Progress', fix_verified = 0, fix_reason = NULL, after_photo = NULL,
+              citizen_confirmed = 0, photo_data = COALESCE(?, photo_data), updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    ).bind(photo, id).run()
+  } catch {
+    await c.env.DB.prepare(
+      `UPDATE issues SET status = 'In Progress', fix_verified = 0, fix_reason = NULL, after_photo = NULL,
+              photo_data = COALESCE(?, photo_data), updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    ).bind(photo, id).run()
+  }
+
+  // Put any assignment back into progress so the contractor is on the hook again.
+  await c.env.DB.prepare(
+    `UPDATE job_assignments SET state = 'InProgress', citizen_confirmed = 0, updated_at = CURRENT_TIMESTAMP
+     WHERE issue_id = ? AND state != 'Cancelled'`
+  ).bind(id).run().catch(() => {})
+
+  const msg = reason
+    ? `Citizen reports the issue is NOT fixed — reopened with new evidence. "${reason}"`
+    : `Citizen reports the issue is NOT fixed — reopened with new evidence.`
+  await c.env.DB.prepare(
+    `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'In Progress', ?, ?)`
+  ).bind(id, msg, citizen?.name || 'Citizen').run()
+
+  return c.json({ ok: true, status: 'In Progress', reopened: true })
 })
 
 // 8 summary cards with % delta vs prior period + a small sparkline.

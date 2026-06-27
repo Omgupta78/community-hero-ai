@@ -705,7 +705,7 @@ app.get('/issue/:id', (c) => {
         <div class="text-center text-on-surface-variant py-8">Loading…</div>
       </main>
       <BottomNav active="home" />
-      <script src="/static/detail.js"></script>
+      <script src={`/static/detail.js?v=${ASSET_VER}`}></script>
     </div>,
     { title: 'Issue Details' }
   )

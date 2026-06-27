@@ -4,6 +4,22 @@
   const root = document.getElementById('issue-detail')
   const id = root.dataset.id
   let planData = null // cached AI plan so live-polling re-renders don't lose it
+  let reopenDataUrl = null // fresh "still broken" photo (data URL) for reopen
+
+  // Downscale a chosen image to a compact JPEG data URL (same as report/contractor).
+  function downscale(file, maxDim = 1280, q = 0.72) {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file); const im = new Image()
+      im.onload = () => {
+        let { width, height } = im
+        if (width > maxDim || height > maxDim) { if (width >= height) { height = Math.round((height * maxDim) / width); width = maxDim } else { width = Math.round((width * maxDim) / height); height = maxDim } }
+        try { const cv = document.createElement('canvas'); cv.width = width; cv.height = height; cv.getContext('2d').drawImage(im, 0, 0, width, height); URL.revokeObjectURL(url); resolve(cv.toDataURL('image/jpeg', q)) }
+        catch (e) { URL.revokeObjectURL(url); resolve(null) }
+      }
+      im.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+      im.src = url
+    })
+  }
 
   async function load() {
     try {
@@ -149,6 +165,47 @@
         </div>
       </div>`).join('')
 
+    // Citizen "is it really fixed?" loop — shown to the reporter (or demo
+    // visitor) once a fix is AI-verified and Resolved, until they sign off.
+    const showFixCheck = i.status === 'Resolved' && i.fix_verified && !i.citizen_confirmed
+    const fixCheck = i.citizen_confirmed
+      ? `<div class="bg-secondary-container text-on-secondary-container rounded-xl p-md mb-4 flex items-center gap-2">
+           <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">verified</span>
+           <p class="font-bold text-sm">You confirmed this fix ✓</p>
+         </div>`
+      : showFixCheck
+      ? `<div class="bg-surface-lowest border border-secondary rounded-xl p-md mb-4">
+           <div class="flex items-center gap-2 mb-1 text-on-surface">
+             <span class="material-symbols-outlined text-secondary">help</span>
+             <h3 class="font-bold text-sm">Is this really fixed?</h3>
+           </div>
+           <p class="text-sm text-on-surface-variant mb-3">You reported this issue. Please confirm the work actually solved it — or reopen it with a fresh photo if it's still broken.</p>
+           <div class="grid grid-cols-2 gap-2">
+             <button id="confirm-fix-btn" class="bg-secondary text-white rounded-lg py-2.5 font-bold flex items-center justify-center gap-1.5 text-sm">
+               <span class="material-symbols-outlined text-[18px]">thumb_up</span> Yes, it's fixed
+             </button>
+             <button id="reopen-toggle-btn" class="bg-error-container text-on-error-container rounded-lg py-2.5 font-bold flex items-center justify-center gap-1.5 text-sm">
+               <span class="material-symbols-outlined text-[18px]">thumb_down</span> No, still broken
+             </button>
+           </div>
+           <div id="reopen-form" class="hidden mt-3 border-t border-outline-variant pt-3">
+             <p class="text-[11px] uppercase font-bold text-on-surface-variant mb-1">Upload a photo of the still-broken issue</p>
+             <label class="block cursor-pointer">
+               <input id="reopen-input" type="file" accept="image/*" capture="environment" class="hidden"/>
+               <div id="reopen-drop" class="border-2 border-dashed border-outline-variant rounded-lg p-4 text-center text-on-surface-variant text-sm flex flex-col items-center gap-1">
+                 <span class="material-symbols-outlined">add_a_photo</span>
+                 <span id="reopen-drop-label">Tap to add a photo</span>
+               </div>
+               <img id="reopen-preview" class="hidden w-full h-40 object-cover rounded-lg mt-2"/>
+             </label>
+             <textarea id="reopen-reason" rows="2" placeholder="What's still wrong? (optional)" class="w-full mt-2 rounded-lg border border-outline-variant bg-surface-lowest p-2 text-sm text-on-surface"></textarea>
+             <button id="reopen-submit-btn" class="w-full mt-2 bg-error text-white rounded-lg py-2.5 font-bold flex items-center justify-center gap-1.5 text-sm">
+               <span class="material-symbols-outlined text-[18px]">restart_alt</span> Reopen this issue
+             </button>
+           </div>
+         </div>`
+      : ''
+
     root.innerHTML = `
       ${photo}
       <div class="flex items-center gap-2 flex-wrap mb-2">
@@ -189,20 +246,22 @@
 
       ${proof}
 
+      ${fixCheck}
+
       <div id="ai-plan-wrap" class="bg-secondary-container/40 border border-secondary-container rounded-xl p-md mb-4">
         ${planSectionHTML()}
       </div>
 
-      <button id="verify-btn" class="w-full bg-secondary text-white rounded-xl py-3.5 font-bold flex items-center justify-center gap-2 mb-6">
+      ${i.status === 'Resolved' ? '' : `<button id="verify-btn" class="w-full bg-secondary text-white rounded-xl py-3.5 font-bold flex items-center justify-center gap-2 mb-6">
         <span class="material-symbols-outlined">verified</span> Verify This Issue
-      </button>
+      </button>`}
 
       <h3 class="font-semibold text-on-surface mb-3">Timeline</h3>
       <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
         ${timeline || '<p class="text-sm text-on-surface-variant">No updates yet.</p>'}
       </div>`
 
-    document.getElementById('verify-btn').addEventListener('click', async (e) => {
+    document.getElementById('verify-btn')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget
       btn.disabled = true
       btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Checking your location…'
@@ -218,6 +277,55 @@
         else toast('Verify failed', false)
         btn.disabled = false
         btn.innerHTML = '<span class="material-symbols-outlined">verified</span> Verify This Issue'
+      }
+    })
+
+    // ---- Citizen "is it really fixed?" loop ----
+    document.getElementById('confirm-fix-btn')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget
+      btn.disabled = true
+      btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Saving…'
+      try {
+        await api.post(`/issues/${id}/confirm`, {})
+        toast('Thanks — fix confirmed ✓')
+        load()
+      } catch (err) {
+        toast('Could not confirm', false)
+        btn.disabled = false
+        btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">thumb_up</span> Yes, it\'s fixed'
+      }
+    })
+
+    document.getElementById('reopen-toggle-btn')?.addEventListener('click', () => {
+      const f = document.getElementById('reopen-form')
+      if (f) f.classList.toggle('hidden')
+    })
+
+    document.getElementById('reopen-input')?.addEventListener('change', async (e) => {
+      const file = e.target.files[0]; if (!file) return
+      reopenDataUrl = await downscale(file)
+      if (!reopenDataUrl) return toast('Could not read image', false)
+      const img = document.getElementById('reopen-preview')
+      const drop = document.getElementById('reopen-drop')
+      if (img) { img.src = reopenDataUrl; img.classList.remove('hidden') }
+      if (drop) drop.classList.add('hidden')
+    })
+
+    document.getElementById('reopen-submit-btn')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget
+      const reason = (document.getElementById('reopen-reason')?.value || '').trim()
+      if (!reopenDataUrl && !reason) return toast('Add a photo or a note of what\'s still wrong', false)
+      btn.disabled = true
+      btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Reopening…'
+      try {
+        await api.post(`/issues/${id}/reopen`, { photo_data: reopenDataUrl, reason })
+        reopenDataUrl = null
+        toast('Issue reopened — the crew has been notified')
+        load()
+      } catch (err) {
+        toast('Could not reopen', false)
+        btn.disabled = false
+        btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">restart_alt</span> Reopen this issue'
       }
     })
 
