@@ -2,7 +2,7 @@ import { jsxRenderer } from 'hono/jsx-renderer'
 
 // Bump this whenever static CSS/JS changes so browsers fetch the latest assets
 // (prevents the "old styling cached" problem where pages look unchanged).
-export const ASSET_VER = '16'
+export const ASSET_VER = '17'
 
 export const renderer = jsxRenderer(({ children, title }) => {
   return (
@@ -12,7 +12,7 @@ export const renderer = jsxRenderer(({ children, title }) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{title || 'TrustLens AI'}</title>
         <meta name="description" content="TrustLens AI — See. Verify. Solve. An AI-powered hyperlocal civic issue resolution platform where an autonomous Gemini agent triages, verifies, routes and resolves community issues." />
-        <meta name="theme-color" content="#2563EB" />
+        <meta name="theme-color" content="#1D9E75" />
         {/* Social / link preview */}
         <meta property="og:title" content="TrustLens AI — See. Verify. Solve." />
         <meta property="og:description" content="AI-powered hyperlocal civic issue resolution platform. One autonomous agent runs the whole loop." />
@@ -51,40 +51,42 @@ tailwind.config = {
   theme: {
     extend: {
       colors: {
-        "primary": "#2563EB",
+        // Warm, human-centered civic palette — earthy teal on sage cream.
+        "primary": "#1D9E75",
         "on-primary": "#ffffff",
-        "primary-container": "#dbe8ff",
-        "on-primary-container": "#1e3a8a",
-        "primary-fixed": "#eff5ff",
-        "primary-fixed-dim": "#bfd6ff",
-        "surface-tint": "#3b82f6",
-        "secondary": "#10B981",
-        "secondary-container": "#d1fae5",
-        "on-secondary-container": "#065f46",
-        "tertiary": "#b45309",
-        "tertiary-fixed": "#fff0d6",
-        "on-tertiary-fixed": "#7c2d12",
-        "tertiary-container": "#f59e0b",
-        "on-tertiary-container": "#7c2d12",
-        "error": "#ef4444",
-        "error-container": "#fee2e2",
-        "on-error-container": "#991b1b",
-        "background": "#f6f8fc",
-        "on-background": "#0f172a",
-        "surface": "#f6f8fc",
-        "surface-lowest": "#ffffff",
-        "surface-container-lowest": "#ffffff",
-        "surface-container-low": "#f1f5f9",
-        "surface-container": "#e9eef5",
-        "surface-container-high": "#e2e8f0",
-        "surface-container-highest": "#dbe2ea",
-        "surface-variant": "#e2e8f0",
-        "on-surface": "#0f172a",
-        "on-surface-variant": "#475569",
-        "outline": "#94a3b8",
-        "outline-variant": "#cbd5e1",
+        "primary-container": "#E1F5EE",
+        "on-primary-container": "#0F6E56",
+        "primary-fixed": "#E1F5EE",
+        "primary-fixed-dim": "#bfe9da",
+        "surface-tint": "#1D9E75",
+        "secondary": "#27AE60",
+        "secondary-container": "#E1F5EE",
+        "on-secondary-container": "#0F6E56",
+        "tertiary": "#E67E22",
+        "tertiary-fixed": "#fbe8d4",
+        "on-tertiary-fixed": "#9a4a10",
+        "tertiary-container": "#E67E22",
+        "on-tertiary-container": "#7c3a08",
+        "error": "#C0392B",
+        "error-container": "#f6e1de",
+        "on-error-container": "#8c2318",
+        "background": "#F0EDDF",
+        "on-background": "#1A1A1A",
+        "surface": "#F0EDDF",
+        "surface-lowest": "#FAFAF7",
+        "surface-container-lowest": "#FAFAF7",
+        "surface-container-low": "#f5f3e9",
+        "surface-container": "#eceadd",
+        "surface-container-high": "#e6e3d4",
+        "surface-container-highest": "#e0ddce",
+        "surface-variant": "#e6e3d4",
+        "on-surface": "#1A1A1A",
+        "on-surface-variant": "#5A5A52",
+        "outline": "#c9c5b8",
+        "outline-variant": "#E0DDD4",
       },
       fontFamily: { sans: ["Inter", "sans-serif"] },
+      fontWeight: { medium: "500", semibold: "500", bold: "500", extrabold: "600" },
       borderRadius: { DEFAULT: "0.5rem", md: "0.75rem", lg: "1rem", xl: "1.5rem", full: "9999px" },
       spacing: { xs: "4px", sm: "8px", md: "16px", lg: "24px", xl: "32px", "container-margin": "20px" },
     },
