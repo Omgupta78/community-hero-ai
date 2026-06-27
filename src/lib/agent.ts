@@ -11,8 +11,9 @@
 // Each step is written to `agent_actions` so the UI can show the agent's "mind".
 
 import { agentReason, generateResolutionPlan, type AgentCandidate } from './gemini'
+import { budgetedKey } from './cache'
 
-type Env = { DB: D1Database; GEMINI_API_KEY?: string }
+type Env = { DB: D1Database; GEMINI_API_KEY?: string; GEMINI_DAILY_CAP?: string }
 
 async function log(
   db: D1Database,
@@ -69,7 +70,7 @@ export async function runTriageAgent(env: Env, issueId: number): Promise<{ ok: b
   )
 
   // 2. REASON
-  const decision = await agentReason(env.GEMINI_API_KEY, issue, candidates, deptLoad)
+  const decision = await agentReason(await budgetedKey(env), issue, candidates, deptLoad)
   await log(
     db,
     issueId,
@@ -134,7 +135,7 @@ export async function runTriageAgent(env: Env, issueId: number): Promise<{ ok: b
   }
 
   // 6. PLAN
-  const plan = await generateResolutionPlan(env.GEMINI_API_KEY, {
+  const plan = await generateResolutionPlan(await budgetedKey(env), {
     title: issue.title,
     description: issue.description,
     category: issue.category,

@@ -51,6 +51,7 @@ if (!initialized()) {
 const bindings = {
   DB: d1,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  GEMINI_DAILY_CAP: process.env.GEMINI_DAILY_CAP,
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
 }
 

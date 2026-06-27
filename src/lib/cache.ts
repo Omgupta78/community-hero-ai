@@ -42,3 +42,58 @@ export async function aiCache<T>(
   }
   return fresh
 }
+
+// ---------------------------------------------------------------------------
+// Daily Gemini call budget — a hard cap so the free quota can NEVER be drained.
+// Every real Gemini call goes through budgetedKey(): it returns the API key
+// only while today's call count is under the cap, otherwise returns undefined
+// (which makes every gemini.ts function transparently use its heuristic
+// fallback). Cached calls never reach this, so they don't count.
+// ---------------------------------------------------------------------------
+
+type BudgetEnv = { DB: D1Database; GEMINI_API_KEY?: string; GEMINI_DAILY_CAP?: string }
+
+function todayCountKey(): string {
+  return 'gemini_calls:' + new Date().toISOString().slice(0, 10)
+}
+
+/** Read how many Gemini calls have been made today (best-effort). */
+export async function geminiUsageToday(db: D1Database): Promise<number> {
+  try {
+    const row = await db.prepare(`SELECT payload FROM ai_cache WHERE cache_key = ?`).bind(todayCountKey()).first<{ payload: string }>()
+    if (row && row.payload) return JSON.parse(row.payload).n || 0
+  } catch (e) {}
+  return 0
+}
+
+/**
+ * Returns the Gemini API key ONLY if we're under the daily budget; otherwise
+ * undefined (→ heuristic fallback). Increments the day's counter when it hands
+ * out the key. Default cap 180/day (safely under the 200/day free tier of
+ * gemini-2.0-flash); override with the GEMINI_DAILY_CAP env var.
+ */
+export async function budgetedKey(env: BudgetEnv): Promise<string | undefined> {
+  const key = env.GEMINI_API_KEY
+  if (!key) return undefined
+  const cap = Number(env.GEMINI_DAILY_CAP) || 180
+  const k = todayCountKey()
+
+  let used = 0
+  try {
+    const row = await env.DB.prepare(`SELECT payload FROM ai_cache WHERE cache_key = ?`).bind(k).first<{ payload: string }>()
+    if (row && row.payload) used = JSON.parse(row.payload).n || 0
+  } catch (e) {
+    // ai_cache table not migrated yet → don't enforce a cap (never break).
+    return key
+  }
+  if (used >= cap) return undefined
+
+  const next = JSON.stringify({ n: used + 1 })
+  try {
+    await env.DB.prepare(
+      `INSERT INTO ai_cache (cache_key, payload, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(cache_key) DO UPDATE SET payload = ?, created_at = CURRENT_TIMESTAMP`
+    ).bind(k, next, next).run()
+  } catch (e) {}
+  return key
+}

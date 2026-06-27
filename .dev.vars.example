@@ -5,5 +5,11 @@
 # Google Gemini API key — https://aistudio.google.com/apikey
 GEMINI_API_KEY=your_gemini_key_here
 
+# Optional: hard daily cap on Gemini calls so the free quota can never be drained.
+# Defaults to 180 (safely under gemini-2.0-flash's 200/day free tier). When the
+# cap is hit, the app keeps working using its heuristic fallback. Caching means
+# you'll rarely get close to this in a demo.
+GEMINI_DAILY_CAP=180
+
 # Firebase project id — must match public/static/firebase-config.js
 FIREBASE_PROJECT_ID=your_firebase_project_id

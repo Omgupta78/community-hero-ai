@@ -3,7 +3,7 @@ import { cors } from 'hono/cors'
 import { analyzeIssue, generateInsight, generateResolutionPlan, chatReply, predictTrends, generateCityHealthInsight, verifyFix, computePriority, recommendContractorReason, quotationReason, generateWeeklyReport } from '../lib/gemini'
 import { runTriageAgent } from '../lib/agent'
 import { rankContractors, scoreQuotations, parseSkills, type ContractorRow, type Quote } from '../lib/assignment'
-import { aiCache } from '../lib/cache'
+import { aiCache, budgetedKey } from '../lib/cache'
 import {
   verifyPassword,
   hashPassword,
@@ -20,6 +20,7 @@ import { tierFor } from '../lib/reputation'
 type Bindings = {
   DB: D1Database
   GEMINI_API_KEY?: string
+  GEMINI_DAILY_CAP?: string
   FIREBASE_PROJECT_ID?: string
 }
 
@@ -149,7 +150,7 @@ api.get('/authorities', requireRole('admin'), async (c) => {
 api.post('/analyze', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const { description, category, imageBase64, mimeType } = body
-  const result = await analyzeIssue(c.env.GEMINI_API_KEY, {
+  const result = await analyzeIssue(await budgetedKey(c.env), {
     description,
     category,
     imageBase64,
@@ -256,7 +257,7 @@ api.post('/issues', async (c) => {
 
   const analysis = ai && ai.category
     ? ai
-    : await analyzeIssue(c.env.GEMINI_API_KEY, { description, category, imageBase64, mimeType })
+    : await analyzeIssue(await budgetedKey(c.env), { description, category, imageBase64, mimeType })
 
   const res = await c.env.DB.prepare(
     `INSERT INTO issues
@@ -538,7 +539,7 @@ api.post('/issues/:id/proof', requireRole('contractor'), async (c) => {
   const afterB64 = afterImageBase64 || dataUrlToBase64(after_photo)
 
   const verdict = await verifyFix(
-    c.env.GEMINI_API_KEY,
+    await budgetedKey(c.env),
     { title: issue.title, category: issue.category, description: issue.description },
     beforeB64,
     afterB64,
@@ -600,7 +601,9 @@ api.get('/issues/:id/plan', async (c) => {
   ).bind(id).first<any>()
   if (!issue) return c.json({ error: 'Not found' }, 404)
 
-  const plan = await generateResolutionPlan(c.env.GEMINI_API_KEY, issue)
+  const plan = await aiCache(c.env.DB, `plan:${id}`, 86400, async () =>
+    generateResolutionPlan(await budgetedKey(c.env), issue)
+  )
   return c.json(plan)
 })
 
@@ -660,8 +663,8 @@ api.get('/predict', async (c) => {
     `SELECT category, address FROM issues ORDER BY created_at DESC LIMIT 12`
   ).all()
 
-  const prediction = await aiCache(c.env.DB, `predict:${total?.n || 0}:${resolved?.n || 0}`, 1800, () =>
-    predictTrends(c.env.GEMINI_API_KEY, {
+  const prediction = await aiCache(c.env.DB, `predict:${total?.n || 0}:${resolved?.n || 0}`, 1800, async () =>
+    predictTrends(await budgetedKey(c.env), {
       byCategory: (byCategory as any[]) || [],
       hotspot: hotspot?.address || 'city-wide',
       total: total?.n || 0,
@@ -712,8 +715,8 @@ api.get('/city-health', async (c) => {
     `SELECT address FROM issues WHERE status != 'Resolved' AND address != '' GROUP BY address ORDER BY COUNT(*) DESC LIMIT 1`
   ).first<{ address: string }>()
 
-  const insight = await aiCache(c.env.DB, `cityhealth:${score}:${worst?.name || ''}`, 1800, () =>
-    generateCityHealthInsight(c.env.GEMINI_API_KEY, {
+  const insight = await aiCache(c.env.DB, `cityhealth:${score}:${worst?.name || ''}`, 1800, async () =>
+    generateCityHealthInsight(await budgetedKey(c.env), {
       score,
       systems: systems.map((s) => ({ name: s.name, health: s.health })),
       worst: worst?.name || 'General Services',
@@ -779,7 +782,7 @@ api.post('/chat', async (c) => {
     open: (total?.n || 0) - (resolved?.n || 0),
   }
 
-  const result = await chatReply(c.env.GEMINI_API_KEY, clean, ctx)
+  const result = await chatReply(await budgetedKey(c.env), clean, ctx)
   return c.json(result)
 })
 
@@ -858,8 +861,8 @@ api.get('/insight', async (c) => {
     categories,
   }
 
-  const insight = await aiCache(c.env.DB, `insight:${stats.total}:${stats.resolved}`, 1800, () =>
-    generateInsight(c.env.GEMINI_API_KEY, stats)
+  const insight = await aiCache(c.env.DB, `insight:${stats.total}:${stats.resolved}`, 1800, async () =>
+    generateInsight(await budgetedKey(c.env), stats)
   )
   const rate = stats.total ? Math.round((stats.resolved / stats.total) * 100) : 0
   return c.json({ ...insight, most: stats.topCategory, hotspot: stats.hotspot, rate })
@@ -959,9 +962,9 @@ api.get('/contractors/nearby', requireRole('admin'), async (c) => {
   let ai_source: string | undefined
   if (ranked.length) {
     const top = ranked[0]
-    const rec = await aiCache(c.env.DB, `crec:${skill}:${top.user_id}:${top.match_score}`, 1800, () =>
+    const rec = await aiCache(c.env.DB, `crec:${skill}:${top.user_id}:${top.match_score}`, 1800, async () =>
       recommendContractorReason(
-        c.env.GEMINI_API_KEY,
+        await budgetedKey(c.env),
         { category: skill },
         { name: top.name, rating: top.rating, distance_km: top.distance_km, match_score: top.match_score, skills: top.skills }
       )
@@ -996,8 +999,8 @@ api.get('/issues/:id/quotations', requireRole('admin'), async (c) => {
   }))
   const { scored } = scoreQuotations(quotes)
   const best = scored.find((s) => s.recommended)!
-  const reason = await aiCache(c.env.DB, `qreason:${id}:${best.contractor_id}:${best.est_cost}`, 1800, () =>
-    quotationReason(c.env.GEMINI_API_KEY, best)
+  const reason = await aiCache(c.env.DB, `qreason:${id}:${best.contractor_id}:${best.est_cost}`, 1800, async () =>
+    quotationReason(await budgetedKey(c.env), best)
   )
 
   // Stitch quotation_id + status back in.
@@ -1310,8 +1313,8 @@ api.get('/reports/weekly', requireRole('admin'), async (c) => {
   const topCat = await c.env.DB.prepare(`SELECT category FROM issues GROUP BY category ORDER BY COUNT(*) DESC LIMIT 1`).first<any>()
   const hotspot = await c.env.DB.prepare(`SELECT address FROM issues WHERE address != '' GROUP BY address ORDER BY COUNT(*) DESC LIMIT 1`).first<any>()
   const topDept = await c.env.DB.prepare(`SELECT department FROM issues WHERE department IS NOT NULL GROUP BY department ORDER BY COUNT(*) DESC LIMIT 1`).first<any>()
-  const report = await aiCache(c.env.DB, `weekly:${agg?.total || 0}:${agg?.resolved || 0}`, 3600, () =>
-    generateWeeklyReport(c.env.GEMINI_API_KEY, {
+  const report = await aiCache(c.env.DB, `weekly:${agg?.total || 0}:${agg?.resolved || 0}`, 3600, async () =>
+    generateWeeklyReport(await budgetedKey(c.env), {
       total: agg?.total || 0,
       resolved: agg?.resolved || 0,
       open: agg?.open || 0,
