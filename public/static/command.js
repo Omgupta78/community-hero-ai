@@ -26,11 +26,19 @@
       case 'issues': loadIssues(); break
       case 'map': loadMap(); break
       case 'contractors': loadContractors(); break
-      case 'departments': loadDepartments(); break
-      case 'analytics': loadAnalytics(); break
-      case 'budget': loadBudgets(); loadApprovals(); break
+      case 'analytics': loadAnalytics(); loadDepartments(); loadBudgets(); loadApprovals(); break
+      case 'agentlog': loadAgentLog(); break
+      case 'escalation': loadEscalation(); break
       case 'insights': loadPredict(); loadVolunteers(); break
     }
+  }
+
+  // ₹/day loss by severity for unresolved issues (used in Issues + Escalation).
+  function dailyLoss(i) {
+    if (i.status === 'Resolved') return 0
+    if (i.severity >= 5) return 8500
+    if (i.severity === 4) return 4200
+    return 1800
   }
 
   // ---------- summary cards ----------
@@ -129,6 +137,22 @@
       else if (filter === 'critical') rows = rows.filter((i) => i.severity >= 5 && i.status !== 'Resolved')
       else if (filter === 'resolved') rows = rows.filter((i) => i.status === 'Resolved')
       rows.sort((a, b) => (b.priority_score || 0) - (a.priority_score || 0))
+      // Daily-loss banner across all unresolved issues
+      const unresolved = allIssues.filter((i) => i.status !== 'Resolved')
+      const lostToday = unresolved.reduce((s, i) => s + dailyLoss(i), 0)
+      const banner = $('cc-loss-banner')
+      if (banner) {
+        if (lostToday > 0) {
+          banner.classList.remove('hidden')
+          banner.innerHTML = `<span class="material-symbols-outlined">warning</span> <b>${inr(lostToday)}</b> lost today from <b>${unresolved.length}</b> unresolved issue${unresolved.length === 1 ? '' : 's'}`
+        } else banner.classList.add('hidden')
+      }
+      const lossCell = (i) => {
+        const v = dailyLoss(i)
+        if (!v) return '<span style="color:#9a968a">—</span>'
+        const col = i.severity >= 5 ? '#C0392B' : i.severity === 4 ? '#E67E22' : '#9a968a'
+        return `<b style="color:${col}">${inr(v)}/day</b>`
+      }
       el.innerHTML = rows.map((i) => `
         <tr>
           <td><b>${esc(i.title)}</b><small>${esc(i.address || '')}</small></td>
@@ -136,11 +160,12 @@
           <td><span class="mc-sev" style="background:${pinColor(i)}1a;color:${pinColor(i)}">${i.severity}</span></td>
           <td><span class="mc-dot" style="background:${statusColor(i.status)}"></span> ${esc(i.status)}</td>
           <td>${esc(i.department || '—')}</td>
+          <td>${lossCell(i)}</td>
           <td style="display:flex;gap:6px;justify-content:flex-end">
             <button class="ctr-btn ctr-btn-line ctr-btn-sm" data-manage="${i.id}">Manage</button>
             <button class="ctr-btn ctr-btn-primary ctr-btn-sm" data-assign="${i.id}" data-cat="${esc(i.category)}" data-lat="${i.lat || ''}" data-lng="${i.lng || ''}" data-title="${esc(i.title)}">Assign</button>
           </td>
-        </tr>`).join('') || '<tr><td colspan="6"><p class="ctr-empty">No issues match.</p></td></tr>'
+        </tr>`).join('') || '<tr><td colspan="7"><p class="ctr-empty">No issues match.</p></td></tr>'
       el.querySelectorAll('[data-manage]').forEach((b) => b.addEventListener('click', () => openManage(Number(b.dataset.manage))))
       el.querySelectorAll('[data-assign]').forEach((b) => b.addEventListener('click', () => openAssign(b.dataset)))
     } catch (e) {}
@@ -189,7 +214,7 @@
       el.innerHTML = (data.contractors || []).map((c, idx) => `
         <div class="ctr-card mc-contractor ${idx === 0 ? 'top' : ''}">
           <button class="mc-remove" data-remove-contractor="${c.user_id}" title="Remove contractor"><span class="material-symbols-outlined">delete</span></button>
-          ${idx === 0 ? '<div class="ctr-card-flag" style="background:linear-gradient(90deg,#1d4ed8,#3b82f6)"><span class="material-symbols-outlined">auto_awesome</span> Gemini pick</div>' : ''}
+          ${idx === 0 ? '<div class="ctr-card-flag" style="background:#1D9E75"><span class="material-symbols-outlined">auto_awesome</span> Gemini pick</div>' : ''}
           <div class="ctr-card-body">
             <div class="ctr-avatar">${esc((c.name || '?')[0])}</div>
             <div class="ctr-card-main"><b class="mc-c-name">${esc(c.name)}</b><small>${c.company ? esc(c.company) : 'Contractor'}</small>
@@ -245,8 +270,8 @@
           <button class="mc-remove" data-remove-dept="${esc(d.department)}" title="Remove department"><span class="material-symbols-outlined">delete</span></button>
           <div class="mc-dept-top"><span class="mc-dept-ic material-symbols-outlined">apartment</span>
             <div><b>${esc(d.department)}</b><small>${d.total} issues · ${d.open} open</small></div></div>
-          <div class="mc-bar-row"><span>Resolution</span><b>${rate}%</b></div><div class="mc-bar"><i style="width:${rate}%;background:#10B981"></i></div>
-          <div class="mc-bar-row"><span>Budget used</span><b>${d.utilization}%</b></div><div class="mc-bar"><i style="width:${Math.min(100, d.utilization)}%;background:${d.utilization > 85 ? '#EF4444' : '#2563EB'}"></i></div>
+          <div class="mc-bar-row"><span>Resolution</span><b>${rate}%</b></div><div class="mc-bar"><i style="width:${rate}%;background:#1D9E75"></i></div>
+          <div class="mc-bar-row"><span>Budget used</span><b>${d.utilization}%</b></div><div class="mc-bar"><i style="width:${Math.min(100, d.utilization)}%;background:${d.utilization > 85 ? '#C0392B' : '#1D9E75'}"></i></div>
           <div class="mc-dept-meta">${inr(d.spent)} of ${inr(d.allocated)}</div>
         </div>`
       }).join('') || '<p class="ctr-empty">No departments yet. Use “Add department” to create one.</p>'
@@ -283,16 +308,16 @@
   async function loadAnalytics() {
     try {
       const { data } = await api.get('/analytics')
-      const PAL = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899']
+      const PAL = ['#1D9E75', '#7FB77E', '#E67E22', '#E76F51', '#0F6E56', '#C9A227', '#A3B18A']
       const cat = data.byCategory || []
       const ctx = $('cc-cat-chart')
       if (ctx && window.Chart) { if (catChart) catChart.destroy(); catChart = new Chart(ctx, { type: 'doughnut', data: { labels: cat.map((r) => r.category), datasets: [{ data: cat.map((r) => r.n), backgroundColor: PAL, borderWidth: 0 }] }, options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }, cutout: '62%' } }) }
       const dept = data.byDepartment || []
       const dctx = $('cc-dept-chart')
-      if (dctx && window.Chart) { if (deptChart) deptChart.destroy(); deptChart = new Chart(dctx, { type: 'bar', data: { labels: dept.map((d) => d.department), datasets: [{ label: 'Resolved', data: dept.map((d) => d.resolved), backgroundColor: '#10B981', borderRadius: 6 }, { label: 'Open', data: dept.map((d) => d.total - d.resolved), backgroundColor: '#F59E0B', borderRadius: 6 }] }, options: { plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, beginAtZero: true } } } }) }
+      if (dctx && window.Chart) { if (deptChart) deptChart.destroy(); deptChart = new Chart(dctx, { type: 'bar', data: { labels: dept.map((d) => d.department), datasets: [{ label: 'Resolved', data: dept.map((d) => d.resolved), backgroundColor: '#1D9E75', borderRadius: 6 }, { label: 'Open', data: dept.map((d) => d.total - d.resolved), backgroundColor: '#E67E22', borderRadius: 6 }] }, options: { plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, beginAtZero: true } } } }) }
       const tr = data.monthlyTrend || []
       const tctx = $('cc-trend-chart')
-      if (tctx && window.Chart) { if (trendChart) trendChart.destroy(); trendChart = new Chart(tctx, { type: 'line', data: { labels: tr.map((t) => t.month), datasets: [{ label: 'Reports', data: tr.map((t) => t.n), borderColor: '#2563EB', backgroundColor: '#2563EB22', fill: true, tension: 0.4, pointRadius: 3 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } }) }
+      if (tctx && window.Chart) { if (trendChart) trendChart.destroy(); trendChart = new Chart(tctx, { type: 'line', data: { labels: tr.map((t) => t.month), datasets: [{ label: 'Reports', data: tr.map((t) => t.n), borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.13)', fill: true, tension: 0.4, pointRadius: 3 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } }) }
     } catch (e) {}
   }
 
@@ -303,7 +328,7 @@
       const { data } = await api.get('/budgets')
       el.innerHTML = (data.budgets || []).map((b) => `
         <div class="mc-budget"><div class="mc-budget-head"><b>${esc(b.department)}</b><span>${b.utilization}%</span></div>
-          <div class="mc-bar"><i style="width:${Math.min(100, b.utilization)}%;background:${b.utilization > 85 ? '#EF4444' : b.utilization > 60 ? '#F59E0B' : '#10B981'}"></i></div>
+          <div class="mc-bar"><i style="width:${Math.min(100, b.utilization)}%;background:${b.utilization > 85 ? '#C0392B' : '#1D9E75'}"></i></div>
           <div class="mc-budget-meta">${inr(b.spent)} spent · ${inr(b.available)} available</div></div>`).join('')
     } catch (e) {}
   }
@@ -380,6 +405,110 @@
     catch (e) { body.innerHTML = '<p class="ctr-empty">Could not generate the report.</p>' }
   }
 
+  // ---------- agent log ----------
+  const AGENT_STEPS = [
+    { key: 'ingestReport', label: 'ingestReport', icon: 'inbox', noun: 'ingested' },
+    { key: 'triageIssue', label: 'triageIssue', icon: 'psychology', noun: 'triaged' },
+    { key: 'assignContractor', label: 'assignContractor', icon: 'engineering', noun: 'assigned' },
+    { key: 'verifyFix', label: 'verifyFix', icon: 'verified', noun: 'verified' },
+    { key: 'releasePayout', label: 'releasePayout', icon: 'payments', noun: 'payouts' },
+  ]
+  // Lightweight FNV-1a hash → chained, tamper-evident log ids.
+  function fnvHash(str) {
+    let h = 0x811c9dc5
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) }
+    return ('00000000' + (h >>> 0).toString(16)).slice(-8)
+  }
+  async function loadAgentLog() {
+    try {
+      const issues = (await api.get('/issues?limit=200')).data.issues || []
+      const counts = {
+        ingestReport: issues.length,
+        triageIssue: issues.filter((i) => i.agent_processed).length,
+        assignContractor: issues.filter((i) => ['Assigned', 'In Progress', 'Resolved'].includes(i.status)).length,
+        verifyFix: issues.filter((i) => i.fix_verified).length,
+        releasePayout: issues.filter((i) => i.status === 'Resolved').length,
+      }
+      const pipe = $('cc-agent-pipeline')
+      if (pipe) pipe.innerHTML = AGENT_STEPS.map((s, idx) => `
+        <div class="cc-step ${counts[s.key] ? 'done' : ''}">
+          <span class="cc-step-badge"><span class="material-symbols-outlined">auto_awesome</span>Gemini</span>
+          <div class="cc-step-ic"><span class="material-symbols-outlined">${counts[s.key] ? 'check' : s.icon}</span></div>
+          <b>${s.label}</b><small>${counts[s.key]} ${s.noun}</small>
+        </div>${idx < AGENT_STEPS.length - 1 ? '<span class="cc-step-arrow material-symbols-outlined">arrow_forward</span>' : ''}`).join('')
+
+      const acts = (await api.get('/agent/activity')).data.activity || []
+      const steps = $('cc-agent-steps')
+      if (steps) steps.innerHTML = acts.map((a) => `<div class="mc-tl-row"><span class="mc-tl-dot" style="background:#1D9E75"></span><div><p><b>${esc(a.tool)}</b> · ${esc(a.action || a.thought || '')}</p><small>#${a.issue_id} ${esc(a.title || '')} · ${timeAgo(a.created_at)}</small></div></div>`).join('') || '<p class="ctr-empty">No agent activity yet — run AI triage from the dashboard.</p>'
+
+      const feed = (await api.get('/activity')).data.activity || []
+      const tl = $('cc-tamper-log')
+      let prev = '00000000'
+      if (tl) tl.innerHTML = feed.map((a) => {
+        const h = fnvHash(prev + (a.message || '') + (a.created_at || ''))
+        const row = `<div class="cc-tamper-row"><code>${h}</code><div><p>${esc(a.message || '')}</p><small>#${a.issue_id} · ${esc(a.author || 'System')} · ${timeAgo(a.created_at)}</small></div></div>`
+        prev = h
+        return row
+      }).join('') || '<p class="ctr-empty">No entries.</p>'
+    } catch (e) {}
+  }
+
+  // ---------- escalation ----------
+  let slaTimer = null
+  const SLA_HOURS = { 5: 24, 4: 48, 3: 72, 2: 96, 1: 120 }
+  async function loadEscalation() {
+    const el = $('cc-escalation'); if (!el) return
+    try {
+      const wx = (await api.get('/weather?city=Chandigarh')).data
+      const mb = $('cc-monsoon-banner')
+      if (mb) {
+        if (wx && wx.rain_prob_pct != null && wx.rain_prob_pct >= 40) {
+          mb.classList.remove('hidden')
+          mb.innerHTML = `<span class="material-symbols-outlined">rainy</span> Monsoon alert · ${wx.rain_prob_pct}% rain forecast — drainage, potholes and waterlogging risk rises. Prioritise road &amp; water issues this week.`
+        } else mb.classList.add('hidden')
+      }
+    } catch (e) {}
+    try {
+      let issues = (await api.get('/issues?limit=200')).data.issues || []
+      issues = issues.filter((i) => i.status !== 'Resolved')
+        .map((i) => ({ ...i, _loss: dailyLoss(i) }))
+        .sort((a, b) => b._loss - a._loss || b.severity - a.severity)
+      el.innerHTML = issues.map((i) => {
+        const created = new Date((i.created_at || '').replace(' ', 'T') + 'Z').getTime()
+        const daysOpen = created ? Math.max(0, Math.floor((Date.now() - created) / 86400000)) : 0
+        const deadline = created + (SLA_HOURS[i.severity] || 72) * 3600000
+        const affected = i.severity * 5 + (i.verify_count || 0) * 2
+        return `<div class="ctr-card cc-esc-card">
+          <div class="cc-esc-top"><div><b>${esc(i.title)}</b><small>${esc(i.category)} · sev ${i.severity} · ${esc(i.address || '')}</small></div>
+            <span class="cc-esc-loss">${inr(i._loss)}/day</span></div>
+          <div class="cc-esc-meta">
+            <span><span class="material-symbols-outlined">groups</span>${affected} citizens affected</span>
+            <span><span class="material-symbols-outlined">event</span>${daysOpen}d open</span>
+            <span class="cc-sla" data-deadline="${deadline}"><span class="material-symbols-outlined">timer</span><b class="cc-sla-timer">—</b></span>
+          </div>
+          <div class="cc-esc-foot"><button class="ctr-btn ctr-btn-primary ctr-btn-sm" data-assign="${i.id}" data-cat="${esc(i.category)}" data-lat="${i.lat || ''}" data-lng="${i.lng || ''}" data-title="${esc(i.title)}">Assign now</button></div>
+        </div>`
+      }).join('') || '<p class="ctr-empty">No open issues — nothing to escalate. 🎉</p>'
+      el.querySelectorAll('[data-assign]').forEach((b) => b.addEventListener('click', () => openAssign(b.dataset)))
+      startSlaTimers()
+    } catch (e) {}
+  }
+  function startSlaTimers() {
+    if (slaTimer) clearInterval(slaTimer)
+    const tick = () => {
+      const nodes = document.querySelectorAll('#cc-escalation .cc-sla')
+      if (!nodes.length) { clearInterval(slaTimer); slaTimer = null; return }
+      nodes.forEach((s) => {
+        const dl = Number(s.dataset.deadline); const t = s.querySelector('.cc-sla-timer'); if (!t) return
+        const ms = dl - Date.now()
+        if (ms <= 0) { s.classList.add('overdue'); t.textContent = 'OVERDUE'; return }
+        const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), sec = Math.floor((ms % 60000) / 1000)
+        t.textContent = `${h}h ${String(m).padStart(2, '0')}m ${String(sec).padStart(2, '0')}s`
+      })
+    }
+    tick(); slaTimer = setInterval(tick, 1000)
+  }
+
   function wire() {
     document.querySelectorAll('.ctr-tab').forEach((t) => t.addEventListener('click', () => showTab(t.dataset.tab)))
     document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.goto)))
@@ -394,10 +523,11 @@
     const ai = $('cc-ai-btn'); if (ai) ai.addEventListener('click', () => { const fab = document.querySelector('#ch-chat-fab, #chat-fab, .chat-fab'); if (fab) fab.click() })
     const addC = $('cc-add-contractor'); if (addC) addC.addEventListener('click', openContractorForm)
     const addD = $('cc-add-dept'); if (addD) addD.addEventListener('click', openDeptForm)
+    const sweep = $('cc-sla-sweep'); if (sweep) sweep.addEventListener('click', () => { loadEscalation(); window.CH.toast('SLA sweep complete') })
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    wire(); showTab('dashboard'); loadWeather()
+    wire(); showTab('dashboard')
     setInterval(() => { if (currentTab === 'dashboard') { loadCards(); loadActivity() } }, 9000)
   })
 })();

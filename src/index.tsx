@@ -159,7 +159,6 @@ app.get('/home', (c) => {
 
         {/* AI Prediction (predictive civic intelligence) */}
         <section id="ai-prediction" class="rounded-xl p-md relative overflow-hidden" style="background:#E1F5EE;border-left:4px solid #1D9E75;">
-          <span class="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-tertiary" title="Prediction" style="box-shadow:0 0 0 4px rgba(230,126,34,0.18)"></span>
           <div class="flex items-start gap-3">
             <span class="material-symbols-outlined text-primary text-[26px] mt-0.5" style="font-variation-settings:'FILL' 1;">auto_awesome</span>
             <div class="min-w-0">
@@ -1225,13 +1224,12 @@ app.get('/command', async (c) => {
           <button class="ctr-tab" data-tab="issues"><span class="material-symbols-outlined">inbox</span>Issues</button>
           <button class="ctr-tab" data-tab="map"><span class="material-symbols-outlined">map</span>Map</button>
           <button class="ctr-tab" data-tab="contractors"><span class="material-symbols-outlined">engineering</span>Contractors</button>
-          <button class="ctr-tab" data-tab="departments"><span class="material-symbols-outlined">apartment</span>Departments</button>
           <button class="ctr-tab" data-tab="analytics"><span class="material-symbols-outlined">bar_chart</span>Analytics</button>
-          <button class="ctr-tab" data-tab="budget"><span class="material-symbols-outlined">account_balance</span>Budget</button>
+          <button class="ctr-tab" data-tab="agentlog"><span class="material-symbols-outlined">smart_toy</span>Agent Log</button>
+          <button class="ctr-tab" data-tab="escalation"><span class="material-symbols-outlined">priority_high</span>Escalation</button>
           <button class="ctr-tab" data-tab="insights"><span class="material-symbols-outlined">lightbulb</span>AI Insights</button>
         </nav>
         <div class="ctr-topbar-right">
-          <div id="cc-weather" class="ctr-chip"><span class="material-symbols-outlined">partly_cloudy_day</span><span id="cc-weather-text">—</span></div>
           <div class="ctr-profile"><div class="ctr-avatar">{(user.name || 'A')[0]}</div>
             <div class="ctr-profile-meta"><b>{user.name}</b><small>Commissioner</small></div></div>
           <a href="/logout" class="ctr-switch" title="Switch role"><span class="material-symbols-outlined">logout</span></a>
@@ -1239,9 +1237,6 @@ app.get('/command', async (c) => {
       </header>
 
       <main class="ctr-main">
-        <div style="background:#eef3ff;color:#1d4ed8;padding:7px 18px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #e2e8f0;border-radius:0 0 12px 12px;margin-bottom:8px;">
-          <span class="material-symbols-outlined" style="font-size:16px;">apartment</span>Municipal Command Center · Commissioner view
-        </div>
 
         {/* ===================== DASHBOARD ===================== */}
         <section class="ctr-view" id="cview-dashboard">
@@ -1297,10 +1292,11 @@ app.get('/command', async (c) => {
               <button class="ctr-filter" data-filter="critical">Critical</button>
               <button class="ctr-filter" data-filter="resolved">Resolved</button>
             </div></div>
+          <div id="cc-loss-banner" class="cc-loss-banner hidden"></div>
           <div class="ctr-card-plain"><div class="ctr-table-wrap">
             <table class="ctr-table">
-              <thead><tr><th>Issue</th><th>Category</th><th>Sev</th><th>Status</th><th>Dept</th><th></th></tr></thead>
-              <tbody id="cc-issues-table"><tr><td colspan="6"><div class="ctr-skel"></div></td></tr></tbody>
+              <thead><tr><th>Issue</th><th>Category</th><th>Sev</th><th>Status</th><th>Dept</th><th>Daily Loss</th><th></th></tr></thead>
+              <tbody id="cc-issues-table"><tr><td colspan="7"><div class="ctr-skel"></div></td></tr></tbody>
             </table></div></div>
         </section>
 
@@ -1321,14 +1317,7 @@ app.get('/command', async (c) => {
           <div id="cc-contractors" class="ctr-grid"><div class="ctr-skel"></div></div>
         </section>
 
-        {/* ===================== DEPARTMENTS ===================== */}
-        <section class="ctr-view hidden" id="cview-departments">
-          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">apartment</span> Departments</h1>
-            <button id="cc-add-dept" class="ctr-btn ctr-btn-primary ctr-btn-sm"><span class="material-symbols-outlined">add</span> Add department</button></div>
-          <div id="cc-departments" class="ctr-grid"><div class="ctr-skel"></div></div>
-        </section>
-
-        {/* ===================== ANALYTICS ===================== */}
+        {/* ===================== ANALYTICS (incl. Department Overview) ===================== */}
         <section class="ctr-view hidden" id="cview-analytics">
           <div class="ctr-view-head"><h1><span class="material-symbols-outlined">bar_chart</span> Analytics</h1></div>
           <div class="mc-grid-2">
@@ -1336,18 +1325,40 @@ app.get('/command', async (c) => {
             <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">stacked_bar_chart</span> Department Performance</h2></div><canvas id="cc-dept-chart" height="240"></canvas></div>
           </div>
           <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">trending_up</span> Monthly Trend</h2></div><canvas id="cc-trend-chart" height="200"></canvas></div>
-        </section>
 
-        {/* ===================== BUDGET ===================== */}
-        <section class="ctr-view hidden" id="cview-budget">
-          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">account_balance</span> Budget &amp; Quotations</h1>
-            <span class="ctr-tag">Simulated figures</span></div>
+          {/* Department Overview — merged Departments + Budget */}
+          <div class="ctr-view-head" style="margin-top:6px"><h2 style="font-size:18px;font-weight:600;margin:0;display:flex;align-items:center;gap:8px"><span class="material-symbols-outlined" style="color:#1D9E75">apartment</span> Department Overview</h2>
+            <button id="cc-add-dept" class="ctr-btn ctr-btn-primary ctr-btn-sm"><span class="material-symbols-outlined">add</span> Add department</button></div>
+          <div id="cc-departments" class="ctr-grid"><div class="ctr-skel"></div></div>
           <div class="mc-grid-2">
             <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">savings</span> Budget Utilisation</h2></div>
               <div id="cc-budgets" class="mc-budget-list"></div></div>
             <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">how_to_reg</span> Pending Approvals</h2></div>
               <div id="cc-bud-approvals" class="mc-list mc-scrolly"></div></div>
           </div>
+        </section>
+
+        {/* ===================== AGENT LOG ===================== */}
+        <section class="ctr-view hidden" id="cview-agentlog">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">smart_toy</span> Agent Log</h1>
+            <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">bolt</span> Live AI pipeline</span></div>
+          <div class="cc-agent-grid">
+            <div>
+              <div id="cc-agent-pipeline" class="cc-pipeline"><div class="ctr-skel"></div></div>
+              <div class="ctr-card-plain" style="margin-top:16px"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">manage_search</span> Recent AI decisions</h2></div>
+                <div id="cc-agent-steps" class="mc-tl mc-scrolly"></div></div>
+            </div>
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">lock</span> Tamper-evident log</h2></div>
+              <div id="cc-tamper-log" class="cc-tamper-list mc-scrolly"></div></div>
+          </div>
+        </section>
+
+        {/* ===================== ESCALATION ===================== */}
+        <section class="ctr-view hidden" id="cview-escalation">
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">priority_high</span> Escalation</h1>
+            <button id="cc-sla-sweep" class="ctr-btn ctr-btn-primary ctr-btn-sm"><span class="material-symbols-outlined">radar</span> Run SLA sweep</button></div>
+          <div id="cc-monsoon-banner" class="cc-monsoon-banner hidden"></div>
+          <div id="cc-escalation" class="ctr-grid"><div class="ctr-skel"></div></div>
         </section>
 
         {/* ===================== AI INSIGHTS ===================== */}

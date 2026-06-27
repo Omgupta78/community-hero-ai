@@ -1064,3 +1064,42 @@ main button[class*="rounded-xl"]:hover {
 }
 .mc-remove:hover { background: rgba(192, 57, 43, 0.1); color: #C0392B; }
 .mc-remove .material-symbols-outlined { font-size: 18px; }
+
+/* ===================== Command Center — loss banner, agent log, escalation ===================== */
+.cc-loss-banner { display: flex; align-items: center; gap: 8px; background: #fbe7e4; color: #8c2318; border: 1px solid #f0c8c2; border-left: 4px solid #C0392B; border-radius: 12px; padding: 11px 16px; font-size: 14px; margin-bottom: 14px; }
+.cc-loss-banner .material-symbols-outlined { color: #C0392B; }
+
+.cc-agent-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 980px) { .cc-agent-grid { grid-template-columns: 1fr; } }
+.cc-pipeline { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; }
+.cc-step { position: relative; flex: 1; min-width: 120px; background: #FAFAF7; border: 1px solid #E0DDD4; border-radius: 14px; padding: 14px 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.cc-step.done { border-color: #1D9E75; }
+.cc-step-ic { width: 38px; height: 38px; border-radius: 50%; background: #E1F5EE; color: #1D9E75; display: flex; align-items: center; justify-content: center; margin-top: 4px; }
+.cc-step.done .cc-step-ic { background: #1D9E75; color: #fff; }
+.cc-step b { font-size: 12px; font-weight: 600; }
+.cc-step small { font-size: 11px; color: #5A5A52; }
+.cc-step-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #0F6E56; background: #E1F5EE; border-radius: 999px; padding: 2px 7px; }
+.cc-step-badge .material-symbols-outlined { font-size: 11px; }
+.cc-step-arrow { align-self: center; color: #c9c5b8; font-size: 20px; }
+@media (max-width: 980px) { .cc-step-arrow { transform: rotate(90deg); } }
+
+.cc-tamper-list { display: flex; flex-direction: column; gap: 8px; max-height: 560px; }
+.cc-tamper-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px; border: 1px solid #E0DDD4; border-radius: 10px; background: #FAFAF7; }
+.cc-tamper-row code { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #0F6E56; background: #E1F5EE; border-radius: 6px; padding: 2px 6px; flex-shrink: 0; }
+.cc-tamper-row p { font-size: 12px; margin: 0; line-height: 1.4; }
+.cc-tamper-row small { font-size: 10px; color: #9a968a; }
+
+.cc-monsoon-banner { display: flex; align-items: center; gap: 8px; background: #E1F5EE; color: #0F6E56; border-left: 4px solid #1D9E75; border-radius: 12px; padding: 11px 16px; font-size: 13px; margin-bottom: 14px; }
+.cc-monsoon-banner .material-symbols-outlined { color: #1D9E75; }
+
+.cc-esc-card { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.cc-esc-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.cc-esc-top b { font-size: 14px; display: block; }
+.cc-esc-top small { font-size: 11px; color: #5A5A52; }
+.cc-esc-loss { font-size: 15px; font-weight: 700; color: #C0392B; white-space: nowrap; }
+.cc-esc-meta { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #5A5A52; }
+.cc-esc-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.cc-esc-meta .material-symbols-outlined { font-size: 16px; }
+.cc-sla .cc-sla-timer { color: #0F6E56; font-weight: 700; }
+.cc-sla.overdue, .cc-sla.overdue .cc-sla-timer { color: #C0392B; }
+.cc-esc-foot { display: flex; justify-content: flex-end; }
