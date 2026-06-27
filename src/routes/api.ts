@@ -207,13 +207,23 @@ api.get('/issues', async (c) => {
 api.get('/issues/:id', async (c) => {
   const id = c.req.param('id')
   const issue = await c.env.DB.prepare(
-    `SELECT i.*, u.name AS reporter_name, a.name AS assignee_name, a.department AS assignee_department
+    `SELECT i.*, u.name AS reporter_name, a.name AS assignee_name, a.department AS assignee_department,
+            ct.name AS contractor_name
      FROM issues i
      LEFT JOIN users u ON i.reporter_id = u.id
      LEFT JOIN users a ON i.assigned_to = a.id
+     LEFT JOIN users ct ON i.contractor_id = ct.id
      WHERE i.id = ?`
   ).bind(id).first()
   if (!issue) return c.json({ error: 'Not found' }, 404)
+
+  // Escrow info (amount + status) for the citizen confirm-fix flow.
+  try {
+    const job = await c.env.DB.prepare(
+      `SELECT escrow_amount, escrow_status FROM job_assignments WHERE issue_id = ? AND state != 'Cancelled' ORDER BY id DESC LIMIT 1`
+    ).bind(id).first<any>()
+    if (job) { ;(issue as any).escrow_amount = job.escrow_amount || 0; (issue as any).escrow_status = job.escrow_status }
+  } catch (e) {}
 
   const { results: updates } = await c.env.DB.prepare(
     `SELECT * FROM issue_updates WHERE issue_id = ? ORDER BY created_at ASC`
@@ -814,7 +824,30 @@ api.get('/notifications', async (c) => {
      ORDER BY up.created_at DESC, up.id DESC
      LIMIT 25`
   ).bind(citizenId).all()
-  return c.json({ notifications: results || [] })
+
+  // Prepend "awaiting your confirmation" prompts — fixes verified by AI but not
+  // yet signed off by the citizen. Resilient if citizen_confirmed (0012) is absent.
+  let pending: any[] = []
+  try {
+    const pr = await c.env.DB.prepare(
+      `SELECT i.id AS issue_id, i.title, i.category, i.updated_at, ct.name AS contractor
+       FROM issues i LEFT JOIN users ct ON ct.id = i.contractor_id
+       WHERE i.reporter_id = ? AND i.status = 'Resolved' AND i.fix_verified = 1 AND COALESCE(i.citizen_confirmed, 0) = 0
+       ORDER BY i.updated_at DESC LIMIT 10`
+    ).bind(citizenId).all()
+    pending = ((pr.results as any[]) || []).map((p) => ({
+      update_id: 'confirm-' + p.issue_id,
+      issue_id: p.issue_id,
+      status: 'Confirm',
+      message: `${p.contractor || 'The contractor'} marked your ${(p.category || 'issue').toLowerCase()} as fixed. Confirm to release payment.`,
+      author: p.contractor || 'Contractor',
+      created_at: p.updated_at,
+      title: p.title,
+      link: '/confirm-fix?id=' + p.issue_id,
+    }))
+  } catch (e) { /* migration 0012 not applied → skip pending prompts */ }
+
+  return c.json({ notifications: [...pending, ...((results as any[]) || [])] })
 })
 
 // ---------------------------------------------------------------
@@ -1200,8 +1233,10 @@ api.post('/issues/:id/assign-job', requireRole('admin'), async (c) => {
 api.post('/issues/:id/confirm', async (c) => {
   const citizenId = (await requireCitizen(c)) ?? DEMO_USER_ID
   const id = Number(c.req.param('id'))
+  const body = await c.req.json().catch(() => ({}))
+  const thanks = (body.message || '').toString().trim()
 
-  const issue = await c.env.DB.prepare(`SELECT department FROM issues WHERE id = ?`).bind(id).first<any>()
+  const issue = await c.env.DB.prepare(`SELECT department, contractor_id FROM issues WHERE id = ?`).bind(id).first<any>()
   if (!issue) return c.json({ error: 'Not found' }, 404)
   const citizen = await c.env.DB.prepare(`SELECT name FROM users WHERE id = ?`).bind(citizenId).first<any>()
 
@@ -1225,6 +1260,19 @@ api.post('/issues/:id/confirm', async (c) => {
     }
   }
 
+  // Contractor name + the job's escrow amount (works whether or not it was just released).
+  const contractorId = job?.contractor_id || issue.contractor_id
+  const contractor = contractorId
+    ? await c.env.DB.prepare(`SELECT name FROM users WHERE id = ?`).bind(contractorId).first<any>()
+    : null
+  let escrowAmount = released
+  if (!escrowAmount) {
+    try {
+      const j2 = await c.env.DB.prepare(`SELECT escrow_amount FROM job_assignments WHERE issue_id = ? ORDER BY id DESC LIMIT 1`).bind(id).first<any>()
+      escrowAmount = j2?.escrow_amount || 0
+    } catch (e) {}
+  }
+
   // Mark the issue resolved + record the citizen sign-off. Resilient to the
   // citizen_confirmed column not existing yet (migration 0012 not applied).
   try {
@@ -1242,7 +1290,14 @@ api.post('/issues/:id/confirm', async (c) => {
     `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'Resolved', ?, ?)`
   ).bind(id, msg, citizen?.name || 'Citizen').run()
 
-  return c.json({ ok: true, released, citizen_confirmed: true })
+  // Optional thank-you note to the contractor (shown in the timeline / their feed).
+  if (thanks) {
+    await c.env.DB.prepare(
+      `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'Resolved', ?, ?)`
+    ).bind(id, `Citizen thanked ${contractor?.name || 'the contractor'}: "${thanks}"`, citizen?.name || 'Citizen').run()
+  }
+
+  return c.json({ ok: true, released, escrow_amount: escrowAmount, contractor: contractor?.name || 'the contractor', citizen_confirmed: true })
 })
 
 // "No, it's still broken." The original reporter reopens a Resolved issue with

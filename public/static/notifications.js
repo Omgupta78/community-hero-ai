@@ -21,7 +21,7 @@
 
     const STATUS_ICON = {
       Reported: 'flag', Verified: 'verified', Assigned: 'assignment_ind',
-      'In Progress': 'engineering', Resolved: 'task_alt',
+      'In Progress': 'engineering', Resolved: 'task_alt', Confirm: 'verified_user',
     }
 
     function lastSeen() { return localStorage.getItem(SEEN_KEY) || '' }
@@ -48,8 +48,8 @@
       } else {
         panel.innerHTML = header + '<div>' + items.map((n) => {
           const isNew = (n.created_at || '') > seen
-          return `<a href="/issue/${n.issue_id}" class="flex gap-3 px-4 py-3 border-b border-outline-variant/60 hover:bg-surface-container-low ${isNew ? 'bg-primary-fixed/40' : ''}">
-            <span class="w-8 h-8 rounded-full ${STATUS_COLOR[n.status] || 'bg-surface-container text-on-surface'} flex items-center justify-center shrink-0">
+          return `<a href="${n.link || '/issue/' + n.issue_id}" class="flex gap-3 px-4 py-3 border-b border-outline-variant/60 hover:bg-surface-container-low ${isNew ? 'bg-primary-fixed/40' : ''}">
+            <span class="w-8 h-8 rounded-full ${n.status === 'Confirm' ? 'bg-primary text-on-primary' : (STATUS_COLOR[n.status] || 'bg-surface-container text-on-surface')} flex items-center justify-center shrink-0">
               <span class="material-symbols-outlined text-[18px]">${STATUS_ICON[n.status] || 'campaign'}</span>
             </span>
             <div class="min-w-0 flex-1">

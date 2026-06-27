@@ -1139,3 +1139,20 @@ main button[class*="rounded-xl"]:hover {
 .cc-ws .material-symbols-outlined { color: #1D9E75; font-size: 22px; }
 .cc-ws b { font-size: 18px; font-weight: 600; color: #1A1A1A; }
 .cc-ws small { font-size: 11px; color: #5A5A52; }
+
+/* ===================== Confirm Fix — thank-you + reopen flow ===================== */
+.cf-card { background: #FAFAF7; border: 1px solid #E0DDD4; border-radius: 14px; padding: 16px; margin-top: 4px; }
+.cf-greeting { text-align: center; background: #E1F5EE; border-radius: 12px; padding: 18px; margin-bottom: 14px; }
+.cf-emoji { font-size: 34px; }
+.cf-greeting-title { font-size: 17px; font-weight: 600; color: #0F6E56; margin: 6px 0 2px; }
+.cf-greeting-sub { font-size: 13px; color: #1A1A1A; margin: 0; }
+.cf-label { display: block; font-size: 12px; font-weight: 600; color: #5A5A52; margin-bottom: 6px; }
+.cf-input { width: 100%; border: 1px solid #E0DDD4; background: #FFFFFF; border-radius: 10px; padding: 10px 12px; font-size: 14px; color: #1A1A1A; font-family: inherit; resize: none; margin-bottom: 12px; }
+.cf-input:focus { outline: none; border-color: #1D9E75; box-shadow: 0 0 0 3px rgba(29,158,117,.12); }
+.cf-reopen-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: #C0392B; color: #fff; border: none; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.cf-reopen-btn:hover { filter: brightness(1.05); }
+.cf-paid { display: flex; align-items: center; gap: 10px; background: #E1F5EE; color: #0F6E56; border-radius: 12px; padding: 14px 16px; font-size: 14px; margin-bottom: 10px; }
+.cf-paid .material-symbols-outlined { color: #1D9E75; font-size: 24px; }
+.cf-paid b { font-weight: 700; }
+.cf-back { display: inline-block; margin-top: 14px; font-size: 13px; font-weight: 600; color: #1D9E75; text-decoration: none; }
+.cf-back:hover { text-decoration: underline; }

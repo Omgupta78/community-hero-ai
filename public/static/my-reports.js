@@ -38,7 +38,7 @@
       ? `<img src="${i.photo_data}" class="mr-thumb" alt="" />`
       : `<div class="mr-thumb mr-thumb-ph"><span class="material-symbols-outlined">${CAT_ICON[i.category] || 'place'}</span></div>`
     const confirmCta = resolved && i.fix_verified
-      ? `<a href="/verify-fix/${i.id}" class="mr-confirm-cta"><span class="material-symbols-outlined text-[18px]">task_alt</span> Confirm this fix — release payment</a>`
+      ? `<a href="/confirm-fix?id=${i.id}" class="mr-confirm-cta"><span class="material-symbols-outlined text-[18px]">task_alt</span> Confirm this fix — release payment</a>`
       : ''
     return `<div class="mr-card ${resolved ? 'mr-card-done' : ''}" data-id="${i.id}">
       <a href="/issue/${i.id}" class="mr-card-link">

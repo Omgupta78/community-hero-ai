@@ -804,6 +804,21 @@ app.get('/verify-fix/:id', (c) => {
   )
 })
 
+// Citizen "Confirm Fix" flow — pending confirmation + thank-you + release payment.
+app.get('/confirm-fix', (c) => {
+  return c.render(
+    <div class="pt-[80px] pb-[120px]">
+      <TopBar title="Confirm Fix" />
+      <main class="px-container-margin max-w-2xl mx-auto mt-lg" id="confirm-fix">
+        <div class="text-center text-on-surface-variant py-8">Loading…</div>
+      </main>
+      <BottomNav active="myreports" />
+      <script src={`/static/confirm-fix.js?v=${ASSET_VER}`}></script>
+    </div>,
+    { title: 'Confirm Fix' }
+  )
+})
+
 // =============================================================
 // STAFF LOGIN
 // =============================================================
