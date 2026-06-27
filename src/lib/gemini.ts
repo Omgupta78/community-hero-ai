@@ -1,19 +1,19 @@
 // Real Gemini AI integration for Community Hero AI
 // Uses the Google Generative Language REST API (works on Cloudflare Workers via fetch).
 
-// This key/project has free quota on gemini-2.5-flash (gemini-2.0-flash shows
-// limit 0 for AI Studio "AQ." keys). 2.5-flash-lite has even more headroom if needed.
-const GEMINI_MODEL = 'gemini-2.5-flash'
 // IMPORTANT: the API key is sent via the `x-goog-api-key` HEADER, not the
 // `?key=` query param. Newer Google AI Studio keys (the `AQ.` format) are
 // rejected as `?key=` ("ACCESS_TOKEN_TYPE_UNSUPPORTED") but work as a header.
 const geminiHeaders = (key: string) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key })
 
-// Model fallback chain: if the primary model returns a quota/availability error
-// (429/403/404/5xx), transparently retry the request on the next model. This
-// keeps real AI responses flowing even when one model's free quota is drained
-// (e.g. gemini-2.0-flash shows limit 0 / 429 for AI Studio "AQ." keys).
-const GEMINI_MODELS = [GEMINI_MODEL, 'gemini-flash-latest', 'gemini-2.5-flash-lite']
+// Model fallback chain — ORDER MATTERS. gemini-2.5-flash-lite is listed FIRST
+// because it has the largest free-tier quota (highest requests/min and /day),
+// so the vast majority of calls succeed on the first try — fast, and it leaves
+// the heavier 2.5-flash quota as a fallback. If one model returns a quota/
+// availability error (429/403/404/5xx) we transparently retry the next, and if
+// all are exhausted every gemini.ts function falls back to its heuristic.
+const GEMINI_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest']
+const GEMINI_MODEL = GEMINI_MODELS[0]
 
 async function geminiFetch(apiKey: string, init: { body: string }): Promise<Response> {
   let last: Response | null = null
