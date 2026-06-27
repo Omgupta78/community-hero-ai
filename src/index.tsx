@@ -687,6 +687,9 @@ app.get('/login', async (c) => {
   const accent = isContractor ? 'secondary' : 'primary'
   const heading = isContractor ? 'Contractor Sign In' : as === 'municipal' ? 'Municipal Sign In' : 'Staff Sign In'
   const sub = isContractor ? 'Responders & contractors' : as === 'municipal' ? 'Commissioner & department authorities' : 'Admins & department authorities'
+  // Pre-filled demo credentials so judges/inspectors can just click "Sign In".
+  const demoEmail = isContractor ? 'builder@city.gov' : 'admin@city.gov'
+  const demoPass = isContractor ? 'Build@123' : 'Admin@123'
 
   return c.render(
     <div class="min-h-screen flex items-center justify-center px-container-margin py-12">
@@ -704,15 +707,21 @@ app.get('/login', async (c) => {
           <div>
             <label class="text-xs font-bold uppercase text-on-surface-variant">Email</label>
             <input id="login-email" type="email" required autocomplete="username"
+              value={demoEmail}
               placeholder={isContractor ? 'builder@city.gov' : 'admin@city.gov'}
               class={`mt-1 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-${accent}`} />
           </div>
           <div>
             <label class="text-xs font-bold uppercase text-on-surface-variant">Password</label>
             <input id="login-password" type="password" required autocomplete="current-password"
+              value={demoPass}
               placeholder="••••••••"
               class={`mt-1 w-full bg-surface-container-low border-0 rounded-lg p-3 text-on-surface focus:ring-2 focus:ring-${accent}`} />
           </div>
+          <p class="text-[11px] text-on-surface-variant flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px] text-secondary">bolt</span>
+            Demo credentials pre-filled — just tap Sign In.
+          </p>
           <p id="login-error" class="hidden text-sm text-error font-medium"></p>
           <button id="login-btn" type="submit"
             class={`w-full ${isContractor ? 'bg-secondary text-white' : 'bg-primary text-on-primary'} rounded-lg py-3 font-bold active:scale-[0.98] transition flex items-center justify-center gap-2`}>
