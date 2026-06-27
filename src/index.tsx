@@ -173,38 +173,6 @@ app.get('/home', (c) => {
           </div>
         </section>
 
-        {/* Stat cards */}
-        <section class="grid grid-cols-2 gap-md">
-          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
-            <div class="flex items-center gap-2 text-primary mb-1">
-              <span class="material-symbols-outlined">report</span>
-              <span class="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Open Issues</span>
-            </div>
-            <span class="text-2xl font-bold text-on-surface" id="stat-open">—</span>
-          </div>
-          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
-            <div class="flex items-center gap-2 text-secondary mb-1">
-              <span class="material-symbols-outlined">task_alt</span>
-              <span class="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Resolved</span>
-            </div>
-            <span class="text-2xl font-bold text-on-surface" id="stat-resolved2">—</span>
-          </div>
-          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
-            <div class="flex items-center gap-2 text-tertiary mb-1">
-              <span class="material-symbols-outlined">folder_shared</span>
-              <span class="text-xs font-bold uppercase tracking-wide text-on-surface-variant">My Reports</span>
-            </div>
-            <span class="text-2xl font-bold text-on-surface" id="stat-mine">—</span>
-          </div>
-          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md">
-            <div class="flex items-center gap-2 text-primary mb-1">
-              <span class="material-symbols-outlined">military_tech</span>
-              <span class="text-xs font-bold uppercase tracking-wide text-on-surface-variant">My Score</span>
-            </div>
-            <span class="text-2xl font-bold text-on-surface" id="stat-score">—</span>
-          </div>
-        </section>
-
         {/* Quick actions */}
         <section>
           <h3 class="text-xs font-bold text-on-surface-variant mb-md uppercase tracking-widest">Quick Actions</h3>
