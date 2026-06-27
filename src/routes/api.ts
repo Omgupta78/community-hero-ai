@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { analyzeIssue, generateInsight, generateResolutionPlan, chatReply, predictTrends, generateCityHealthInsight, verifyFix, computePriority, recommendContractorReason, quotationReason, generateWeeklyReport } from '../lib/gemini'
 import { runTriageAgent } from '../lib/agent'
 import { rankContractors, scoreQuotations, parseSkills, type ContractorRow, type Quote } from '../lib/assignment'
+import { aiCache } from '../lib/cache'
 import {
   verifyPassword,
   hashPassword,
@@ -659,13 +660,15 @@ api.get('/predict', async (c) => {
     `SELECT category, address FROM issues ORDER BY created_at DESC LIMIT 12`
   ).all()
 
-  const prediction = await predictTrends(c.env.GEMINI_API_KEY, {
-    byCategory: (byCategory as any[]) || [],
-    hotspot: hotspot?.address || 'city-wide',
-    total: total?.n || 0,
-    resolved: resolved?.n || 0,
-    recent: (recent as any[]) || [],
-  })
+  const prediction = await aiCache(c.env.DB, `predict:${total?.n || 0}:${resolved?.n || 0}`, 1800, () =>
+    predictTrends(c.env.GEMINI_API_KEY, {
+      byCategory: (byCategory as any[]) || [],
+      hotspot: hotspot?.address || 'city-wide',
+      total: total?.n || 0,
+      resolved: resolved?.n || 0,
+      recent: (recent as any[]) || [],
+    })
+  )
   return c.json(prediction)
 })
 
@@ -709,13 +712,15 @@ api.get('/city-health', async (c) => {
     `SELECT address FROM issues WHERE status != 'Resolved' AND address != '' GROUP BY address ORDER BY COUNT(*) DESC LIMIT 1`
   ).first<{ address: string }>()
 
-  const insight = await generateCityHealthInsight(c.env.GEMINI_API_KEY, {
-    score,
-    systems: systems.map((s) => ({ name: s.name, health: s.health })),
-    worst: worst?.name || 'General Services',
-    hotspot: hotspot?.address || 'city-wide',
-    topCategory: topCatRow?.category || 'N/A',
-  })
+  const insight = await aiCache(c.env.DB, `cityhealth:${score}:${worst?.name || ''}`, 1800, () =>
+    generateCityHealthInsight(c.env.GEMINI_API_KEY, {
+      score,
+      systems: systems.map((s) => ({ name: s.name, health: s.health })),
+      worst: worst?.name || 'General Services',
+      hotspot: hotspot?.address || 'city-wide',
+      topCategory: topCatRow?.category || 'N/A',
+    })
+  )
 
   return c.json({ score, systems, worst: worst?.name || null, insight: insight.text, insight_source: insight.source })
 })
@@ -853,7 +858,9 @@ api.get('/insight', async (c) => {
     categories,
   }
 
-  const insight = await generateInsight(c.env.GEMINI_API_KEY, stats)
+  const insight = await aiCache(c.env.DB, `insight:${stats.total}:${stats.resolved}`, 1800, () =>
+    generateInsight(c.env.GEMINI_API_KEY, stats)
+  )
   const rate = stats.total ? Math.round((stats.resolved / stats.total) * 100) : 0
   return c.json({ ...insight, most: stats.topCategory, hotspot: stats.hotspot, rate })
 })
@@ -951,10 +958,13 @@ api.get('/contractors/nearby', requireRole('admin'), async (c) => {
 
   let ai_source: string | undefined
   if (ranked.length) {
-    const rec = await recommendContractorReason(
-      c.env.GEMINI_API_KEY,
-      { category: skill },
-      { name: ranked[0].name, rating: ranked[0].rating, distance_km: ranked[0].distance_km, match_score: ranked[0].match_score, skills: ranked[0].skills }
+    const top = ranked[0]
+    const rec = await aiCache(c.env.DB, `crec:${skill}:${top.user_id}:${top.match_score}`, 1800, () =>
+      recommendContractorReason(
+        c.env.GEMINI_API_KEY,
+        { category: skill },
+        { name: top.name, rating: top.rating, distance_km: top.distance_km, match_score: top.match_score, skills: top.skills }
+      )
     )
     ;(ranked[0] as any).ai_recommendation = rec.reason
     ai_source = rec.source
@@ -986,7 +996,9 @@ api.get('/issues/:id/quotations', requireRole('admin'), async (c) => {
   }))
   const { scored } = scoreQuotations(quotes)
   const best = scored.find((s) => s.recommended)!
-  const reason = await quotationReason(c.env.GEMINI_API_KEY, best)
+  const reason = await aiCache(c.env.DB, `qreason:${id}:${best.contractor_id}:${best.est_cost}`, 1800, () =>
+    quotationReason(c.env.GEMINI_API_KEY, best)
+  )
 
   // Stitch quotation_id + status back in.
   const byContractor = new Map(raw.map((r) => [r.contractor_id, r]))
@@ -1298,16 +1310,18 @@ api.get('/reports/weekly', requireRole('admin'), async (c) => {
   const topCat = await c.env.DB.prepare(`SELECT category FROM issues GROUP BY category ORDER BY COUNT(*) DESC LIMIT 1`).first<any>()
   const hotspot = await c.env.DB.prepare(`SELECT address FROM issues WHERE address != '' GROUP BY address ORDER BY COUNT(*) DESC LIMIT 1`).first<any>()
   const topDept = await c.env.DB.prepare(`SELECT department FROM issues WHERE department IS NOT NULL GROUP BY department ORDER BY COUNT(*) DESC LIMIT 1`).first<any>()
-  const report = await generateWeeklyReport(c.env.GEMINI_API_KEY, {
-    total: agg?.total || 0,
-    resolved: agg?.resolved || 0,
-    open: agg?.open || 0,
-    critical: agg?.critical || 0,
-    topCategory: topCat?.category || 'N/A',
-    hotspot: hotspot?.address || 'city-wide',
-    avgHours: 18,
-    topDept: topDept?.department || 'General Services',
-  })
+  const report = await aiCache(c.env.DB, `weekly:${agg?.total || 0}:${agg?.resolved || 0}`, 3600, () =>
+    generateWeeklyReport(c.env.GEMINI_API_KEY, {
+      total: agg?.total || 0,
+      resolved: agg?.resolved || 0,
+      open: agg?.open || 0,
+      critical: agg?.critical || 0,
+      topCategory: topCat?.category || 'N/A',
+      hotspot: hotspot?.address || 'city-wide',
+      avgHours: 18,
+      topDept: topDept?.department || 'General Services',
+    })
+  )
   return c.json(report)
 })
 
