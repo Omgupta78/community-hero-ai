@@ -935,7 +935,7 @@ app.get('/contractor', async (c) => {
               <option value="offline">Offline</option>
             </select>
           </div>
-          <button id="ctr-ai-btn" class="ctr-chip" title="Ask the AI assistant"><span class="material-symbols-outlined">support_agent</span></button>
+          <button id="ctr-ai-btn" class="ctr-chip" title="Field Ops help" style="display:none"><span class="material-symbols-outlined">support_agent</span></button>
           <div class="ctr-profile"><div class="ctr-avatar">{(user.name || 'C')[0]}</div>
             <div class="ctr-profile-meta"><b>{user.name}</b><small>Civic Responder</small></div></div>
           <a href="/logout" class="ctr-switch" title="Switch role"><span class="material-symbols-outlined">logout</span></a>
@@ -1138,7 +1138,6 @@ app.get('/command', async (c) => {
         </nav>
         <div class="ctr-topbar-right">
           <div id="cc-weather" class="ctr-chip"><span class="material-symbols-outlined">partly_cloudy_day</span><span id="cc-weather-text">—</span></div>
-          <button id="cc-ai-btn" class="ctr-chip" title="Ask the AI assistant"><span class="material-symbols-outlined">support_agent</span></button>
           <div class="ctr-profile"><div class="ctr-avatar">{(user.name || 'A')[0]}</div>
             <div class="ctr-profile-meta"><b>{user.name}</b><small>Commissioner</small></div></div>
           <a href="/logout" class="ctr-switch" title="Switch role"><span class="material-symbols-outlined">logout</span></a>

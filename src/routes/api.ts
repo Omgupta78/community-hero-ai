@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { analyzeIssue, generateInsight, generateResolutionPlan, chatReply, predictTrends, generateCityHealthInsight, verifyFix, computePriority, recommendContractorReason, quotationReason, generateWeeklyReport } from '../lib/gemini'
+import { analyzeIssue, generateInsight, generateResolutionPlan, predictTrends, generateCityHealthInsight, verifyFix, computePriority, recommendContractorReason, quotationReason, generateWeeklyReport } from '../lib/gemini'
 import { runTriageAgent } from '../lib/agent'
 import { rankContractors, scoreQuotations, parseSkills, type ContractorRow, type Quote } from '../lib/assignment'
 import { aiCache, budgetedKey } from '../lib/cache'
@@ -626,7 +626,7 @@ api.post('/issues/:id/agent/run', requireRole('admin'), async (c) => {
 // Command the agent to clear the backlog — runs triage on all unprocessed issues.
 api.post('/agent/run-backlog', requireRole('admin'), async (c) => {
   const { results } = await c.env.DB.prepare(
-    `SELECT id FROM issues WHERE agent_processed = 0 AND status != 'Resolved' ORDER BY created_at ASC LIMIT 12`
+    `SELECT id FROM issues WHERE agent_processed = 0 AND status != 'Resolved' ORDER BY created_at ASC LIMIT 5`
   ).all()
   let processed = 0
   for (const r of (results as any[]) || []) {
@@ -754,44 +754,6 @@ api.get('/impact-metrics', async (c) => {
     graffitiRemoved: graffiti,
     co2SavedKg: totalResolved * 15,       // faster maintenance avoids ~15 kg CO2 each
   })
-})
-
-// ---------------------------------------------------------------
-// AI CHATBOT — "Hero Assistant" (real-time Gemini, grounded with live stats)
-// ---------------------------------------------------------------
-api.post('/chat', async (c) => {
-  const body = await c.req.json().catch(() => ({}))
-  const messages = Array.isArray(body.messages) ? body.messages : []
-  if (!messages.length) return c.json({ error: 'messages required' }, 400)
-
-  // Basic sanitation + bound the payload. Only the last few turns are needed —
-  // resending the whole transcript every message wastes input tokens.
-  const clean = messages
-    .filter((m: any) => m && typeof m.content === 'string' && m.content.trim())
-    .slice(-6)
-    .map((m: any) => ({
-      role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: String(m.content).slice(0, 600),
-    }))
-  if (!clean.length) return c.json({ error: 'messages required' }, 400)
-
-  const total = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues`).first<{ n: number }>()
-  const resolved = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues WHERE status = 'Resolved'`).first<{ n: number }>()
-  const ctx = {
-    total: total?.n || 0,
-    resolved: resolved?.n || 0,
-    open: (total?.n || 0) - (resolved?.n || 0),
-  }
-
-  // Greetings and the canned FAQ chips are answered by the built-in heuristic
-  // with NO Gemini call (no tokens, no quota). Only genuine, open-ended
-  // questions reach the model.
-  const last = clean[clean.length - 1].content.toLowerCase()
-  const isFaq = /^(hi|hello|hey|yo|help|thanks|thank you)\b|how do i report|report a pothole|how does verif|verification work|how do i earn|earn (points|community)|what can you/i.test(last)
-  const key = isFaq ? undefined : await budgetedKey(c.env)
-
-  const result = await chatReply(key, clean, ctx)
-  return c.json(result)
 })
 
 // ---------------------------------------------------------------

@@ -134,8 +134,10 @@ export async function runTriageAgent(env: Env, issueId: number): Promise<{ ok: b
     await log(db, issueId, step++, 'route', decision.route_reason, `No authority seat for ${decision.department}; left in queue for admin.`, 'Pending manual assignment.')
   }
 
-  // 6. PLAN
-  const plan = await generateResolutionPlan(await budgetedKey(env), {
+  // 6. PLAN — use the deterministic heuristic here (no Gemini). The richer
+  // Gemini plan is generated on-demand by GET /issues/:id/plan and cached,
+  // so we don't spend a token per report during triage.
+  const plan = await generateResolutionPlan(undefined, {
     title: issue.title,
     description: issue.description,
     category: issue.category,
