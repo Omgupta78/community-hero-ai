@@ -11,10 +11,12 @@
     btn.disabled = true
     const email = document.getElementById('login-email').value.trim()
     const password = document.getElementById('login-password').value
+    const asEl = document.getElementById('login-as')
+    const as = asEl ? asEl.value : ''
     try {
-      const { data } = await api.post('/auth/login', { email, password })
+      const { data } = await api.post('/auth/login', { email, password, as })
       toast('Welcome, ' + data.user.name)
-      // Route by role.
+      // Route by role (now guaranteed to match the chosen portal).
       const dest = data.user.role === 'admin' ? '/admin' : data.user.role === 'contractor' ? '/contractor' : '/authority'
       window.location.href = dest
     } catch (err) {

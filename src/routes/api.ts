@@ -56,7 +56,7 @@ async function requireCitizen(c: any): Promise<number | null> {
 // AUTH (staff: admin + authorities)
 // ---------------------------------------------------------------
 api.post('/auth/login', async (c) => {
-  const { email, password } = await c.req.json().catch(() => ({}))
+  const { email, password, as } = await c.req.json().catch(() => ({}))
   if (!email || !password) return c.json({ error: 'Email and password required' }, 400)
 
   const user = await c.env.DB.prepare(
@@ -70,6 +70,16 @@ api.post('/auth/login', async (c) => {
 
   const ok = await verifyPassword(password, user.password_hash)
   if (!ok) return c.json({ error: 'Invalid credentials' }, 401)
+
+  // Enforce the portal the user chose on the landing page. This stops a
+  // municipal account from logging in via the Contractor card (and vice versa).
+  const portalRoles: Record<string, string[]> = { contractor: ['contractor'], municipal: ['admin', 'authority'] }
+  const allowed = portalRoles[String(as || '')]
+  if (allowed && !allowed.includes(user.role)) {
+    const wanted = as === 'contractor' ? 'Contractor / Responder' : 'Municipal'
+    const actual = user.role === 'contractor' ? 'Contractor / Responder' : 'Municipal'
+    return c.json({ error: `This is a ${actual} account, but you're on the ${wanted} sign-in. Go back and choose "${actual}".` }, 403)
+  }
 
   const token = await createSession(c.env.DB, user.id)
   c.header('Set-Cookie', sessionCookie(token))

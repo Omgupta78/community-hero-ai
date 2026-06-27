@@ -700,6 +700,7 @@ app.get('/login', async (c) => {
         </div>
 
         <form id="login-form" class="bg-surface-lowest border border-outline-variant rounded-xl p-lg space-y-md">
+          <input type="hidden" id="login-as" value={as} />
           <div>
             <label class="text-xs font-bold uppercase text-on-surface-variant">Email</label>
             <input id="login-email" type="email" required autocomplete="username"
