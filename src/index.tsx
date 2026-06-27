@@ -175,9 +175,9 @@ app.get('/home', (c) => {
               <span class="material-symbols-outlined text-[32px]">add_circle</span>
               <span class="text-xs text-center font-medium">Report Issue</span>
             </a>
-            <a href="/map" class="bg-surface-lowest border border-outline-variant text-primary rounded-xl p-md flex flex-col items-center justify-center gap-sm min-h-[100px] active:scale-95 transition-transform hover:bg-surface-container">
-              <span class="material-symbols-outlined text-[32px]">map</span>
-              <span class="text-xs text-center font-medium">View Map</span>
+            <a href="/impact" class="bg-surface-lowest border border-outline-variant text-primary rounded-xl p-md flex flex-col items-center justify-center gap-sm min-h-[100px] active:scale-95 transition-transform hover:bg-surface-container">
+              <span class="material-symbols-outlined text-[32px]">insights</span>
+              <span class="text-xs text-center font-medium">Impact</span>
             </a>
             <a href="/verify" class="bg-surface-lowest border border-outline-variant text-primary rounded-xl p-md flex flex-col items-center justify-center gap-sm min-h-[100px] active:scale-95 transition-transform hover:bg-surface-container">
               <span class="material-symbols-outlined text-[32px]">verified</span>
@@ -381,6 +381,56 @@ app.get('/verify', (c) => {
       <script src="/static/verify.js"></script>
     </div>,
     { title: 'Verify Reports' }
+  )
+})
+
+// My Reports — the citizen's own reports with live status tracking
+app.get('/my-reports', (c) => {
+  return c.render(
+    <div class="pt-[80px] pb-[100px]">
+      <TopBar title="My Reports" />
+      <main class="px-container-margin max-w-2xl mx-auto mt-lg space-y-lg">
+        {/* Summary */}
+        <section class="grid grid-cols-3 gap-md">
+          <div class="bg-surface-lowest border border-outline-variant rounded-xl p-md text-center">
+            <p class="text-2xl font-bold text-on-surface" id="mr-total">—</p>
+            <p class="text-[11px] uppercase font-bold text-on-surface-variant mt-1">Reported</p>
+          </div>
+          <div class="bg-tertiary-fixed rounded-xl p-md text-center">
+            <p class="text-2xl font-bold text-on-tertiary-fixed" id="mr-open">—</p>
+            <p class="text-[11px] uppercase font-bold text-on-tertiary-fixed mt-1">In Progress</p>
+          </div>
+          <div class="bg-secondary-container rounded-xl p-md text-center">
+            <p class="text-2xl font-bold text-on-secondary-container" id="mr-resolved">—</p>
+            <p class="text-[11px] uppercase font-bold text-on-secondary-container mt-1">Resolved</p>
+          </div>
+        </section>
+
+        {/* Sign-in hint (shown only when not signed in) */}
+        <div id="mr-signin" class="hidden bg-primary-fixed rounded-xl p-md flex items-start gap-3">
+          <span class="material-symbols-outlined text-primary">info</span>
+          <p class="text-sm text-on-surface">Sign in on your <a href="/profile" class="font-bold text-primary underline">Profile</a> to track all the reports you submit across devices.</p>
+        </div>
+
+        {/* Filters */}
+        <div id="mr-filters" class="flex gap-2 overflow-x-auto">
+          <button data-f="all" class="mr-filter bg-primary text-on-primary rounded-full px-4 py-1.5 text-sm font-bold whitespace-nowrap">All</button>
+          <button data-f="open" class="mr-filter bg-surface-container text-on-surface rounded-full px-4 py-1.5 text-sm font-bold whitespace-nowrap">In Progress</button>
+          <button data-f="resolved" class="mr-filter bg-surface-container text-on-surface rounded-full px-4 py-1.5 text-sm font-bold whitespace-nowrap">Resolved</button>
+        </div>
+
+        <div id="mr-list" class="space-y-md">
+          <div class="text-center text-on-surface-variant py-8">Loading your reports…</div>
+        </div>
+
+        <a href="/report" class="block text-center bg-secondary text-white rounded-xl py-3.5 font-bold active:scale-[0.98] transition">
+          <span class="material-symbols-outlined align-middle mr-1">add_circle</span> Report a new issue
+        </a>
+      </main>
+      <BottomNav active="myreports" />
+      <script src={`/static/my-reports.js?v=${ASSET_VER}`}></script>
+    </div>,
+    { title: 'My Reports' }
   )
 })
 

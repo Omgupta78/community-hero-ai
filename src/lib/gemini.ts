@@ -1,7 +1,9 @@
 // Real Gemini AI integration for Community Hero AI
 // Uses the Google Generative Language REST API (works on Cloudflare Workers via fetch).
 
-const GEMINI_MODEL = 'gemini-2.5-flash'
+// gemini-2.0-flash has a much higher free-tier daily quota than 2.5-flash
+// (which is only ~20 requests/day). Change here if you use a billed key.
+const GEMINI_MODEL = 'gemini-2.0-flash'
 const GEMINI_URL = (key: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`
 

@@ -2,7 +2,7 @@ import { jsxRenderer } from 'hono/jsx-renderer'
 
 // Bump this whenever static CSS/JS changes so browsers fetch the latest assets
 // (prevents the "old styling cached" problem where pages look unchanged).
-export const ASSET_VER = '10'
+export const ASSET_VER = '11'
 
 export const renderer = jsxRenderer(({ children, title }) => {
   return (
@@ -12,7 +12,7 @@ export const renderer = jsxRenderer(({ children, title }) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{title || 'TrustLens AI'}</title>
         <meta name="description" content="TrustLens AI — See. Verify. Solve. An AI-powered hyperlocal civic issue resolution platform where an autonomous Gemini agent triages, verifies, routes and resolves community issues." />
-        <meta name="theme-color" content="#003d9b" />
+        <meta name="theme-color" content="#2563EB" />
         {/* Social / link preview */}
         <meta property="og:title" content="TrustLens AI — See. Verify. Solve." />
         <meta property="og:description" content="AI-powered hyperlocal civic issue resolution platform. One autonomous agent runs the whole loop." />
@@ -52,38 +52,38 @@ tailwind.config = {
   theme: {
     extend: {
       colors: {
-        "primary": "#003d9b",
+        "primary": "#2563EB",
         "on-primary": "#ffffff",
-        "primary-container": "#0052cc",
-        "on-primary-container": "#c4d2ff",
-        "primary-fixed": "#dae2ff",
-        "primary-fixed-dim": "#b2c5ff",
-        "surface-tint": "#0c56d0",
-        "secondary": "#006c47",
-        "secondary-container": "#82f9be",
-        "on-secondary-container": "#00734c",
-        "tertiary": "#5e3c00",
-        "tertiary-fixed": "#ffddb3",
-        "on-tertiary-fixed": "#291800",
-        "tertiary-container": "#7d5200",
-        "on-tertiary-container": "#ffca81",
-        "error": "#ba1a1a",
-        "error-container": "#ffdad6",
-        "on-error-container": "#93000a",
-        "background": "#f8f9fb",
-        "on-background": "#191c1e",
-        "surface": "#f8f9fb",
+        "primary-container": "#dbe8ff",
+        "on-primary-container": "#1e3a8a",
+        "primary-fixed": "#eff5ff",
+        "primary-fixed-dim": "#bfd6ff",
+        "surface-tint": "#3b82f6",
+        "secondary": "#10B981",
+        "secondary-container": "#d1fae5",
+        "on-secondary-container": "#065f46",
+        "tertiary": "#b45309",
+        "tertiary-fixed": "#fff0d6",
+        "on-tertiary-fixed": "#7c2d12",
+        "tertiary-container": "#f59e0b",
+        "on-tertiary-container": "#7c2d12",
+        "error": "#ef4444",
+        "error-container": "#fee2e2",
+        "on-error-container": "#991b1b",
+        "background": "#f6f8fc",
+        "on-background": "#0f172a",
+        "surface": "#f6f8fc",
         "surface-lowest": "#ffffff",
         "surface-container-lowest": "#ffffff",
-        "surface-container-low": "#f3f4f6",
-        "surface-container": "#edeef0",
-        "surface-container-high": "#e7e8ea",
-        "surface-container-highest": "#e1e2e4",
-        "surface-variant": "#e1e2e4",
-        "on-surface": "#191c1e",
-        "on-surface-variant": "#434654",
-        "outline": "#737685",
-        "outline-variant": "#c3c6d6",
+        "surface-container-low": "#f1f5f9",
+        "surface-container": "#e9eef5",
+        "surface-container-high": "#e2e8f0",
+        "surface-container-highest": "#dbe2ea",
+        "surface-variant": "#e2e8f0",
+        "on-surface": "#0f172a",
+        "on-surface-variant": "#475569",
+        "outline": "#94a3b8",
+        "outline-variant": "#cbd5e1",
       },
       fontFamily: { sans: ["Inter", "sans-serif"] },
       borderRadius: { DEFAULT: "0.5rem", md: "0.75rem", lg: "1rem", xl: "1.5rem", full: "9999px" },

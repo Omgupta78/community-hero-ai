@@ -44,12 +44,10 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
                 </span>
                 <span id="citizen-name" class="text-xs font-bold text-on-surface hidden sm:inline max-w-[100px] truncate"></span>
               </a>
-              <a href="/login" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1">
-                <span class="material-symbols-outlined text-[18px]">shield_person</span>
-                <span class="hidden sm:inline">Staff Login</span>
-              </a>
-              <a href="/" class="text-xs font-bold text-primary px-2 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1" title="Switch role">
+              {/* Single, clear way to reach the other portals */}
+              <a href="/" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1" title="Switch role">
                 <span class="material-symbols-outlined text-[18px]">swap_horiz</span>
+                <span class="hidden sm:inline">Switch Role</span>
               </a>
             </>
           )}
@@ -66,7 +64,7 @@ const navItems = [
   { key: 'home', href: '/home', icon: 'home', label: 'Home' },
   { key: 'map', href: '/map', icon: 'map', label: 'Map' },
   { key: 'report', href: '/report', icon: 'add_circle', label: 'Report' },
-  { key: 'impact', href: '/impact', icon: 'insights', label: 'Impact' },
+  { key: 'myreports', href: '/my-reports', icon: 'fact_check', label: 'My Reports' },
   { key: 'profile', href: '/profile', icon: 'person', label: 'Profile' },
 ]
 

@@ -780,3 +780,29 @@ main button[class*="rounded-xl"]:hover {
 @media (max-width: 880px) {
   .ctr-profile-grid { grid-template-columns: 1fr; }
 }
+
+/* ===================== Citizen — My Reports cards + status tracker ===================== */
+.mr-filter { transition: all .15s; }
+.mr-card { display: block; background: #fff; border: 1px solid #cbd5e1; border-radius: 16px; padding: 14px; text-decoration: none; color: #0f172a; transition: border-color .18s, box-shadow .18s, transform .18s; }
+.mr-card:hover { border-color: #2563EB; box-shadow: 0 8px 24px rgba(2,6,23,.08); transform: translateY(-2px); }
+.mr-card-done { border-color: rgba(16,185,129,.4); }
+.mr-card-top { display: flex; align-items: center; gap: 12px; }
+.mr-thumb { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; flex-shrink: 0; }
+.mr-thumb-ph { background: #dbe8ff; display: flex; align-items: center; justify-content: center; }
+.mr-thumb-ph .material-symbols-outlined { color: #2563EB; }
+.mr-card-main { flex: 1; min-width: 0; }
+.mr-card-title { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mr-card-meta { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.mr-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #fff0d6; color: #b45309; white-space: nowrap; }
+.mr-badge.done { background: #d1fae5; color: #065f46; }
+.mr-track { display: flex; margin-top: 14px; }
+.mr-step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; }
+.mr-step i { width: 12px; height: 12px; border-radius: 50%; background: #e2e8f0; z-index: 2; }
+.mr-step span { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .2px; }
+.mr-step::before { content: ''; position: absolute; top: 5px; left: -50%; width: 100%; height: 3px; background: #e2e8f0; z-index: 1; }
+.mr-step:first-child::before { display: none; }
+.mr-step.done i { background: #10B981; }
+.mr-step.done span { color: #059669; }
+.mr-step.done::before { background: #10B981; }
+.mr-step.cur i { background: #F59E0B; box-shadow: 0 0 0 4px rgba(245,158,11,.2); }
+.mr-step.cur span { color: #b45309; }
