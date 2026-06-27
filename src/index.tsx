@@ -1341,7 +1341,10 @@ app.get('/command', async (c) => {
         {/* ===================== AGENT LOG ===================== */}
         <section class="ctr-view hidden" id="cview-agentlog">
           <div class="ctr-view-head"><h1><span class="material-symbols-outlined">smart_toy</span> Agent Log</h1>
-            <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">bolt</span> Live AI pipeline</span></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="ctr-tag ctr-tag-blue"><span class="material-symbols-outlined">bolt</span> Live AI pipeline</span>
+              <button id="cc-run-resolution" class="ctr-btn ctr-btn-primary ctr-btn-sm"><span class="material-symbols-outlined">bolt</span> Run Full Resolution <span class="material-symbols-outlined">arrow_forward</span></button>
+            </div></div>
           <div class="cc-agent-grid">
             <div>
               <div id="cc-agent-pipeline" class="cc-pipeline"><div class="ctr-skel"></div></div>

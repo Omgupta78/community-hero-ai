@@ -451,6 +451,7 @@
     { key: 'releasePayout', label: 'releasePayout', icon: 'payments', noun: 'payouts' },
   ]
   // Lightweight FNV-1a hash → chained, tamper-evident log ids.
+  let agentQueueCount = 0
   function fnvHash(str) {
     let h = 0x811c9dc5
     for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) }
@@ -459,6 +460,7 @@
   async function loadAgentLog() {
     try {
       const issues = (await api.get('/issues?limit=200')).data.issues || []
+      agentQueueCount = issues.filter((i) => i.status !== 'Resolved').length
       const counts = {
         ingestReport: issues.length,
         triageIssue: issues.filter((i) => i.agent_processed).length,
@@ -488,6 +490,15 @@
         return row
       }).join('') || '<p class="ctr-empty">No entries.</p>'
     } catch (e) {}
+  }
+
+  // Animate the pipeline steps lighting up left→right (visual "run").
+  function runFullResolution() {
+    const steps = document.querySelectorAll('#cc-agent-pipeline .cc-step')
+    steps.forEach((s) => s.classList.remove('lit'))
+    steps.forEach((s, i) => setTimeout(() => s.classList.add('lit'), i * 450))
+    setTimeout(() => steps.forEach((s) => s.classList.remove('lit')), steps.length * 450 + 1400)
+    window.CH.toast(`Agent running — processing ${agentQueueCount || 13} issues in queue`)
   }
 
   // ---------- escalation ----------
@@ -568,6 +579,7 @@
     const sweep = $('cc-sla-sweep'); if (sweep) sweep.addEventListener('click', () => { loadEscalation(); window.CH.toast('SLA sweep complete') })
     const prestage = $('cc-prestage'); if (prestage) prestage.addEventListener('click', () => window.CH.toast('Crews pre-staged for Sector 17 ahead of rainfall'))
     const preempt = $('cc-preempt-btn'); if (preempt) preempt.addEventListener('click', () => window.CH.toast('Inspection sweep scheduled for Sector 17 — Road Dept notified'))
+    const runRes = $('cc-run-resolution'); if (runRes) runRes.addEventListener('click', runFullResolution)
   }
 
   document.addEventListener('DOMContentLoaded', () => {
