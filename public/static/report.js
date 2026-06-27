@@ -114,6 +114,9 @@
       imageBase64 = dataUrl ? dataUrl.split(',')[1] : null
       img.src = dataUrl; img.classList.remove('hidden'); note.classList.add('hidden')
     }
+
+    // "Snap to report" — auto-run Gemini triage as soon as media is ready.
+    if (imageBase64) runTriage()
   })
 
   // --- GPS ---
@@ -135,8 +138,7 @@
 
   // --- AI triage: analyze + auto-fill the form ---
   const SEV_LABEL = { 5: 'CRITICAL', 4: 'HIGH', 3: 'MEDIUM', 2: 'LOW', 1: 'MINOR' }
-  $('analyze-btn').addEventListener('click', async (e) => {
-    e.stopPropagation()
+  async function runTriage() {
     const description = $('description').value.trim()
     if (!description && !imageBase64) { toast('Add a photo or a short description first', false); return }
     const btn = $('analyze-btn')
@@ -151,6 +153,7 @@
       $('severity-select').value = String(data.severity)
       if (!description && data.summary) $('description').value = data.summary
       renderAI(data)
+      toast('Form auto-filled by Gemini ✦')
     } catch (e) {
       toast('AI triage failed — you can still fill the form manually', false)
     } finally {
@@ -158,7 +161,8 @@
       btn.disabled = false
       btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">auto_awesome</span> Re-run AI triage'
     }
-  })
+  }
+  $('analyze-btn').addEventListener('click', (e) => { e.stopPropagation(); runTriage() })
 
   function renderAI(d) {
     // Verification banner
