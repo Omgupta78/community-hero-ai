@@ -883,6 +883,10 @@ app.get('/contractor', async (c) => {
       </header>
 
       <main class="ctr-main">
+        {/* Role identity ribbon (inline-styled so it shows even with cached CSS) */}
+        <div style="background:linear-gradient(90deg,#0f766e,#0d9488);color:#fff;padding:8px 20px;font-weight:800;font-size:12px;letter-spacing:1.5px;display:flex;align-items:center;gap:8px;text-transform:uppercase;border-radius:0 0 14px 14px;margin-bottom:6px;">
+          <span class="material-symbols-outlined" style="font-size:18px;">construction</span>Contractor · Field Ops · Responder view
+        </div>
         {/* ===================== DASHBOARD ===================== */}
         <section class="ctr-view" id="cview-dashboard">
           <div class="ctr-hero">
@@ -1100,6 +1104,10 @@ app.get('/command', async (c) => {
 
       {/* ---------- MAIN ---------- */}
       <div class="cc-main">
+        {/* Role identity ribbon (inline-styled so it shows even with cached CSS) */}
+        <div style="background:linear-gradient(90deg,#1d4ed8,#2563eb);color:#fff;padding:8px 24px;font-weight:800;font-size:12px;letter-spacing:1.5px;display:flex;align-items:center;gap:8px;text-transform:uppercase;">
+          <span class="material-symbols-outlined" style="font-size:18px;">apartment</span>Municipal Command Center · Commissioner view
+        </div>
         {/* TOP NAVBAR */}
         <header class="cc-topbar">
           <div class="cc-search">
