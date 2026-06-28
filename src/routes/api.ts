@@ -880,6 +880,16 @@ api.post('/demo/load', async (c) => {
     try { await db.prepare(`INSERT OR IGNORE INTO agent_actions (issue_id, step, tool, thought, action, result) VALUES (?,?,?,?,?,?)`).bind(t[0], t[1], t[2], t[3], t[4], t[5]).run() } catch (e) {}
   }
 
+  // Reconcile each contractor's TOTAL earnings from their resolved jobs so the
+  // Earnings page total matches the payment-history list. Idempotent.
+  try {
+    await db.prepare(
+      `UPDATE users SET earnings = (
+         SELECT COALESCE(SUM(bounty), 0) FROM issues WHERE contractor_id = users.id AND status = 'Resolved'
+       ) WHERE role = 'contractor'`
+    ).run()
+  } catch (e) {}
+
   const count = await db.prepare(`SELECT COUNT(*) AS n FROM issues`).first<{ n: number }>()
   const resolved = await db.prepare(`SELECT COUNT(*) AS n FROM issues WHERE status='Resolved'`).first<{ n: number }>()
   return c.json({ ok: true, demo_rows_attempted: rows.length, inserted_or_existing: inserted, total_issues: count?.n ?? 0, resolved: resolved?.n ?? 0, error: firstError || undefined })
