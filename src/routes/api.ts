@@ -150,7 +150,8 @@ api.get('/authorities', requireRole('admin'), async (c) => {
 api.post('/analyze', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const { description, category, imageBase64, mimeType } = body
-  const result = await analyzeIssue(await budgetedKey(c.env), {
+  // Report form → always use real Gemini (never capped/throttled).
+  const result = await analyzeIssue(await budgetedKey(c.env, { force: true }), {
     description,
     category,
     imageBase64,
@@ -276,7 +277,7 @@ api.post('/issues', async (c) => {
 
   const analysis = ai && ai.category
     ? ai
-    : await analyzeIssue(await budgetedKey(c.env), { description, category, imageBase64, mimeType })
+    : await analyzeIssue(await budgetedKey(c.env, { force: true }), { description, category, imageBase64, mimeType })
 
   const res = await c.env.DB.prepare(
     `INSERT INTO issues
