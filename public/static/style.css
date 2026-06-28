@@ -1201,3 +1201,56 @@ main button[class*="rounded-xl"]:hover {
   .ctr-hero h1 { font-size: 22px; }
   .cc-hero h1, .mc-hero h1 { font-size: 20px; }
 }
+
+/* =====================================================================
+   PHONE POLISH — premium feel on small screens only (desktop untouched)
+   ===================================================================== */
+@media (max-width: 640px) {
+  /* Floating "glass" bottom nav with soft elevation. */
+  .tl-bottomnav {
+    background: rgba(255, 255, 255, 0.9);
+    -webkit-backdrop-filter: saturate(140%) blur(12px);
+    backdrop-filter: saturate(140%) blur(12px);
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.07);
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+  }
+  /* Springy press feedback on nav items. */
+  .tl-bottomnav a { transition: transform .13s ease, opacity .13s ease; }
+  .tl-bottomnav a:active { transform: scale(.9); opacity: .85; }
+
+  /* Floating Report (+) button: deeper elevation + lively press. */
+  .tl-bottomnav span.bg-primary {
+    box-shadow: 0 8px 20px rgba(29, 158, 117, 0.45);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .tl-bottomnav a:active span.bg-primary { transform: scale(.9); box-shadow: 0 4px 12px rgba(29, 158, 117, 0.5); }
+
+  /* Top bar reads as floating glass. */
+  .tl-topbar { box-shadow: 0 2px 14px rgba(0, 0, 0, 0.05); }
+
+  /* Tasteful staggered entrance for page sections (runs once on load). */
+  main > section { animation: tl-rise .45s cubic-bezier(.22, .61, .36, 1) both; }
+  main > section:nth-child(2) { animation-delay: .04s; }
+  main > section:nth-child(3) { animation-delay: .08s; }
+  main > section:nth-child(4) { animation-delay: .12s; }
+  main > section:nth-child(5) { animation-delay: .16s; }
+  @keyframes tl-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* Gentle press feedback for primary buttons + tappable cards. */
+  button:active, a.rounded-xl:active, a.rounded-full:active { transform: scale(.98); }
+  button, a.rounded-xl, a.rounded-full { transition: transform .12s ease; }
+
+  /* Smooth in-page scrolling; stop rubber-band bleed onto the body. */
+  html { scroll-behavior: smooth; }
+  body { overscroll-behavior-y: contain; }
+
+  /* Crisper text on phones. */
+  body { text-rendering: optimizeLegibility; }
+}
+
+/* Respect users who prefer less motion. */
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+  main > section { animation: none !important; }
+  .tl-bottomnav a, .tl-bottomnav span.bg-primary, button, a.rounded-xl, a.rounded-full { transition: none !important; }
+}
