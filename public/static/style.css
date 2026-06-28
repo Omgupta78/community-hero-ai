@@ -1171,10 +1171,12 @@ main button[class*="rounded-xl"]:hover {
 .tl-bottomnav { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 @media (max-width: 640px) {
-  /* Kill accidental sideways scrolling from wide rows/grids on small screens. */
-  html, body { overflow-x: hidden; max-width: 100%; }
+  /* Prevent sideways drift from wide rows WITHOUT creating a scroll container.
+     `overflow-x: clip` (unlike `hidden`) does not break vertical/momentum
+     scrolling on mobile the way `overflow-x: hidden` on <html> does. */
+  html, body { overflow-x: clip; }
 
-  /* Smooth momentum scrolling + cleaner tap feedback on touch devices. */
+  /* Cleaner tap feedback + momentum scrolling on touch devices. */
   body { -webkit-tap-highlight-color: transparent; -webkit-overflow-scrolling: touch; }
 
   /* Comfortable minimum tap targets for the bottom-nav items (Apple/Google 44px). */
@@ -1229,21 +1231,9 @@ main button[class*="rounded-xl"]:hover {
   /* Top bar reads as floating glass. */
   .tl-topbar { box-shadow: 0 2px 14px rgba(0, 0, 0, 0.05); }
 
-  /* Tasteful staggered entrance for page sections (runs once on load). */
-  main > section { animation: tl-rise .45s cubic-bezier(.22, .61, .36, 1) both; }
-  main > section:nth-child(2) { animation-delay: .04s; }
-  main > section:nth-child(3) { animation-delay: .08s; }
-  main > section:nth-child(4) { animation-delay: .12s; }
-  main > section:nth-child(5) { animation-delay: .16s; }
-  @keyframes tl-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-
   /* Gentle press feedback for primary buttons + tappable cards. */
   button:active, a.rounded-xl:active, a.rounded-full:active { transform: scale(.98); }
   button, a.rounded-xl, a.rounded-full { transition: transform .12s ease; }
-
-  /* Smooth in-page scrolling; stop rubber-band bleed onto the body. */
-  html { scroll-behavior: smooth; }
-  body { overscroll-behavior-y: contain; }
 
   /* Crisper text on phones. */
   body { text-rendering: optimizeLegibility; }
@@ -1251,6 +1241,5 @@ main button[class*="rounded-xl"]:hover {
 
 /* Respect users who prefer less motion. */
 @media (max-width: 640px) and (prefers-reduced-motion: reduce) {
-  main > section { animation: none !important; }
   .tl-bottomnav a, .tl-bottomnav span.bg-primary, button, a.rounded-xl, a.rounded-full { transition: none !important; }
 }
