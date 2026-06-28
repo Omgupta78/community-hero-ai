@@ -119,6 +119,13 @@
 
   async function load() {
     try {
+      // Wait for Firebase to restore the session so every request (including the
+      // 8s polls) carries the ID token. Without this the first load — and any
+      // poll that races the SDK — hits the API unauthenticated and returns no
+      // reports, making a signed-in citizen's list flicker and vanish.
+      if (window.CHAuth && window.CHAuth.ready) {
+        try { await window.CHAuth.ready() } catch (e) {}
+      }
       const [meRes, issRes] = await Promise.all([
         api.get('/me').catch(() => ({ data: {} })),
         api.get('/issues', { params: { mine: 'true', limit: 100 } }),

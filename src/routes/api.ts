@@ -171,7 +171,16 @@ api.get('/issues', async (c) => {
 
   if (status) { where.push('i.status = ?'); binds.push(status) }
   if (category) { where.push('i.category = ?'); binds.push(category) }
-  if (mine === 'true') { where.push('i.reporter_id = ?'); binds.push(await currentCitizenId(c)) }
+  if (mine === 'true') {
+    // "My reports" must reflect the *signed-in* citizen only. If the request
+    // arrives without a verified Firebase token (e.g. an early poll before the
+    // SDK restored the session), return an empty list rather than falling back
+    // to the demo user — otherwise a citizen's reports appear to "flicker" and
+    // vanish as authenticated/unauthenticated polls alternate.
+    const citizenId = await requireCitizen(c)
+    if (citizenId === null) return c.json({ issues: [] })
+    where.push('i.reporter_id = ?'); binds.push(citizenId)
+  }
   if (verify === 'true') { where.push("i.status IN ('Reported','Verified')") }
 
   // `assigned` scoping is only honoured for a logged-in authority and shows

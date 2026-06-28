@@ -239,6 +239,12 @@
     btn.disabled = true
     btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Submitting…'
 
+    // Make sure Firebase has restored the session so the report is saved under
+    // the signed-in citizen (not the anonymous demo user).
+    if (window.CHAuth && window.CHAuth.ready) {
+      try { await window.CHAuth.ready() } catch (e) {}
+    }
+
     // Build the analysis payload from the (possibly edited) fields.
     const ai = lastAnalysis
       ? { ...lastAnalysis, category: cat, severity: sev, department: DEPT[cat] || 'General Services', priority_score: Math.min(100, sev * 16) }
