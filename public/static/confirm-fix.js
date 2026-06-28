@@ -47,6 +47,10 @@
         <div class="cf-greeting"><span class="cf-emoji">🎉</span>
           <p class="cf-greeting-title">Thank you ${esc(contractor)}!</p>
           <p class="cf-greeting-sub">Your work made a difference.</p></div>
+        <label class="cf-label">Rate ${esc(contractor)}'s work</label>
+        <div id="cf-stars" class="cf-stars" role="radiogroup" aria-label="Rate the contractor">
+          ${[1,2,3,4,5].map((n) => `<button type="button" class="cf-star" data-val="${n}" aria-label="${n} star${n>1?'s':''}"><span class="material-symbols-outlined">star</span></button>`).join('')}
+        </div>
         <label class="cf-label">Leave a message (optional)</label>
         <textarea id="cf-msg" rows="2" placeholder="e.g. Great work, fixed quickly!" class="cf-input"></textarea>
         <button id="cf-send" class="vf-approve"><span class="material-symbols-outlined">send</span> Send Thanks</button>
@@ -66,6 +70,18 @@
     const reopen = document.getElementById('cf-reopen')
     const done = document.getElementById('cf-done')
 
+    // Star rating widget (defaults to 5). Hover/click fills stars up to the value.
+    let rating = 5
+    const stars = Array.from(document.querySelectorAll('#cf-stars .cf-star'))
+    const paint = (val) => stars.forEach((s) => s.classList.toggle('on', Number(s.dataset.val) <= val))
+    stars.forEach((s) => {
+      s.addEventListener('click', () => { rating = Number(s.dataset.val); paint(rating) })
+      s.addEventListener('mouseenter', () => paint(Number(s.dataset.val)))
+    })
+    const starsWrap = document.getElementById('cf-stars')
+    if (starsWrap) starsWrap.addEventListener('mouseleave', () => paint(rating))
+    paint(rating)
+
     document.getElementById('cf-yes').addEventListener('click', () => {
       actions.classList.add('hidden'); reopen.classList.add('hidden'); thanks.classList.remove('hidden')
     })
@@ -79,7 +95,7 @@
       btn.disabled = true
       btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Releasing payment…'
       try {
-        const { data } = await api.post(`/issues/${i.id}/confirm`, { message })
+        const { data } = await api.post(`/issues/${i.id}/confirm`, { message, rating })
         const paid = data.escrow_amount || data.released || amount
         const who = data.contractor || contractor
         thanks.classList.add('hidden')
@@ -87,6 +103,7 @@
         done.innerHTML = `
           <div class="cf-paid"><span class="material-symbols-outlined">paid</span>
             <p>Payment of <b>${inr(paid)}</b> released to <b>${esc(who)}</b></p></div>
+          <div class="cf-rated"><span class="material-symbols-outlined">star</span> You rated ${esc(who)} ${rating}/5</div>
           <div class="vf-donebox"><span class="material-symbols-outlined">verified</span> Issue marked as Resolved.</div>
           <a href="/my-reports" class="cf-back">← Back to My Reports</a>`
       } catch (err) {

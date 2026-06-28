@@ -1279,6 +1279,7 @@ api.post('/issues/:id/confirm', async (c) => {
   const issue = await c.env.DB.prepare(`SELECT department, contractor_id FROM issues WHERE id = ?`).bind(id).first<any>()
   if (!issue) return c.json({ error: 'Not found' }, 404)
   const citizen = await c.env.DB.prepare(`SELECT name FROM users WHERE id = ?`).bind(citizenId).first<any>()
+  const rating = Math.max(0, Math.min(5, Math.round(Number(body.rating) || 0)))
 
   // If an escrow is still locked (citizen confirming before any auto-release),
   // release it now: pay the contractor, settle the budget, close the job.
@@ -1337,7 +1338,25 @@ api.post('/issues/:id/confirm', async (c) => {
     ).bind(id, `Citizen thanked ${contractor?.name || 'the contractor'}: "${thanks}"`, citizen?.name || 'Citizen').run()
   }
 
-  return c.json({ ok: true, released, escrow_amount: escrowAmount, contractor: contractor?.name || 'the contractor', citizen_confirmed: true })
+  // Optional star rating (1–5): nudge the contractor's reputation with a stable
+  // weighted blend (favours history, so one rating can't swing it wildly) and
+  // record it on the timeline. Resilient — never blocks the confirmation.
+  let newRating: number | null = null
+  if (rating >= 1 && contractorId) {
+    try {
+      const cur = await c.env.DB.prepare(`SELECT rating FROM contractors WHERE user_id = ?`).bind(contractorId).first<any>()
+      const old = Number(cur?.rating) || rating
+      newRating = Math.round((old * 0.75 + rating * 0.25) * 10) / 10
+      newRating = Math.max(1, Math.min(5, newRating))
+      await c.env.DB.prepare(`UPDATE contractors SET rating = ? WHERE user_id = ?`).bind(newRating, contractorId).run()
+      const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating)
+      await c.env.DB.prepare(
+        `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'Resolved', ?, ?)`
+      ).bind(id, `Citizen rated ${contractor?.name || 'the contractor'} ${rating}/5 ${stars}`, citizen?.name || 'Citizen').run()
+    } catch (e) { /* contractors table/row missing → skip rating, keep confirmation */ }
+  }
+
+  return c.json({ ok: true, released, escrow_amount: escrowAmount, contractor: contractor?.name || 'the contractor', rating: rating || null, contractor_rating: newRating, citizen_confirmed: true })
 })
 
 // "No, it's still broken." The original reporter reopens a Resolved issue with

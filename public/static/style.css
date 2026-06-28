@@ -1157,6 +1157,16 @@ main button[class*="rounded-xl"]:hover {
 .cf-back { display: inline-block; margin-top: 14px; font-size: 13px; font-weight: 600; color: #1D9E75; text-decoration: none; }
 .cf-back:hover { text-decoration: underline; }
 
+/* Contractor star rating (confirm-fix thank-you card) */
+.cf-stars { display: flex; gap: 4px; margin-bottom: 14px; }
+.cf-star { background: none; border: none; padding: 2px; cursor: pointer; line-height: 0; color: #D8D3C4; transition: transform .12s ease, color .12s ease; }
+.cf-star .material-symbols-outlined { font-size: 32px; }
+.cf-star:hover { transform: scale(1.12); }
+.cf-star.on { color: #F59E0B; }
+.cf-star.on .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+.cf-rated { display: flex; align-items: center; gap: 8px; background: #FFF8EC; color: #B45309; border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.cf-rated .material-symbols-outlined { color: #F59E0B; font-variation-settings: 'FILL' 1; }
+
 /* =====================================================================
    PHONE OPTIMIZATION
    Scoped so the desktop/computer view is untouched:
