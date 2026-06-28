@@ -1243,3 +1243,53 @@ main button[class*="rounded-xl"]:hover {
 @media (max-width: 640px) and (prefers-reduced-motion: reduce) {
   .tl-bottomnav a, .tl-bottomnav span.bg-primary, button, a.rounded-xl, a.rounded-full { transition: none !important; }
 }
+
+/* =====================================================================
+   PHONE: Field Ops / Municipal top bar (shared .ctr-topbar)
+   Desktop unchanged — all rules live inside the phone media query.
+   On a wide screen the brand, tabs and availability sit on one row; on a
+   phone that row collides, so we stack it: row 1 = brand + availability,
+   row 2 = a full-width horizontal swipe strip of tabs.
+   ===================================================================== */
+@media (max-width: 640px) {
+  .ctr-topbar {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  .ctr-brand { order: 1; font-size: 16px; gap: 8px; }
+  .ctr-brand img { width: 28px; height: 28px; }
+  .ctr-badge { font-size: 9px; padding: 2px 6px; margin-left: 4px; }
+
+  .ctr-topbar-right { order: 2; margin-left: auto; gap: 8px; }
+  .ctr-avail { padding: 5px 9px; gap: 5px; }
+  .ctr-avail select { font-size: 12px; }
+  .ctr-avatar { width: 32px; height: 32px; }
+
+  /* Tabs become a full-width horizontal scroller on their own line. */
+  .ctr-tabs {
+    order: 3;
+    flex-basis: 100%;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 4px;
+    margin: 0 -14px -2px;          /* bleed to screen edges */
+    padding: 2px 14px 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+  .ctr-tabs::-webkit-scrollbar { display: none; }
+  .ctr-tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 8px 13px;
+    scroll-snap-align: start;
+  }
+  /* Show the labels in the swipe strip (overrides the ≤980px icon-only rule);
+     there's room here because the row scrolls horizontally. */
+  .ctr-tab span:not(.material-symbols-outlined) { display: inline !important; }
+}
