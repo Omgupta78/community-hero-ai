@@ -1,98 +1,79 @@
-# Community Hero AI — Project Description
+# TrustLens AI — Project Description
 
-> Copy this into a Google Doc, set sharing to **"Anyone with the link → Viewer"**, and
-> submit that link on BlockseBlock. (Add 3–4 screenshots and your live URL at the top.)
+**Tagline:** See. Verify. Solve. — An AI-powered hyperlocal civic issue resolution platform where an autonomous Gemini agent runs the entire loop from report to verified, paid-for fix.
 
-**Live App (Google Cloud Run):** `https://<your-service>.a.run.app`
-**GitHub Repository:** `https://github.com/<you>/community-hero-ai`
+**Live App (Google Cloud Run):** https://community-hero-ai-858911105056.asia-south1.run.app
+**GitHub Repository:** https://github.com/Omgupta78/community-hero-ai
+**Hackathon / Track:** Vibe2Ship — Problem Statement 2: Community Hero (Hyperlocal Problem Solver)
+
+> Submission note: this document is shared as "Anyone with the link → Viewer" and will remain available throughout the evaluation period.
 
 ---
 
-## Problem Statement Selected
+## 1. Problem Statement Selected
+
 **Problem Statement 2 — Community Hero: Hyperlocal Problem Solver.**
 
-Communities face everyday issues — potholes, water leaks, broken streetlights, illegal
-dumping, graffiti — but reporting them is fragmented, hard to track, and opaque. Citizens
-rarely know if anyone acted on their report, and municipal staff are flooded with
-unstructured, duplicated, unprioritized complaints.
+Everyday civic problems — potholes, water leaks, broken streetlights, illegal dumping, graffiti — are reported through fragmented, opaque channels. Three pain points stand out:
 
-## Solution Overview
-Community Hero AI is an end-to-end civic platform where citizens report a local problem with
-a photo, and an **autonomous AI agent** triages it in seconds: it analyzes the photo and
-text with Google **Gemini**, scores severity and priority, detects duplicate reports,
-routes the issue to the correct municipal department, and drafts a field resolution plan —
-all visible to the citizen as a transparent, real-time timeline.
+- **Citizens** never learn whether anyone acted on their report. There is no transparency and no feedback loop.
+- **Municipal staff** are flooded with unstructured, duplicated, and unprioritized complaints, with no automated way to triage or route them.
+- **Resolution and accountability** are missing — there is rarely proof that a problem was actually fixed before it is marked "done."
 
-The community verifies reports (auto-promoting genuine ones), municipal staff resolve them
-through role-based dashboards, and an impact dashboard shows live analytics plus Gemini-
-generated **predictive insights** about emerging hotspots. A Gemini-powered chatbot guides
-users throughout. The result is a transparent, accountable, AI-driven loop from report to
-resolution.
+The result is low civic trust, slow resolution, and wasted public money.
 
-## Key Features
-- **Full civic loop with a Contractor/Responder role** — beyond citizens and municipal
-  staff, civic responders can browse a **bounty-ranked jobs board**, claim a job, and submit
-  an "after" photo as **proof of fix**. Gemini compares the before/after images to verify the
-  repair, and the bounty is **paid out automatically** on a verified fix — closing the loop
-  from a citizen's photo to a verified, paid-for resolution.
-- **Image & video reporting** — capture or upload a photo *or* a short video clip. Gemini
-  analyzes the **actual video clip** when it's small enough (with automatic fallback to an
-  extracted frame for longer clips), and the clip plays back on the issue page.
-- **Autonomous Triage Agent** — a multi-step agent (perceive → reason → de-duplicate →
-  prioritize → auto-route & assign → plan) that acts on each new report and logs a visible
-  reasoning/action trace.
-- **AI photo + text triage** — Gemini Vision categorizes the issue, scores severity (1–5),
-  assigns a department, and computes a priority score.
-- **AI Resolution Plan** — on-demand Gemini-generated municipal action plan (steps, crew,
-  equipment, estimated time/cost, safety precautions).
-- **Hero Assistant chatbot** — multi-turn Gemini assistant grounded in live platform stats,
-  available on every page.
-- **Predictive Insights** — Gemini forecasts rising issue categories and emerging hotspots
-  with a preventive recommendation.
-- **Community verification & gamification** — citizens confirm reports; reporting earns
-  community points. Verification uses a **proof-of-presence trust model**: confirming an
-  issue while physically near it ("on-site") is worth more and counts double toward
-  promotion, while remote reviews count less — so a report is only auto-promoted to
-  "Verified" once it reaches enough *trusted* confirmations. You can't verify your own report.
-- **Reputation tiers & live leaderboard** — community score maps to Hero tiers (Newcomer →
-  Bronze → Silver → Gold → Platinum Hero) shown with a progress bar on each profile, plus a
-  ranked community leaderboard. **Integrity-gated points**: reports the agent flags as
-  duplicates earn far less, so points can't be farmed with spam or repeat reports.
-- **Live interactive map** — Leaflet with severity-colored, auto-refreshing markers + GPS.
-- **Role-based municipal dashboards** — a super-admin assigns issues; department authorities
-  see only their assigned queue and advance status; citizens see official updates instantly.
-- **Two authentication systems** — Firebase (Google + email/password) for citizens; secure
-  PBKDF2 + session-cookie login for staff, with role-based access control.
-- **Resilient by design** — every AI call has a deterministic fallback, so the product never
-  breaks even if the AI is rate-limited or offline.
+## 2. Solution Overview
 
-## Technologies Used
+TrustLens AI is an end-to-end civic platform that closes the full loop — **report → AI triage → community verification → assignment → fix → AI + citizen verification → payment** — with transparency at every step.
+
+A citizen reports a problem with a single photo (or short video). An **autonomous Gemini agent** triages it in seconds: it reads the image and text, classifies the category, scores severity and priority, detects duplicates, routes the issue to the correct municipal department, and drafts a field resolution plan — all shown to the citizen as a live, transparent timeline.
+
+The community verifies reports using a proof-of-presence trust model. Municipal officials manage the backlog from a command center, where Gemini compares contractor quotations and recommends the best value before locking payment in escrow. A contractor fixes the issue and uploads an "after" photo; Gemini compares before/after to verify the repair, the citizen confirms it, and the escrow is released automatically. Predictive AI then forecasts emerging hotspots so the city can act before the next wave of complaints.
+
+Every AI call has a deterministic fallback, so the product never breaks even when the model is rate-limited or offline.
+
+## 3. Key Features
+
+- **Autonomous Triage Agent** — a multi-step agent that *acts*, not just answers: perceive → reason → de-duplicate → prioritize → auto-route & assign → draft plan, with a visible, persisted reasoning/action trace on every issue.
+- **AI photo & video triage** — Gemini Vision categorizes the issue, scores severity (1–5), assigns a department, and computes a priority score. Short video clips are analyzed directly (with automatic fallback to an extracted frame).
+- **Full report-to-paid-fix loop with a Contractor/Responder role** — contractors browse a bounty-ranked jobs board, claim a job, and submit proof-of-fix. Gemini verifies the before/after photos.
+- **Citizen "Confirm Fix" + escrow release** — the reporter is notified when a fix is submitted, compares before/after side by side, confirms the repair, thanks the contractor, and triggers automatic escrow payout. They can also reopen the issue if it isn't actually fixed.
+- **Municipal Command Center** — role-based dashboards for commissioners and department authorities: live issue table with daily-loss costing, contractor RADAR matching, Gemini quotation comparison, an Agent Log of live AI steps, and an Escalation view sorted by financial impact and SLA.
+- **Predictive Insights** — Gemini forecasts rising categories and emerging hotspots with a preventive recommendation (e.g., pre-assigning crews before complaints spike).
+- **Community verification & integrity-gated gamification** — a proof-of-presence trust model weights on-site confirmations higher; reputation tiers, a live leaderboard, and duplicate-aware scoring prevent point farming. Users cannot verify their own reports.
+- **Hero Assistant chatbot** — a multi-turn Gemini assistant grounded in live platform stats, available on every page.
+- **Live interactive map** — Leaflet with severity-colored, auto-refreshing markers and GPS capture.
+- **Two authentication systems** — Firebase (Google + email/password) for citizens; secure PBKDF2 + session-cookie login with role-based access control for staff.
+- **Mobile-first, accessible UI** — responsive citizen app with safe-area handling, plus desktop staff portals, all on a consistent warm-sage + teal design system.
+
+## 4. Technologies Used
+
 - **Hono** (TypeScript) web framework with server-side JSX rendering
-- **SQLite** (Cloudflare D1 in dev / Node `node:sqlite` in production) via a single portable
-  data-access adapter
-- **TailwindCSS**, **Leaflet** (maps), **Chart.js** (analytics), **Axios**
-- **Web Crypto API** for PBKDF2 password hashing and Firebase RS256 token verification
-- **Docker** + **tsx**/Node 24 runtime
+- **SQLite** as the data layer through one portable adapter — Cloudflare D1 in development, Node's built-in `node:sqlite` in production — so identical app logic runs on both Cloudflare and Google Cloud
+- **TailwindCSS** (UI), **Leaflet** (maps), **Chart.js** (analytics), **Axios** (API client)
+- **Web Crypto API** — PBKDF2 password hashing and edge-native Firebase RS256 token verification (no `firebase-admin` dependency)
+- **Docker** + **tsx** on **Node 24** for the containerized production runtime
 - Real-time experience via efficient client polling
 
-## Google Technologies Utilized
-- **Google Gemini (`gemini-2.5-flash`)** — powers all five AI capabilities: photo/text
-  triage, the autonomous triage agent's reasoning, resolution planning, predictive insights,
-  and the chatbot (via the Generative Language REST API).
-- **Firebase Authentication** — citizen sign-in (Google + Email/Password). ID tokens are
-  verified server-side by validating the RS256 JWT against Google's public JWKs (edge-native,
-  no `firebase-admin`).
-- **Google Cloud Run** — the production deployment target (containerized, autoscaling,
-  public HTTPS URL), built via **Google Cloud Build** from the included Dockerfile.
+## 5. Google Technologies Utilized
 
-## Agentic Depth (how the AI acts, not just answers)
-On every report the agent autonomously executes a plan and mutates real system state:
-1. **Perceive** — gathers nearby open issues + the target department's current workload.
+- **Google Gemini (`gemini-2.5-flash` family, via the Generative Language REST API)** — powers all five AI capabilities: photo/video + text triage, the autonomous triage agent's reasoning, resolution planning, predictive insights, and the grounded chatbot. A model-fallback chain (`gemini-2.5-flash` → `flash-lite` → `pro`) with retry/back-off keeps AI responsive under load, backed by a deterministic heuristic fallback.
+- **Firebase Authentication** — citizen sign-in with Google and Email/Password. ID tokens are verified server-side by validating the RS256 JWT against Google's public JWKs.
+- **Google Cloud Run** — the production deployment: a containerized, autoscaling service on a public HTTPS URL.
+- **Google Cloud Build** — builds the container image from the included Dockerfile for continuous deployment from GitHub.
+- **Google Cloud Storage** — a mounted volume provides persistent storage for the application database.
+
+---
+
+### Appendix — Agentic depth (how the AI acts, not just answers)
+
+On every new report, the agent autonomously executes a plan and mutates real system state:
+
+1. **Perceive** — gather nearby open issues and the target department's current workload.
 2. **Reason** — one structured Gemini pass decides duplicate / priority / routing.
-3. **De-duplicate** — links genuine repeat reports instead of creating redundant work.
-4. **Prioritize** — sets a computed priority score.
-5. **Route** — auto-assigns the issue to the matching department authority.
-6. **Plan** — drafts a field resolution plan.
-Every thought and action is persisted and shown to users as a transparent agent trace, and
-the admin Operations dashboard has a **live "Autonomous Agent Activity" feed** plus an
-"auto-triaged" counter, so reviewers can watch the agent continuously working across the city.
+3. **De-duplicate** — link genuine repeat reports instead of creating redundant work.
+4. **Prioritize** — set a computed priority score.
+5. **Route** — auto-assign the issue to the matching department authority.
+6. **Plan** — draft a field resolution plan (steps, crew, equipment, estimated time/cost, safety).
+
+Every thought and action is persisted and shown to users as a transparent agent trace, and the Command Center includes a live agent-activity feed so reviewers can watch the agent working across the city.
