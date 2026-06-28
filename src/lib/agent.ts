@@ -70,7 +70,13 @@ export async function runTriageAgent(env: Env, issueId: number): Promise<{ ok: b
   )
 
   // 2. REASON
-  const decision = await agentReason(await budgetedKey(env), issue, candidates, deptLoad)
+  // Token-saver: the agent's Gemini reasoning is mainly needed to decide
+  // DUPLICATES against similar open issues. When there are no same-category
+  // candidates, there's nothing to dedupe, so we skip the Gemini call and let
+  // agentReason use its rule engine (0 tokens). When candidates exist, we spend
+  // one (budgeted) Gemini call for the smart duplicate/priority/routing decision.
+  const reasonKey = candidates.length > 0 ? await budgetedKey(env) : undefined
+  const decision = await agentReason(reasonKey, issue, candidates, deptLoad)
   await log(
     db,
     issueId,
