@@ -824,6 +824,67 @@ api.get('/db-info', async (c) => {
   })
 })
 
+// One-shot demo data loader — populates a RICH, realistic dataset (issues across
+// every status, with agent traces) so the live demo looks full for judges.
+// Idempotent (fixed IDs 101+, INSERT OR IGNORE) and token-gated so it can't be
+// abused. Safe on the persistent DB: it only ADDS demo rows, never touches real
+// reports. Call: POST /api/demo/load?token=trustlens-demo-2026
+api.post('/demo/load', async (c) => {
+  if (c.req.query('token') !== 'trustlens-demo-2026') return c.json({ error: 'forbidden' }, 403)
+  const db = c.env.DB
+  // [id,title,desc,category,severity,status,department,assigned_to,priority,address,lat,lng,summary,verify_count,reporter,fix_verified,citizen_confirmed,contractor_id]
+  const rows: any[][] = [
+    [101, 'Pothole cluster on Madhya Marg', 'Three deep potholes across the carriageway near the Sector 9 light.', 'Pothole', 5, 'In Progress', 'Road Maintenance', 5, 94, 'Madhya Marg, Sector 9, Chandigarh', 30.7460, 76.7900, 'Cluster of deep potholes on a major arterial road. High traffic, immediate hazard. Dispatch road crew.', 8, 2, 0, 0, 20],
+    [102, 'Streetlight out near Sector 35 market', 'Whole row of lights dead, market lane pitch dark after 8pm.', 'Streetlight', 3, 'Resolved', 'Electrical', 7, 60, 'Sector 35, Chandigarh', 30.7268, 76.7561, 'Dark commercial lane is a safety risk. Replace ballast and bulbs.', 5, 3, 1, 1, 23],
+    [103, 'Burst water main flooding Sector 8 road', 'Water gushing onto the road, traffic slowing.', 'Water Leak', 5, 'Assigned', 'Water Works', 8, 88, 'Sector 8, Chandigarh', 30.7485, 76.7975, 'Active main burst wasting water and flooding the carriageway. Urgent isolation needed.', 6, 1, 0, 0, 22],
+    [104, 'Garbage pile behind Sector 23 shops', 'Mixed waste dumped for days, strong smell, stray animals.', 'Illegal Dumping', 4, 'Verified', null, null, 72, 'Sector 23, Chandigarh', 30.7449, 76.7693, 'Public-health hazard near a market. Schedule sanitation pickup and pest assessment.', 4, 2, 0, 0, null],
+    [105, 'Graffiti on Sector 22 underpass', 'Spray paint across the underpass walls.', 'Graffiti', 2, 'Resolved', 'Parks & Recreation', 9, 32, 'Sector 22, Chandigarh', 30.7392, 76.7794, 'Cosmetic vandalism. Routine repaint.', 3, 3, 1, 1, 20],
+    [106, 'Pothole forming near Sector 17 Plaza', 'Edge of an earlier repair is breaking up again.', 'Pothole', 4, 'Verified', null, null, 76, 'Sector 17, Chandigarh', 30.7416, 76.7823, 'Recurring damage at a previously-fixed spot — flag for permanent resurfacing.', 5, 1, 0, 0, null],
+    [107, 'Flickering streetlight Sector 34', 'Light flickers all night, residents complaining.', 'Streetlight', 2, 'In Progress', 'Electrical', 7, 40, 'Sector 34, Chandigarh', 30.7330, 76.7790, 'Faulty fitting. Replace and inspect wiring.', 2, 2, 0, 0, 23],
+    [108, 'Sewage overflow near Sector 15 park', 'Overflowing manhole flooding the footpath.', 'Water Leak', 5, 'Resolved', 'Water Works', 8, 90, 'Sector 15, Chandigarh', 30.7600, 76.7680, 'Blocked sewer line overflowing into a public park path. Clear and sanitise.', 7, 3, 1, 1, 22],
+    [109, 'Damaged park bench Sector 16', 'Broken bench with sharp edges, kids play nearby.', 'Other', 2, 'Reported', null, null, 34, 'Sector 16, Chandigarh', 30.7510, 76.7820, 'Minor public-property damage with a small injury risk. Schedule repair.', 1, 2, 0, 0, null],
+    [110, 'Illegal construction debris Sector 40', 'Builder dumped rubble on the roadside.', 'Illegal Dumping', 3, 'Assigned', 'Sanitation', 6, 58, 'Sector 40, Chandigarh', 30.7150, 76.7600, 'Roadside debris narrowing the lane. Issue notice and clear.', 3, 1, 0, 0, null],
+    [111, 'Pothole on cycle track Sector 26', 'Hole on the dedicated cycle track, risk to cyclists.', 'Pothole', 3, 'Reported', null, null, 50, 'Sector 26, Chandigarh', 30.7280, 76.8050, 'Cycle-track hazard. Patch to restore safe surface.', 2, 3, 0, 0, null],
+    [112, 'Dead streetlight Sector 11 crossing', 'Pedestrian crossing unlit at night.', 'Streetlight', 4, 'Resolved', 'Electrical', 7, 64, 'Sector 11, Chandigarh', 30.7560, 76.7830, 'Unlit pedestrian crossing — safety priority. Restore lighting.', 4, 2, 1, 1, 23],
+  ]
+  let inserted = 0
+  let firstError = ''
+  for (const r of rows) {
+    try {
+      await db.prepare(
+        `INSERT OR IGNORE INTO issues
+          (id,title,description,category,severity,status,department,assigned_to,priority_score,address,lat,lng,ai_summary,ai_source,verify_count,reporter_id,fix_verified,contractor_id,bounty,agent_processed)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'gemini',?,?,?,?,?,1)`
+      ).bind(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12], r[13], r[14], r[15], r[17], (r[4] as number) * 500).run()
+      inserted++
+      // citizen_confirmed lives in migration 0012 — set it separately so the
+      // loader still works on a DB where that column isn't present.
+      if (r[16] === 1) {
+        try { await db.prepare(`UPDATE issues SET citizen_confirmed = 1 WHERE id = ?`).bind(r[0]).run() } catch (e) {}
+      }
+    } catch (e) { if (!firstError) firstError = (e as Error).message }
+  }
+
+  // A couple of agent traces so "Watch the agent" is populated on new issues.
+  const traces: any[][] = [
+    [101, 1, 'perceive', 'Gathering context for issue #101.', 'Found 2 open same-category issues; department workload is 3.', 'Context ready.'],
+    [101, 2, 'reason', 'Cluster of deep potholes on a major road with strong confirmations.', 'duplicate_of=none, priority=94, dept=Road Maintenance', 'Reasoning by Gemini.'],
+    [101, 3, 'prioritize', 'Severity 5 + 8 confirmations pushes this to the top of the queue.', 'Set priority score to 94/100.', 'Priority updated.'],
+    [101, 4, 'route', 'Category "Pothole" maps to Road Maintenance.', 'Assigned to Road Maintenance Dept; status In Progress.', 'Dispatched to department.'],
+    [101, 5, 'plan', 'Drafting a field action plan (gemini).', '4 steps · crew: 3-person road crew · est 3-5h, ₹12,000-₹20,000.', 'Inspect → Cordon → Asphalt → Compact & seal.'],
+    [108, 1, 'perceive', 'Gathering context for issue #108.', 'Found 1 open same-category issue; department workload is 2.', 'Context ready.'],
+    [108, 2, 'reason', 'Sewage overflow into a public park — urgent public-health risk.', 'duplicate_of=none, priority=90, dept=Water Works', 'Reasoning by Gemini.'],
+    [108, 3, 'route', 'Category "Water Leak" maps to Water Works.', 'Assigned to Water Works Dept.', 'Dispatched to department.'],
+  ]
+  for (const t of traces) {
+    try { await db.prepare(`INSERT OR IGNORE INTO agent_actions (issue_id, step, tool, thought, action, result) VALUES (?,?,?,?,?,?)`).bind(t[0], t[1], t[2], t[3], t[4], t[5]).run() } catch (e) {}
+  }
+
+  const count = await db.prepare(`SELECT COUNT(*) AS n FROM issues`).first<{ n: number }>()
+  const resolved = await db.prepare(`SELECT COUNT(*) AS n FROM issues WHERE status='Resolved'`).first<{ n: number }>()
+  return c.json({ ok: true, demo_rows_attempted: rows.length, inserted_or_existing: inserted, total_issues: count?.n ?? 0, resolved: resolved?.n ?? 0, error: firstError || undefined })
+})
+
 // Environmental & civic impact metrics derived from resolved issues.
 api.get('/impact-metrics', async (c) => {
   const { results } = await c.env.DB.prepare(
