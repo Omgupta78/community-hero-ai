@@ -7,12 +7,13 @@
 const geminiHeaders = (key: string) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key })
 
 // Model fallback chain — ORDER MATTERS. Probed live against the configured key:
-// gemini-2.5-flash is the best model that reliably returns 200 with multimodal
-// (image) + JSON output, so it's primary for quality. gemini-2.5-flash-lite is a
-// fast, reliable fallback. gemini-2.5-pro is a last-resort high-quality option
-// (it has very low rate limits, so it can't be primary). If one model returns a
-// quota/availability error we retry the next; if all fail we use the heuristic.
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro']
+// Model fallback chain. gemini-3.5-flash is primary: it's the newest fast
+// multimodal model and (importantly) each model has its OWN separate free-tier
+// daily quota bucket, so leading with 3.5-flash gives fresh quota even when the
+// 2.5 models are exhausted. The 2.5 models stay as fallbacks (separate buckets),
+// then 2.5-pro as a last resort. If one model returns a quota/availability error
+// we retry the next; if all fail we use the deterministic heuristic.
+const GEMINI_MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro']
 const GEMINI_MODEL = GEMINI_MODELS[0]
 export { GEMINI_MODELS }
 
