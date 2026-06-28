@@ -793,6 +793,36 @@ api.get('/ai-health', async (c) => {
   })
 })
 
+// Diagnostic: reports where the SQLite DB actually lives on this host, so we can
+// confirm whether reports persist (on a mounted volume like /mnt/data) or get
+// wiped on every restart (ephemeral /tmp on Cloud Run). Read-only, no secrets.
+api.get('/db-info', async (c) => {
+  let dbPath = 'unknown'
+  let firebaseProject = 'unset'
+  try {
+    // `process` exists on Node/Cloud Run; not on the Cloudflare Workers runtime.
+    if (typeof process !== 'undefined' && process.env) {
+      dbPath = process.env.DB_PATH || '/app/data/community-hero.db (default)'
+      firebaseProject = process.env.FIREBASE_PROJECT_ID || 'unset'
+    } else {
+      dbPath = 'cloudflare-d1 (durable)'
+    }
+  } catch (e) { /* ignore */ }
+  const persistent = dbPath.startsWith('/mnt') || dbPath.includes('d1')
+  const count = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM issues`).first<{ n: number }>()
+  const users = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM users WHERE firebase_uid IS NOT NULL`).first<{ n: number }>()
+  return c.json({
+    db_path: dbPath,
+    persistent,
+    note: persistent
+      ? 'Database is on persistent storage — reports survive restarts.'
+      : 'Database is EPHEMERAL (/tmp). Reports are wiped on every restart/deploy. Mount a volume and set DB_PATH=/mnt/data/community-hero.db.',
+    issue_count: count?.n ?? 0,
+    signed_in_citizens: users?.n ?? 0,
+    firebase_project: firebaseProject,
+  })
+})
+
 // Environmental & civic impact metrics derived from resolved issues.
 api.get('/impact-metrics', async (c) => {
   const { results } = await c.env.DB.prepare(
