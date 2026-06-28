@@ -3,7 +3,7 @@
 export const TopBar = ({ title, admin, authority }: { title?: string; admin?: boolean; authority?: boolean }) => {
   const staff = admin || authority
   return (
-    <header class="fixed top-0 left-0 right-0 z-[1000] bg-surface-lowest/90 backdrop-blur" style="border-bottom:1px solid rgba(0,0,0,0.06)">
+    <header class="tl-topbar fixed top-0 left-0 right-0 z-[1000] bg-surface-lowest/90 backdrop-blur" style="border-bottom:1px solid rgba(0,0,0,0.06)">
       <div class="relative h-[64px] flex items-center gap-3 px-4">
         <a href="/" class="flex items-center gap-2 text-primary shrink-0">
           <img src="/static/logo.svg" alt="TrustLens AI" class="w-7 h-7" />
@@ -92,7 +92,7 @@ const navItems = [
 
 export const BottomNav = ({ active }: { active: string }) => {
   return (
-    <nav class="fixed bottom-0 left-0 right-0 z-[1000] bg-surface-lowest border-t border-outline-variant">
+    <nav class="tl-bottomnav fixed bottom-0 left-0 right-0 z-[1000] bg-surface-lowest border-t border-outline-variant">
       <div class="max-w-2xl mx-auto grid grid-cols-5 h-[72px]">
         {navItems.map((item) => {
           const isActive = item.key === active

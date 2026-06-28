@@ -2,14 +2,14 @@ import { jsxRenderer } from 'hono/jsx-renderer'
 
 // Bump this whenever static CSS/JS changes so browsers fetch the latest assets
 // (prevents the "old styling cached" problem where pages look unchanged).
-export const ASSET_VER = '38'
+export const ASSET_VER = '39'
 
 export const renderer = jsxRenderer(({ children, title }) => {
   return (
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
         <title>{title || 'TrustLens AI'}</title>
         <meta name="description" content="TrustLens AI — See. Verify. Solve. An AI-powered hyperlocal civic issue resolution platform where an autonomous Gemini agent triages, verifies, routes and resolves community issues." />
         <meta name="theme-color" content="#1D9E75" />

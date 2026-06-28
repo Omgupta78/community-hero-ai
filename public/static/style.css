@@ -1156,3 +1156,48 @@ main button[class*="rounded-xl"]:hover {
 .cf-paid b { font-weight: 700; }
 .cf-back { display: inline-block; margin-top: 14px; font-size: 13px; font-weight: 600; color: #1D9E75; text-decoration: none; }
 .cf-back:hover { text-decoration: underline; }
+
+/* =====================================================================
+   PHONE OPTIMIZATION
+   Scoped so the desktop/computer view is untouched:
+     - env(safe-area-inset-*) resolves to 0 on non-notched/desktop screens,
+       so the safe-area rules below are no-ops there.
+     - Everything else lives inside `@media (max-width: 640px)` and only
+       applies on phones.
+   ===================================================================== */
+
+/* Notch / home-indicator safe areas (0 on desktop → no visual change). */
+.tl-topbar { padding-top: env(safe-area-inset-top, 0px); }
+.tl-bottomnav { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+@media (max-width: 640px) {
+  /* Kill accidental sideways scrolling from wide rows/grids on small screens. */
+  html, body { overflow-x: hidden; max-width: 100%; }
+
+  /* Smooth momentum scrolling + cleaner tap feedback on touch devices. */
+  body { -webkit-tap-highlight-color: transparent; -webkit-overflow-scrolling: touch; }
+
+  /* Comfortable minimum tap targets for the bottom-nav items (Apple/Google 44px). */
+  .tl-bottomnav a { min-height: 44px; }
+
+  /* Wide data tables (e.g. the municipal issues table) should scroll inside
+     their container instead of stretching the page. */
+  .mc-table-wrap, .cc-table-wrap, .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { max-width: 100%; }
+
+  /* Leaflet maps: keep a sensible height and never overflow the viewport width. */
+  .leaflet-container { max-width: 100%; }
+
+  /* Long words / URLs shouldn't push layout wider than the screen. */
+  p, h1, h2, h3, .truncate-safe { overflow-wrap: anywhere; word-break: break-word; }
+
+  /* Staff portal cards already stack at 880/980px; tighten their gutters on
+     phones so content isn't cramped against the edges. */
+  .ctr-main, .cc-main, .mc-main { padding-left: 14px; padding-right: 14px; }
+}
+
+/* Very small phones (≤380px): trim oversized hero text so it doesn't wrap awkwardly. */
+@media (max-width: 380px) {
+  .ctr-hero h1 { font-size: 22px; }
+  .cc-hero h1, .mc-hero h1 { font-size: 20px; }
+}
