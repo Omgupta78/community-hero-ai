@@ -11,11 +11,11 @@ const geminiHeaders = (key: string) => ({ 'Content-Type': 'application/json', 'x
 // input (needed for photo triage), has by far the largest free-tier quota
 // (~500 requests/day vs 20/day on the others), and being "lite" it's the most
 // available (the newer flash models frequently return 503 "high demand").
-// gemini-3.5-flash follows for extra quality/quota, then the 2.5 models — each
-// model has its OWN daily quota bucket, so the chain maximizes total free calls.
-// If one model returns a quota/availability error we retry the next; if all
-// fail we use the deterministic heuristic.
-const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro']
+// gemini-3-flash-preview and gemini-3.5-flash follow as fresh, higher-quality
+// fallbacks, then the 2.5 models — each model has its OWN daily quota bucket, so
+// the chain maximizes total free calls. If one model returns a quota/availability
+// error we retry the next; if all fail we use the deterministic heuristic.
+const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro']
 const GEMINI_MODEL = GEMINI_MODELS[0]
 export { GEMINI_MODELS }
 
