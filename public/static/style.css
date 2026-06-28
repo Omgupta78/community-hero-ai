@@ -1293,3 +1293,26 @@ main button[class*="rounded-xl"]:hover {
      there's room here because the row scrolls horizontally. */
   .ctr-tab span:not(.material-symbols-outlined) { display: inline !important; }
 }
+
+/* =====================================================================
+   PHONE: Municipal "Issues" table (.ctr-table-wrap > .ctr-table)
+   Keep every column and all data — just let the table keep its natural
+   width and scroll sideways instead of squishing/wrapping on a phone.
+   Desktop is untouched (rules are inside the phone media query and the
+   min-width only kicks in for the issues table wrapper, not modal tables).
+   ===================================================================== */
+@media (max-width: 640px) {
+  .ctr-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    border-radius: 12px;
+  }
+  /* Natural width so columns don't collapse; the wrapper scrolls instead. */
+  .ctr-table-wrap .ctr-table { min-width: 720px; }
+  /* Don't let cell text wrap into tall ragged stacks. */
+  .ctr-table-wrap .ctr-table th,
+  .ctr-table-wrap .ctr-table td { white-space: nowrap; }
+  /* The issue title cell can wrap (it's the long one) but stays readable. */
+  .ctr-table-wrap .ctr-table td:first-child { white-space: normal; min-width: 180px; }
+}
