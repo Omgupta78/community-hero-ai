@@ -73,34 +73,29 @@ export async function geminiUsageToday(db: D1Database): Promise<number> {
 }
 
 /**
- * Returns the Gemini API key ONLY if we're under the daily budget; otherwise
- * undefined (→ heuristic fallback). Increments the day's counter when it hands
- * out the key. Default cap 1000/day — generous because caching keeps real usage
- * tiny and the 3-model fallback chain spreads load across separate quotas; it's
- * a runaway-protection backstop, not a throttle. Override via GEMINI_DAILY_CAP.
+ * Returns the Gemini API key whenever one is configured. The previous hard
+ * daily cap has been removed — the account has ample quota, so we never want to
+ * silently fall back to the heuristic just to conserve calls. We still record a
+ * best-effort per-day call counter (for the usage stat in /ai-health and the
+ * dashboards), but it never blocks a call. Caching elsewhere already prevents
+ * redundant calls, so real usage stays reasonable on its own.
  */
 export async function budgetedKey(env: BudgetEnv): Promise<string | undefined> {
   const key = env.GEMINI_API_KEY
   if (!key) return undefined
-  const cap = Number(env.GEMINI_DAILY_CAP) || 1000
   const k = todayCountKey()
 
-  let used = 0
+  // Best-effort usage counter only — NEVER used to block a call.
   try {
     const row = await env.DB.prepare(`SELECT payload FROM ai_cache WHERE cache_key = ?`).bind(k).first<{ payload: string }>()
-    if (row && row.payload) used = JSON.parse(row.payload).n || 0
-  } catch (e) {
-    // ai_cache table not migrated yet → don't enforce a cap (never break).
-    return key
-  }
-  if (used >= cap) return undefined
-
-  const next = JSON.stringify({ n: used + 1 })
-  try {
+    const used = row && row.payload ? (JSON.parse(row.payload).n || 0) : 0
+    const next = JSON.stringify({ n: used + 1 })
     await env.DB.prepare(
       `INSERT INTO ai_cache (cache_key, payload, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)
        ON CONFLICT(cache_key) DO UPDATE SET payload = ?, created_at = CURRENT_TIMESTAMP`
     ).bind(k, next, next).run()
-  } catch (e) {}
+  } catch (e) {
+    /* counter is best-effort; ignore failures */
+  }
   return key
 }
