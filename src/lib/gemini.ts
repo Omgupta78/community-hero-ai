@@ -6,6 +6,15 @@
 // rejected as `?key=` ("ACCESS_TOKEN_TYPE_UNSUPPORTED") but work as a header.
 const geminiHeaders = (key: string) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key })
 
+// GEMINI_API_KEY may hold MULTIPLE keys (comma / whitespace separated), each
+// from a different Google account. We rotate through them so when one hits its
+// free-tier daily limit (429), the next account's quota takes over — multiplying
+// total free capacity and giving live redundancy during a demo.
+function parseKeys(raw: string | undefined): string[] {
+  if (!raw) return []
+  return raw.split(/[,\s]+/).map((k) => k.trim()).filter(Boolean)
+}
+
 // Model fallback chain — ORDER MATTERS. Probed live against the configured key:
 // Model fallback chain. gemini-3.1-flash-lite is primary: it accepts image
 // input (needed for photo triage), has by far the largest free-tier quota
@@ -22,28 +31,34 @@ export { GEMINI_MODELS }
 async function geminiFetch(apiKey: string, init: { body: string }): Promise<Response> {
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
   const RETRYABLE = [429, 403, 404, 500, 502, 503, 504]
+  const keys = parseKeys(apiKey)
   let last: Response | null = null
-  // Two passes over the chain with a short backoff. The working model (usually
-  // gemini-2.5-flash-lite) sometimes returns a TRANSIENT 503 "overloaded" — a
-  // single retry ~1.2s later almost always succeeds. Rejected calls (429/503)
-  // don't consume quota, so the extra attempts are effectively free.
+  // Two passes over the chain with a short backoff. For each model we try every
+  // configured API key in turn, so an exhausted account (429) transparently
+  // rotates to the next account's quota. The working model sometimes returns a
+  // TRANSIENT 503 "overloaded" — a single retry ~1.2s later almost always
+  // succeeds. Rejected calls (429/503) don't consume quota, so the extra
+  // attempts are effectively free.
   for (let pass = 0; pass < 2; pass++) {
     for (const model of GEMINI_MODELS) {
-      let res: Response
-      try {
-        res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          { method: 'POST', headers: geminiHeaders(apiKey), body: init.body }
-        )
-      } catch (e) {
-        try { console.error(`Gemini ${model} -> network error; trying next`) } catch {}
-        continue
+      for (const key of keys) {
+        let res: Response
+        try {
+          res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+            { method: 'POST', headers: geminiHeaders(key), body: init.body }
+          )
+        } catch (e) {
+          try { console.error(`Gemini ${model} -> network error; trying next`) } catch {}
+          continue
+        }
+        if (res.ok) return res
+        last = res
+        // 400 = malformed request (retrying won't help, not key-specific) → stop.
+        if (res.status === 400) return res
+        if (!RETRYABLE.includes(res.status)) return res
+        try { console.error(`Gemini ${model} (key ${keys.indexOf(key) + 1}/${keys.length}) -> HTTP ${res.status}; trying next`) } catch {}
       }
-      if (res.ok) return res
-      last = res
-      // 400 = malformed request (retrying won't help) → return immediately.
-      if (!RETRYABLE.includes(res.status)) return res
-      try { console.error(`Gemini ${model} -> HTTP ${res.status}; trying fallback model`) } catch {}
     }
     if (pass === 0) await sleep(1200) // brief backoff, then retry the whole chain once
   }
@@ -57,24 +72,28 @@ export async function geminiPing(
   apiKey: string | undefined
 ): Promise<{ key_present: boolean; ok: boolean; model: string | null; status: number | null; detail?: string; source: 'gemini' | 'heuristic' }> {
   if (!apiKey) return { key_present: false, ok: false, model: null, status: null, detail: 'GEMINI_API_KEY not set', source: 'heuristic' }
+  const keys = parseKeys(apiKey)
+  if (!keys.length) return { key_present: false, ok: false, model: null, status: null, detail: 'GEMINI_API_KEY not set', source: 'heuristic' }
   let lastStatus: number | null = null
   let detail = ''
   for (const model of GEMINI_MODELS) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: 'POST',
-          headers: geminiHeaders(apiKey),
-          body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }], generationConfig: { maxOutputTokens: 1 } }),
-        }
-      )
-      lastStatus = res.status
-      if (res.ok) return { key_present: true, ok: true, model, status: res.status, source: 'gemini' }
-      try { const j: any = await res.json(); detail = j?.error?.status || '' } catch {}
-    } catch (e) {
-      lastStatus = -1
-      detail = (e as Error).message
+    for (const key of keys) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: 'POST',
+            headers: geminiHeaders(key),
+            body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }], generationConfig: { maxOutputTokens: 1 } }),
+          }
+        )
+        lastStatus = res.status
+        if (res.ok) return { key_present: true, ok: true, model, status: res.status, source: 'gemini' }
+        try { const j: any = await res.json(); detail = j?.error?.status || '' } catch {}
+      } catch (e) {
+        lastStatus = -1
+        detail = (e as Error).message
+      }
     }
   }
   return { key_present: true, ok: false, model: null, status: lastStatus, detail, source: 'heuristic' }
