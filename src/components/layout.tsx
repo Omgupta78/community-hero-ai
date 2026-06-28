@@ -67,11 +67,10 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
                   <button id="nav-logout" type="button" class="tl-menu-item w-full text-left text-error">Log Out</button>
                 </div>
               </div>
-              {/* Logged-OUT: auth buttons */}
+              {/* Logged-OUT: single auth button (Log in === Get Started) */}
               <div id="citizen-auth-out" class="flex items-center gap-2">
-                <a href="/profile" class="text-sm font-bold text-primary border border-primary rounded-full px-4 py-1.5 hover:bg-primary-fixed transition-all">Log in</a>
                 <a href="/profile" class="text-sm font-bold bg-primary text-on-primary rounded-full px-4 py-1.5 shadow-sm hover:bg-primary-container hover:text-on-primary-container transition-all flex items-center gap-1">
-                  Get Started <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  Log in <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
                 </a>
               </div>
             </>
