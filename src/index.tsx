@@ -1119,6 +1119,12 @@ app.get('/contractor', async (c) => {
           </div>
           <div class="ctr-block-head"><h2><span class="material-symbols-outlined">receipt_long</span> Payment history</h2></div>
           <div id="ctr-earn-history" class="ctr-earn-list"><div class="ctr-skel"></div></div>
+
+          <div class="ctr-block-head" style="margin-top:22px">
+            <h2><span class="material-symbols-outlined">reviews</span> Ratings &amp; reviews</h2>
+            <span class="ctr-tag ctr-tag-blue" id="ctr-rating-summary">★ — · 0 reviews</span>
+          </div>
+          <div id="ctr-reviews" class="ctr-review-list"><div class="ctr-skel"></div></div>
         </section>
 
         {/* ===================== PROFILE ===================== */}

@@ -706,8 +706,7 @@ main button[class*="rounded-xl"]:hover {
 .ctr-legend span { font-size: 11px; color: var(--c-muted); display: inline-flex; align-items: center; gap: 4px; }
 .ctr-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 
-/* earnings / wallet */
-.ctr-wallet-main { background: var(--c-primary-d); color: #fff; border-radius: 18px; padding: 24px; box-shadow: none; }
+/* earnings / wallet */.ctr-wallet-main { background: var(--c-primary-d); color: #fff; border-radius: 18px; padding: 24px; box-shadow: none; }
 .ctr-wallet-main .ctr-earn-label { color: rgba(255,255,255,.85); }
 .ctr-wallet-main .ctr-earn-label .material-symbols-outlined { color: #fff; }
 .ctr-wallet-main .ctr-earn-val { color: #fff; }
@@ -1344,3 +1343,14 @@ main button[class*="rounded-xl"]:hover {
 /* Photo zone gets a gentle lift so it reads as the hero of the page. */
 #photo-zone { transition: box-shadow .2s ease, border-color .2s ease; }
 #photo-zone:hover { border-color: #1D9E75; box-shadow: 0 6px 22px rgba(29, 158, 117, 0.12); }
+
+/* Contractor ratings & reviews (Earnings tab) */
+.ctr-review-list { display: flex; flex-direction: column; gap: 10px; }
+.ctr-review-row { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 14px; padding: 13px 15px; }
+.ctr-review-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ctr-review-who { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; color: var(--c-ink); }
+.ctr-review-av { width: 26px; height: 26px; border-radius: 50%; background: var(--c-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.ctr-review-stars { color: #F59E0B; font-size: 14px; letter-spacing: 1px; white-space: nowrap; }
+.ctr-review-text { font-size: 13px; color: var(--c-ink); margin: 8px 0 4px; line-height: 1.45; }
+.ctr-review-muted { color: var(--c-muted); font-style: italic; }
+.ctr-review-meta { font-size: 11px; color: var(--c-muted); }

@@ -518,7 +518,49 @@ api.get('/jobs', requireRole('contractor'), async (c) => {
      FROM issues WHERE contractor_id = ? ORDER BY updated_at DESC LIMIT 50`
   ).bind(me.id).all()
   const earn = await c.env.DB.prepare(`SELECT earnings FROM users WHERE id = ?`).bind(me.id).first<{ earnings: number }>()
-  return c.json({ available: available.results || [], mine: mine.results || [], earnings: earn?.earnings || 0 })
+
+  // Ratings & reviews from citizens (who rated, their note). Read-only; resilient
+  // if the on-demand reviews table doesn't exist yet.
+  let reviews: any[] = []
+  let ratingAvg = 0
+  let ratingCount = 0
+  try {
+    await c.env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS contractor_reviews (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         contractor_id INTEGER, issue_id INTEGER, issue_title TEXT,
+         citizen_id INTEGER, citizen_name TEXT, rating INTEGER, review TEXT,
+         created_at TEXT DEFAULT CURRENT_TIMESTAMP
+       )`
+    ).run()
+    const rv = await c.env.DB.prepare(
+      `SELECT issue_id, issue_title, citizen_name, rating, review, created_at
+       FROM contractor_reviews WHERE contractor_id = ? ORDER BY id DESC LIMIT 50`
+    ).bind(me.id).all()
+    reviews = (rv.results as any[]) || []
+    const agg = await c.env.DB.prepare(
+      `SELECT AVG(rating) AS avg, COUNT(*) AS n FROM contractor_reviews WHERE contractor_id = ?`
+    ).bind(me.id).first<{ avg: number; n: number }>()
+    ratingCount = agg?.n || 0
+    ratingAvg = agg?.avg ? Math.round(agg.avg * 10) / 10 : 0
+  } catch (e) { /* table not ready → no reviews yet */ }
+
+  // Fall back to the contractor profile's stored rating if there are no reviews yet.
+  if (!ratingAvg) {
+    try {
+      const prof = await c.env.DB.prepare(`SELECT rating FROM contractors WHERE user_id = ?`).bind(me.id).first<{ rating: number }>()
+      ratingAvg = prof?.rating || 0
+    } catch (e) {}
+  }
+
+  return c.json({
+    available: available.results || [],
+    mine: mine.results || [],
+    earnings: earn?.earnings || 0,
+    rating: ratingAvg,
+    rating_count: ratingCount,
+    reviews,
+  })
 })
 
 // Claim an open job.
@@ -1347,7 +1389,7 @@ api.post('/issues/:id/confirm', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   const thanks = (body.message || '').toString().trim()
 
-  const issue = await c.env.DB.prepare(`SELECT department, contractor_id FROM issues WHERE id = ?`).bind(id).first<any>()
+  const issue = await c.env.DB.prepare(`SELECT department, contractor_id, title FROM issues WHERE id = ?`).bind(id).first<any>()
   if (!issue) return c.json({ error: 'Not found' }, 404)
   const citizen = await c.env.DB.prepare(`SELECT name FROM users WHERE id = ?`).bind(citizenId).first<any>()
   const rating = Math.max(0, Math.min(5, Math.round(Number(body.rating) || 0)))
@@ -1424,6 +1466,22 @@ api.post('/issues/:id/confirm', async (c) => {
       await c.env.DB.prepare(
         `INSERT INTO issue_updates (issue_id, status, message, author) VALUES (?, 'Resolved', ?, ?)`
       ).bind(id, `Citizen rated ${contractor?.name || 'the contractor'} ${rating}/5 ${stars}`, citizen?.name || 'Citizen').run()
+
+      // Persist a structured review so the contractor can see who rated them and
+      // their note. Table is created on demand (the live DB is already migrated,
+      // so a new migration file wouldn't run there).
+      await c.env.DB.prepare(
+        `CREATE TABLE IF NOT EXISTS contractor_reviews (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           contractor_id INTEGER, issue_id INTEGER, issue_title TEXT,
+           citizen_id INTEGER, citizen_name TEXT, rating INTEGER, review TEXT,
+           created_at TEXT DEFAULT CURRENT_TIMESTAMP
+         )`
+      ).run()
+      await c.env.DB.prepare(
+        `INSERT INTO contractor_reviews (contractor_id, issue_id, issue_title, citizen_id, citizen_name, rating, review)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).bind(contractorId, id, issue.title || null, citizenId, citizen?.name || 'Citizen', rating, thanks || null).run()
     } catch (e) { /* contractors table/row missing → skip rating, keep confirmation */ }
   }
 

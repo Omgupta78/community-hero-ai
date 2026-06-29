@@ -2,13 +2,14 @@
 // Loop: City assigns (escrow) -> Accept -> Navigate -> Prove fix -> Gemini verifies -> Paid.
 (function () {
   if (!window.CH) return
-  const { api, esc } = window.CH
+  const { api, esc, timeAgo } = window.CH
   const $ = (id) => document.getElementById(id)
   const inr = (n) => '\u20B9' + Number(n || 0).toLocaleString('en-IN')
 
   let map, markerLayer
   let assignments = [], available = [], mine = [], profile = {}
   let earnings = 0
+  let reviews = [], ratingAvg = 0, ratingCount = 0
   let currentTab = 'dashboard'
   let proofIssue = null, proofDataUrl = null, proofBase64 = null
   let quoteIssue = null
@@ -124,6 +125,9 @@
       available = jRes.data.available || []
       mine = jRes.data.mine || []
       earnings = jRes.data.earnings || 0
+      reviews = jRes.data.reviews || []
+      ratingAvg = jRes.data.rating || 0
+      ratingCount = jRes.data.rating_count || 0
       ;[...assignments.map(normEscrow), ...available.map(normBounty), ...mine.map(normBounty)].forEach((j) => { issueMap[j.id] = j })
 
       renderHeader(); renderTab(currentTab)
@@ -171,6 +175,25 @@
       $('ctr-earn-history').innerHTML = paid.length ? paid.map((j) => `
         <div class="ctr-earn-row"><div><b>${esc(j.title)}</b><small>${esc(j.category)} · ${j.kind === 'escrow' ? 'Escrow' : 'Bounty'}</small></div>
           <span class="ctr-earn-amt">+${inr(j.amount)}</span></div>`).join('') : '<p class="ctr-empty">No payments yet. Complete a verified fix to get paid.</p>'
+
+      // Ratings & reviews from citizens
+      const avg = ratingAvg || profile.rating || 0
+      if ($('ctr-rating-summary')) $('ctr-rating-summary').textContent = '★ ' + (avg || '—') + ' · ' + ratingCount + ' review' + (ratingCount === 1 ? '' : 's')
+      if ($('ctr-reviews')) {
+        $('ctr-reviews').innerHTML = reviews.length ? reviews.map((r) => {
+          const n = Math.max(0, Math.min(5, Number(r.rating) || 0))
+          const stars = '★'.repeat(n) + '☆'.repeat(5 - n)
+          const when = (timeAgo && r.created_at) ? timeAgo(r.created_at) : ''
+          return `<div class="ctr-review-row">
+            <div class="ctr-review-top">
+              <span class="ctr-review-who"><span class="ctr-review-av">${esc((r.citizen_name || 'C')[0])}</span>${esc(r.citizen_name || 'Citizen')}</span>
+              <span class="ctr-review-stars">${stars}</span>
+            </div>
+            ${r.review ? `<p class="ctr-review-text">"${esc(r.review)}"</p>` : '<p class="ctr-review-text ctr-review-muted">No written review left.</p>'}
+            <small class="ctr-review-meta">${esc(r.issue_title || 'Resolved issue')}${when ? ' · ' + when : ''}</small>
+          </div>`
+        }).join('') : '<p class="ctr-empty">No ratings yet. When a citizen confirms your fix, their rating and review appear here.</p>'
+      }
     } else if (tab === 'profile') {
       renderProfile()
     }
