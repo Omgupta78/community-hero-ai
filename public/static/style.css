@@ -1326,3 +1326,21 @@ main button[class*="rounded-xl"]:hover {
   /* The issue title cell can wrap (it's the long one) but stays readable. */
   .ctr-table-wrap .ctr-table td:first-child { white-space: normal; min-width: 180px; }
 }
+
+/* =====================================================================
+   Report form — softer shapes & spacing (visual only, fields unchanged)
+   ===================================================================== */
+.report-form input[type="text"],
+.report-form textarea,
+.report-form select {
+  border-radius: 12px;
+}
+.report-form input[type="text"],
+.report-form textarea {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+/* A touch more breathing room between the form's stacked blocks. */
+.report-form > div + div { margin-top: 4px; }
+/* Photo zone gets a gentle lift so it reads as the hero of the page. */
+#photo-zone { transition: box-shadow .2s ease, border-color .2s ease; }
+#photo-zone:hover { border-color: #1D9E75; box-shadow: 0 6px 22px rgba(29, 158, 117, 0.12); }

@@ -114,6 +114,10 @@
       imageBase64 = dataUrl ? dataUrl.split(',')[1] : null
       img.src = dataUrl; img.classList.remove('hidden'); note.classList.add('hidden')
     }
+
+    // "Snap to report": the moment media is ready, auto-run AI triage so the
+    // form fills itself — no separate button tap needed.
+    if (imageBase64) runAnalysis()
   })
 
   // --- GPS ---
@@ -135,8 +139,7 @@
 
   // --- AI triage: analyze + auto-fill the form ---
   const SEV_LABEL = { 5: 'CRITICAL', 4: 'HIGH', 3: 'MEDIUM', 2: 'LOW', 1: 'MINOR' }
-  $('analyze-btn').addEventListener('click', async (e) => {
-    e.stopPropagation()
+  async function runAnalysis() {
     const description = $('description').value.trim()
     if (!description && !imageBase64) { toast('Add a photo or a short description first', false); return }
     const btn = $('analyze-btn')
@@ -158,7 +161,8 @@
       btn.disabled = false
       btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">auto_awesome</span> Re-run AI triage'
     }
-  })
+  }
+  $('analyze-btn').addEventListener('click', (e) => { e.stopPropagation(); runAnalysis() })
 
   function renderAI(d) {
     // Verification banner

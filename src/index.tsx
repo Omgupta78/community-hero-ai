@@ -239,7 +239,7 @@ app.get('/report', (c) => {
         {/* Photo / video upload + AI triage */}
         <section>
           <input type="file" id="photo-input" accept="image/*,video/*" capture="environment" class="hidden" />
-          <div id="photo-zone" class="relative min-h-[280px] rounded-xl overflow-hidden border-2 border-dashed border-outline-variant bg-surface-container-low cursor-pointer flex items-center justify-center">
+          <div id="photo-zone" class="relative min-h-[300px] rounded-2xl overflow-hidden border-2 border-dashed border-outline-variant bg-surface-container-low cursor-pointer flex items-center justify-center shadow-sm">
             <img id="photo-preview" class="hidden absolute inset-0 w-full h-full object-cover" />
             <video id="video-preview" class="hidden absolute inset-0 w-full h-full object-cover bg-black" controls playsinline></video>
 
@@ -274,7 +274,7 @@ app.get('/report', (c) => {
         </section>
 
         {/* AI result card — primary AI output (after triage) */}
-        <div id="ai-card" class="hidden rounded-xl p-md" style="background:#F0FAF6;border:1px solid #1D9E75;border-left-width:4px;">
+        <div id="ai-card" class="hidden rounded-2xl p-md shadow-sm" style="background:#F0FAF6;border:1px solid #1D9E75;border-left-width:4px;">
           <div class="flex items-start gap-2">
             <span class="material-symbols-outlined text-primary mt-0.5">auto_awesome</span>
             <div class="flex-1 min-w-0">
@@ -291,7 +291,7 @@ app.get('/report', (c) => {
         <div id="ai-verify" class="hidden rounded-xl p-3 text-sm flex items-start gap-2"></div>
 
         {/* Form — AI-filled, editable */}
-        <section class="bg-surface-lowest border border-outline-variant rounded-xl p-md space-y-md">
+        <section class="report-form bg-surface-lowest border border-outline-variant rounded-2xl p-lg space-y-md shadow-sm">
           <div>
             <div class="flex items-center justify-between">
               <label class="text-sm font-semibold text-on-surface">Describe it</label>
@@ -382,7 +382,7 @@ app.get('/report', (c) => {
           </div>
         </section>
 
-        <button id="submit-btn" class="tl-pulse w-full bg-primary text-on-primary rounded-xl py-4 font-bold text-[16px] active:scale-[0.98] transition flex items-center justify-center gap-2">
+        <button id="submit-btn" class="tl-pulse w-full bg-primary text-on-primary rounded-2xl py-4 font-bold text-[16px] active:scale-[0.98] transition flex items-center justify-center gap-2 shadow-sm">
           Submit to TrustLens Agent <span class="material-symbols-outlined">arrow_forward</span>
         </button>
       </main>
