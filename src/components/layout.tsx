@@ -44,16 +44,38 @@ export const TopBar = ({ title, admin, authority }: { title?: string; admin?: bo
                 <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center">0</span>
               </button>
               <span class="w-px h-5 bg-black/10 hidden sm:block"></span>
-              {/* Switch Role — unchanged style */}
-              <a href="/" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1" title="Switch role">
-                <span class="material-symbols-outlined text-[18px]">swap_horiz</span>
-                <span class="hidden sm:inline">Switch Role</span>
-              </a>
-              <span class="w-px h-5 bg-black/10 hidden sm:block"></span>
-              {/* LIVE badge — unchanged style */}
-              <span id="live-dot" class="flex items-center gap-1 text-[10px] font-bold uppercase text-secondary px-2">
-                <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span> Live
-              </span>
+              {/* Switch Role dropdown (replaces the old inline switch + LIVE badge) */}
+              <div class="relative">
+                <button id="role-menu-btn" class="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-surface-container flex items-center gap-1 transition-all" title="Switch role">
+                  <span class="material-symbols-outlined text-[18px]">swap_horiz</span>
+                  <span class="hidden sm:inline">Switch Role</span>
+                </button>
+                <div id="role-menu" class="hidden absolute right-0 top-[120%] w-64 bg-surface-lowest border border-outline-variant rounded-2xl py-2 z-50" style="box-shadow:0 16px 36px rgba(0,0,0,0.16)">
+                  <p class="px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Switch Role</p>
+                  <a href="/home" class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-primary-fixed/40 transition">
+                    <span class="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[20px]">person</span></span>
+                    <span class="flex-1">Citizen</span>
+                    <span class="material-symbols-outlined text-primary text-[20px]">check</span>
+                  </a>
+                  <a href="/login?as=contractor" class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-primary-fixed/40 transition">
+                    <span class="w-9 h-9 rounded-full bg-secondary text-white flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[20px]">engineering</span></span>
+                    <span class="flex-1">Contractor / Responder</span>
+                  </a>
+                  <a href="/login?as=municipal" class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-primary-fixed/40 transition">
+                    <span class="w-9 h-9 rounded-full text-white flex items-center justify-center shrink-0" style="background:#4F5BD5"><span class="material-symbols-outlined text-[20px]">apartment</span></span>
+                    <span class="flex-1">Municipal Official</span>
+                  </a>
+                  <div class="my-1.5 mx-3 border-t border-outline-variant"></div>
+                  <a href="/tour" class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-primary-fixed/40 transition">
+                    <span class="w-9 h-9 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-primary text-[22px]">play_circle</span></span>
+                    <span class="flex-1">Restart Guided Tour</span>
+                  </a>
+                  <a href="/" class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-primary-fixed/40 transition">
+                    <span class="w-9 h-9 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-surface-variant text-[22px]">home</span></span>
+                    <span class="flex-1">Back to Role Select</span>
+                  </a>
+                </div>
+              </div>
               {/* Logged-IN: avatar + name dropdown */}
               <div id="citizen-auth-chip" class="hidden relative">
                 <button id="citizen-menu-btn" class="flex items-center gap-1.5 rounded-full pl-0.5 pr-1 py-0.5 hover:bg-surface-container transition-all">

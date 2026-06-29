@@ -132,6 +132,14 @@ window.CH = (function () {
       document.addEventListener('click', () => menu.classList.add('hidden'))
       menu.addEventListener('click', (e) => e.stopPropagation())
     }
+    // Switch Role dropdown toggle
+    const roleBtn = document.getElementById('role-menu-btn')
+    const roleMenu = document.getElementById('role-menu')
+    if (roleBtn && roleMenu) {
+      roleBtn.addEventListener('click', (e) => { e.stopPropagation(); roleMenu.classList.toggle('hidden') })
+      document.addEventListener('click', () => roleMenu.classList.add('hidden'))
+      roleMenu.addEventListener('click', (e) => e.stopPropagation())
+    }
     // Log Out from the dropdown (Firebase citizen sign-out)
     const navLogout = document.getElementById('nav-logout')
     if (navLogout) {
