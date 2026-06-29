@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { analyzeIssue, generateInsight, generateResolutionPlan, predictTrends, generateCityHealthInsight, verifyFix, computePriority, recommendContractorReason, quotationReason, generateWeeklyReport, geminiPing, GEMINI_MODELS } from '../lib/gemini'
+import { analyzeIssue, generateInsight, generateResolutionPlan, predictTrends, generateCityHealthInsight, verifyFix, computePriority, recommendContractorReason, quotationReason, generateWeeklyReport, generateDailyBrief, geminiPing, GEMINI_MODELS } from '../lib/gemini'
 import { runTriageAgent } from '../lib/agent'
 import { rankContractors, scoreQuotations, parseSkills, type ContractorRow, type Quote } from '../lib/assignment'
 import { aiCache, budgetedKey } from '../lib/cache'
@@ -735,6 +735,132 @@ api.get('/predict', async (c) => {
     })
   )
   return c.json(prediction)
+})
+
+// ---------------------------------------------------------------
+// PREVENTION & FORESIGHT (AI Insights) — daily brief, cross-issue
+// emergent clusters, and repeat-offender detection. Admin only.
+// ---------------------------------------------------------------
+const DAILY_LOSS: Record<number, number> = { 5: 8500, 4: 4200, 3: 1800, 2: 600, 1: 200 }
+
+api.get('/command/prevention', requireRole('admin'), async (c) => {
+  const open = await c.env.DB.prepare(
+    `SELECT id, title, category, severity, status, address, verify_count, bounty, created_at, department
+     FROM issues WHERE status != 'Resolved' AND duplicate_of IS NULL
+     ORDER BY severity DESC, created_at ASC LIMIT 200`
+  ).all()
+  const issues = ((open.results as any[]) || [])
+  const now = Date.now()
+  const parseT = (s: string) => new Date(String(s || '').replace(' ', 'T') + 'Z').getTime() || now
+
+  const dailyCost = issues.reduce((s, i) => s + (DAILY_LOSS[i.severity] || 1800), 0)
+  const redAlerts = issues.filter((i) => i.severity >= 5).length
+  const slaBreaches = issues.filter((i) => i.severity >= 4 && now - parseT(i.created_at) > 2 * 864e5).length
+
+  // Worst single open issue by daily loss (tie-break: oldest).
+  const worst = [...issues].sort((a, b) => (DAILY_LOSS[b.severity] || 0) - (DAILY_LOSS[a.severity] || 0) || parseT(a.created_at) - parseT(b.created_at))[0]
+
+  // Cross-issue emergent clusters: group open issues by area; flag areas with ≥2.
+  const byArea: Record<string, any[]> = {}
+  for (const i of issues) {
+    const area = (String(i.address || '').split(',')[0] || 'City area').trim() || 'City area'
+    ;(byArea[area] = byArea[area] || []).push(i)
+  }
+  const clusters = Object.entries(byArea)
+    .filter(([, arr]) => arr.length >= 2)
+    .map(([area, arr]) => {
+      const cats = Array.from(new Set(arr.map((i) => i.category)))
+      const citizens = arr.reduce((s, i) => s + (i.verify_count || 0), 0)
+      const water = cats.some((cn) => /water|leak|sewage|drain/i.test(cn))
+      const confidence = Math.min(97, 70 + arr.length * 6)
+      return {
+        title: water ? `Possible water contamination — ${area}` : `Emerging issue cluster — ${area}`,
+        area,
+        confidence,
+        citizens,
+        count: arr.length,
+        categories: cats,
+        recommendation: water
+          ? `Dispatch a water-quality test and isolate the affected main before more citizens fall ill.`
+          : `Send one combined crew to ${area} to clear ${arr.length} correlated issues in a single trip.`,
+        tags: arr.slice(0, 4).map((i) => '#' + String(i.category || '').toLowerCase().replace(/\s+/g, '')),
+      }
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+
+  // Repeat offenders: the same (address+category) resolved ≥2 times = wasted patching.
+  let repeat: any = null
+  try {
+    const rr = await c.env.DB.prepare(
+      `SELECT category, address, COUNT(*) AS times, SUM(COALESCE(bounty,0)) AS spent
+       FROM issues WHERE status = 'Resolved' AND address != ''
+       GROUP BY address, category HAVING times >= 2 ORDER BY times DESC, spent DESC LIMIT 1`
+    ).first<any>()
+    if (rr) {
+      const spent = rr.spent || rr.times * 2500
+      repeat = {
+        location: rr.address,
+        category: rr.category,
+        times: rr.times,
+        spent,
+        permanent_fix: Math.round(spent * 1.6 + 5000),
+        bars: Array.from({ length: rr.times }, (_, k) => 2500 + k * 400),
+      }
+    }
+  } catch (e) {}
+
+  // Gemini-written brief (cached so it never burns quota on dashboard refreshes).
+  const briefKey = `dailybrief:${issues.length}:${redAlerts}:${slaBreaches}:${dailyCost}`
+  const brief = await aiCache(c.env.DB, briefKey, 1800, async () =>
+    generateDailyBrief(await budgetedKey(c.env), {
+      open: issues.length,
+      redAlerts,
+      slaBreaches,
+      dailyCost,
+      topCluster: clusters[0]?.title,
+      topClusterCitizens: clusters[0]?.citizens,
+      worstIssue: worst?.title,
+      worstLoss: worst ? DAILY_LOSS[worst.severity] || 1800 : 0,
+    })
+  )
+
+  return c.json({
+    brief,
+    stats: { open: issues.length, redAlerts, slaBreaches, dailyCost },
+    clusters,
+    repeat,
+  })
+})
+
+// Budget-aware impact optimizer: given a ward budget, greedily fund the issues
+// that maximise (citizens helped + ₹/day loss stopped) per rupee — "fix these,
+// not those". Deterministic; no Gemini needed.
+api.get('/command/optimize', requireRole('admin'), async (c) => {
+  const budget = Math.max(0, Number(c.req.query('budget')) || 50000)
+  const open = await c.env.DB.prepare(
+    `SELECT id, title, category, severity, address, verify_count, bounty
+     FROM issues WHERE status != 'Resolved' AND duplicate_of IS NULL LIMIT 200`
+  ).all()
+  const items = ((open.results as any[]) || []).map((i) => {
+    const cost = i.bounty && i.bounty > 0 ? i.bounty : (i.severity || 3) * 3500
+    const citizens = Math.max(i.verify_count || 0, (i.severity || 3) * 6)
+    const dailyLoss = DAILY_LOSS[i.severity] || 1800
+    const value = dailyLoss + citizens * 120 // blended impact per item
+    return { id: i.id, title: i.title, category: i.category, address: i.address, cost, citizens, dailyLoss, ratio: value / cost }
+  }).sort((a, b) => b.ratio - a.ratio)
+
+  const fund: any[] = []
+  const defer: any[] = []
+  let spent = 0, citizensHelped = 0, dailyStopped = 0
+  for (const it of items) {
+    if (spent + it.cost <= budget) {
+      fund.push(it); spent += it.cost; citizensHelped += it.citizens; dailyStopped += it.dailyLoss
+    } else {
+      defer.push(it)
+    }
+  }
+  return c.json({ budget, spent, citizens_helped: citizensHelped, daily_stopped: dailyStopped, fund: fund.slice(0, 12), defer: defer.slice(0, 8) })
 })
 
 // AI City Health Score — composite civic health with per-system breakdown + Gemini insight.

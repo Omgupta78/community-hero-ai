@@ -29,7 +29,7 @@
       case 'analytics': loadAnalytics(); loadDepartments(); loadBudgets(); loadApprovals(); break
       case 'agentlog': loadAgentLog(); break
       case 'escalation': loadEscalation(); break
-      case 'insights': loadPredict(); loadVolunteers(); loadWeeklySummary(); break
+      case 'insights': loadPredict(); loadVolunteers(); loadWeeklySummary(); loadPrevention(); break
     }
   }
 
@@ -396,6 +396,89 @@
       set('ws-aiactions', aiActions)
     } catch (e) {}
   }
+
+  // ---------- Fix-It-Right: prevention & foresight ----------
+  const inrR = (n) => '\u20B9' + Math.round(Number(n) || 0).toLocaleString('en-IN')
+
+  async function loadPrevention() {
+    try {
+      const { data } = await api.get('/command/prevention')
+      // Daily brief
+      if ($('cc-brief-headline')) $('cc-brief-headline').textContent = (data.brief && data.brief.headline) || 'No critical items today.'
+      if ($('cc-brief-badge')) $('cc-brief-badge').innerHTML = (data.brief && data.brief.source === 'gemini')
+        ? '<span class="material-symbols-outlined">bolt</span> Gemini Flash' : '<span class="material-symbols-outlined">bolt</span> Smart engine'
+      if ($('cc-brief-bullets')) $('cc-brief-bullets').innerHTML = ((data.brief && data.brief.bullets) || []).map((b) => `<li>${esc(b)}</li>`).join('')
+      // Clusters
+      const cl = $('cc-clusters')
+      if (cl) cl.innerHTML = (data.clusters || []).length ? data.clusters.map((c) => `
+        <div class="cc-cluster">
+          <div class="cc-cluster-top"><b>⚠ ${esc(c.title)}</b><span class="cc-cluster-conf">conf ${c.confidence}%</span></div>
+          <p class="cc-cluster-body">${c.count} correlated issue${c.count === 1 ? '' : 's'} (${c.categories.map(esc).join(', ')}) affecting ${c.citizens} citizen${c.citizens === 1 ? '' : 's'} in ${esc(c.area)}.</p>
+          <p class="cc-cluster-rec"><b>Recommend:</b> ${esc(c.recommendation)}</p>
+          <div class="cc-cluster-tags">${c.tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>
+        </div>`).join('') : '<p class="ctr-empty">No emergent clusters — issues are well-distributed right now.</p>'
+      // Repeat offender
+      const rp = $('cc-repeat')
+      if (rp) {
+        const r = data.repeat
+        rp.innerHTML = r ? `
+          <p class="cc-repeat-line">Patched <b>${r.times}×</b> at <b>${esc(r.location)}</b> (${esc(r.category)}) · <b>${inrR(r.spent)}</b> spent. Permanent fix: <b>${inrR(r.permanent_fix)}</b>.</p>
+          <div class="cc-repeat-bars">${(r.bars || []).map((b) => `<span style="height:${Math.min(100, 30 + (b / 40))}%"></span>`).join('')}<span class="cc-repeat-fix" style="height:100%">FIX</span></div>
+          <p class="cc-repeat-save">A one-time permanent fix saves <b>${inrR(Math.max(0, r.spent * 2 - r.permanent_fix))}</b> over the next year vs repeated patching.</p>` :
+          '<p class="ctr-empty">No repeat offenders yet — fixes are holding.</p>'
+      }
+    } catch (e) {}
+    runOptimize() // initial optimizer run
+  }
+
+  async function runOptimize() {
+    const budget = Number(($('cc-opt-input') || {}).value) || 50000
+    try {
+      const { data } = await api.get('/command/optimize?budget=' + budget)
+      if ($('cc-opt-spent')) $('cc-opt-spent').textContent = inrR(data.spent)
+      if ($('cc-opt-citizens')) $('cc-opt-citizens').textContent = (data.citizens_helped || 0).toLocaleString('en-IN')
+      if ($('cc-opt-stopped')) $('cc-opt-stopped').textContent = inrR(data.daily_stopped)
+      const row = (it) => `<div class="cc-opt-row"><span>${esc(it.category)} · ${it.citizens}👥</span><span>${inrR(it.cost)}</span></div>`
+      if ($('cc-opt-fund')) $('cc-opt-fund').innerHTML = (data.fund || []).map(row).join('') || '<p class="ctr-empty">—</p>'
+      if ($('cc-opt-defer')) $('cc-opt-defer').innerHTML = (data.defer || []).map(row).join('') || '<p class="ctr-empty">Nothing deferred — budget covers all.</p>'
+      if ($('cc-opt-fund-n')) $('cc-opt-fund-n').textContent = (data.fund || []).length
+      if ($('cc-opt-defer-n')) $('cc-opt-defer-n').textContent = (data.defer || []).length
+    } catch (e) {}
+  }
+
+  async function civicMemorySearch() {
+    const q = (($('cc-mem-input') || {}).value || '').trim()
+    const el = $('cc-mem-results'); if (!el) return
+    el.innerHTML = '<div class="ctr-skel"></div>'
+    try {
+      const { data } = await api.get('/search?q=' + encodeURIComponent(q || 'a'))
+      const rows = (data.issues || []).slice(0, 8)
+      el.innerHTML = rows.length ? rows.map((i) => {
+        const st = (i.status || '').toLowerCase()
+        const badge = i.status === 'Resolved' ? 'verified' : (i.agent_processed ? 'triaged' : 'open')
+        return `<div class="cc-mem-row"><div><b>${esc(i.category || 'Issue')}</b><small>${esc(i.title || '')}</small></div><span class="cc-mem-badge cc-mem-${badge}">${badge}</span></div>`
+      }).join('') : '<p class="ctr-empty">No matching past issues.</p>'
+    } catch (e) { el.innerHTML = '<p class="ctr-empty">Search unavailable.</p>' }
+  }
+
+  // Wire prevention controls once.
+  document.addEventListener('DOMContentLoaded', () => {
+    const optIn = $('cc-opt-input'), optSlider = $('cc-opt-slider'), optRun = $('cc-opt-run')
+    if (optSlider && optIn) optSlider.addEventListener('input', () => { optIn.value = optSlider.value })
+    if (optIn && optSlider) optIn.addEventListener('input', () => { optSlider.value = optIn.value })
+    if (optRun) optRun.addEventListener('click', runOptimize)
+    document.querySelectorAll('.cc-prep-btn').forEach((b) => b.addEventListener('click', () => {
+      const h = b.dataset.hazard
+      const msg = h === 'Heatwave'
+        ? 'Heatwave advisory active — water tankers + shade crews pre-positioned across high-risk wards.'
+        : 'Monsoon alert — drainage & pothole crews pre-staged for Sector 17 before reports arrive.'
+      if (window.CH && window.CH.toast) window.CH.toast(msg)
+      b.classList.add('cc-prep-on')
+    }))
+    const memBtn = $('cc-mem-btn'), memIn = $('cc-mem-input')
+    if (memBtn) memBtn.addEventListener('click', civicMemorySearch)
+    if (memIn) memIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') civicMemorySearch() })
+  })
 
   // ---------- weather ----------
   async function loadWeather() {

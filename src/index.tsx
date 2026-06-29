@@ -1415,6 +1415,59 @@ app.get('/command', async (c) => {
               <div class="cc-ws"><span class="material-symbols-outlined">smart_toy</span><b id="ws-aiactions">—</b><small>AI actions</small></div>
             </div>
           </div>
+
+          {/* ===================== FIX-IT-RIGHT — Prevention & Foresight ===================== */}
+          <div class="ctr-view-head" style="margin-top:26px"><h1><span class="material-symbols-outlined">neurology</span> Fix-It-Right — Prevention &amp; Foresight</h1></div>
+          <p class="ctr-block-sub" style="margin:-10px 0 4px">The AI's preventive brain: stop problems recurring, act before citizens report, and spend every rupee where it helps most.</p>
+
+          {/* AI Official's Daily Brief */}
+          <div class="ctr-card-plain cc-brief">
+            <div class="ctr-block-head"><h2><span class="material-symbols-outlined">auto_awesome</span> AI Official's Daily Brief</h2><span class="ctr-tag ctr-tag-blue" id="cc-brief-badge"><span class="material-symbols-outlined">bolt</span> Gemini</span></div>
+            <p id="cc-brief-headline" class="cc-brief-headline">Generating today's brief…</p>
+            <ul id="cc-brief-bullets" class="cc-brief-bullets"></ul>
+          </div>
+
+          {/* Cross-issue emergent detection */}
+          <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">hub</span> Cross-issue emergent detection</h2></div>
+            <div id="cc-clusters" class="cc-cluster-list"><div class="ctr-skel"></div></div>
+          </div>
+
+          {/* Budget-aware impact optimizer */}
+          <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">tune</span> Budget-aware impact optimizer</h2></div>
+            <p class="ctr-block-sub">Given a ward budget, the agent maximises citizens helped + ₹/day stopped per rupee — “fix these, not those”.</p>
+            <div class="cc-opt-controls">
+              <span class="cc-opt-budget">₹<input type="number" id="cc-opt-input" value="50000" min="0" step="5000" /></span>
+              <input type="range" id="cc-opt-slider" min="10000" max="200000" step="5000" value="50000" />
+              <button id="cc-opt-run" class="ctr-btn ctr-btn-primary">Optimize</button>
+            </div>
+            <div class="cc-opt-stats">
+              <div><small>SPENT</small><b id="cc-opt-spent" style="color:#DC2626">₹—</b></div>
+              <div><small>CITIZENS HELPED</small><b id="cc-opt-citizens" style="color:#1D9E75">—</b></div>
+              <div><small>₹/DAY STOPPED</small><b id="cc-opt-stopped" style="color:#EA580C">₹—</b></div>
+            </div>
+            <div class="cc-opt-grid">
+              <div><p class="cc-opt-col-h cc-opt-fund-h">✓ Fund now (<span id="cc-opt-fund-n">0</span>)</p><div id="cc-opt-fund" class="cc-opt-list"></div></div>
+              <div><p class="cc-opt-col-h cc-opt-defer-h">⤳ Defer (<span id="cc-opt-defer-n">0</span>)</p><div id="cc-opt-defer" class="cc-opt-list"></div></div>
+            </div>
+          </div>
+
+          {/* Repeat-Offender Callout */}
+          <div class="ctr-card-plain cc-repeat-card"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">repeat</span> Repeat-Offender Callout</h2></div>
+            <div id="cc-repeat"><div class="ctr-skel"></div></div>
+          </div>
+
+          {/* Preparedness + Civic memory */}
+          <div class="mc-grid-2">
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">cloudy</span> Preparedness pre-dispatch</h2></div>
+              <p class="ctr-block-sub">Trigger a hazard to pre-position crews <i>before</i> any citizen reports.</p>
+              <button class="cc-prep-btn" data-hazard="Heavy rain"><span class="material-symbols-outlined">rainy</span> Heavy rain forecast</button>
+              <button class="cc-prep-btn" data-hazard="Heatwave"><span class="material-symbols-outlined">wb_sunny</span> Heatwave advisory</button>
+            </div>
+            <div class="ctr-card-plain"><div class="ctr-block-head"><h2><span class="material-symbols-outlined">search</span> Civic memory</h2></div>
+              <div class="cc-mem-search"><input type="text" id="cc-mem-input" placeholder="search past issues…" /><button id="cc-mem-btn" class="ctr-btn ctr-btn-primary">Search</button></div>
+              <div id="cc-mem-results" class="cc-mem-list"></div>
+            </div>
+          </div>
         </section>
 
         <p class="ctr-footnote">Powered by <b>Gemini</b> · Maps © OpenStreetMap · Budget &amp; some contractor figures are simulated demo data.</p>

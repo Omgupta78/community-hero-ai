@@ -692,6 +692,53 @@ Output STRICT minified JSON only: {"forecast":"2-sentence prediction of what's l
 }
 
 // ---------------------------------------------------------------
+// AI OFFICIAL'S DAILY BRIEF — Gemini-written morning operations brief
+// ---------------------------------------------------------------
+export type DailyBrief = { headline: string; bullets: string[]; source: 'gemini' | 'heuristic' }
+
+export async function generateDailyBrief(
+  apiKey: string | undefined,
+  d: { open: number; redAlerts: number; slaBreaches: number; dailyCost: number; topCluster?: string; topClusterCitizens?: number; worstIssue?: string; worstLoss?: number }
+): Promise<DailyBrief> {
+  const inr = (n: number) => '\u20B9' + Math.round(n || 0).toLocaleString('en-IN')
+  if (apiKey) {
+    try {
+      const prompt = `You are a city operations AI writing the Municipal Official's MORNING BRIEF. Data:
+Open issues: ${d.open}. Critical red alerts: ${d.redAlerts}. SLA breaches: ${d.slaBreaches}. Total daily inaction cost: ${inr(d.dailyCost)}.
+${d.worstIssue ? `Worst overdue issue: "${d.worstIssue}" costing ${inr(d.worstLoss || 0)}/day.` : ''}
+${d.topCluster ? `Emerging cluster: ${d.topCluster} affecting ${d.topClusterCitizens || 0} citizens.` : ''}
+Output STRICT minified JSON only: {"headline":"one-line summary like 'Morning Brief: N Open Issues, X Red Alerts, Y SLA Breaches — Daily Cost ${inr(d.dailyCost)}'","bullets":["3-4 short factual sentences a commissioner needs, each <28 words, citing the numbers and naming the most urgent actions"]}`
+      const res = await geminiFetch(apiKey, {
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 400 } }),
+      })
+      if (res.ok) {
+        const j: any = await res.json()
+        const txt = j?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        const m = txt.match(/\{[\s\S]*\}/)
+        if (m) {
+          const parsed = JSON.parse(m[0])
+          if (parsed.headline && Array.isArray(parsed.bullets)) {
+            return { headline: String(parsed.headline), bullets: parsed.bullets.map((b: any) => String(b)).slice(0, 5), source: 'gemini' }
+          }
+        }
+      }
+    } catch (e) { /* fall through to heuristic */ }
+  }
+  // Deterministic fallback brief.
+  const bullets = [
+    `${d.open} open issues currently, including ${d.redAlerts} critical red alert${d.redAlerts === 1 ? '' : 's'} and ${d.slaBreaches} SLA breach${d.slaBreaches === 1 ? '' : 'es'} that need attention today.`,
+  ]
+  if (d.worstIssue) bullets.push(`"${d.worstIssue}" is the costliest open item at ${inr(d.worstLoss || 0)}/day — prioritise it first.`)
+  if (d.topCluster) bullets.push(`Emerging cluster detected: ${d.topCluster}, affecting ${d.topClusterCitizens || 0} citizens — investigate before it spreads.`)
+  bullets.push(`Total daily cost of unresolved issues is ${inr(d.dailyCost)}. Clearing the red alerts removes the largest share.`)
+  return {
+    headline: `Morning Brief: ${d.open} Open Issues, ${d.redAlerts} Red Alert${d.redAlerts === 1 ? '' : 's'}, and ${d.slaBreaches} SLA Breach${d.slaBreaches === 1 ? '' : 'es'} — Daily Cost ${inr(d.dailyCost)}`,
+    bullets,
+    source: 'heuristic',
+  }
+}
+
+// ---------------------------------------------------------------
 // AI CHATBOT — "Hero Assistant" (real-time multi-turn Gemini)
 // ---------------------------------------------------------------
 export type ChatMessage = { role: 'user' | 'assistant'; content: string }
