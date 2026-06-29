@@ -290,9 +290,6 @@ app.get('/report', (c) => {
         {/* AI verification banner (genuine / needs evidence / suspect) */}
         <div id="ai-verify" class="hidden rounded-xl p-3 text-sm flex items-start gap-2"></div>
 
-        {/* Live AI reasoning reveal — shows HOW Gemini decided (the agent's mind) */}
-        <div id="ai-reason" class="hidden"></div>
-
         {/* Form — AI-filled, editable */}
         <section class="report-form bg-surface-lowest border border-outline-variant rounded-2xl p-lg space-y-md shadow-sm">
           <div>

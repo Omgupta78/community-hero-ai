@@ -200,34 +200,6 @@
     // Gemini routing card (no "smart fallback" label)
     $('ai-content').innerHTML = `<b>${d.title}</b> — ${d.summary}<br/><span class="text-xs text-primary font-bold">Routes to ${d.department} · priority ${d.priority_score}/100</span>`
     $('ai-result').classList.remove('hidden')
-
-    // --- Live "How the AI decided" reasoning reveal (the agent's mind) ---
-    const esc2 = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]))
-    const authLabel = { genuine: 'Genuine ✓', needs_evidence: 'Needs evidence', suspect: 'Flagged' }[d.authenticity] || 'Genuine ✓'
-    const prio = d.priority_score || Math.min(100, (d.severity || 3) * 16)
-    const reasonEl = $('ai-reason')
-    if (reasonEl) {
-      const steps = [
-        ['visibility', 'Gemini Vision', isGemini ? 'Read & understood your photo' : 'Analysed your report'],
-        ['sell', 'Classified', d.category],
-        ['warning', 'Severity', `${d.severity}/5 · ${SEV_LABEL[d.severity] || 'MEDIUM'}`],
-        ['alt_route', 'Auto-routed', d.department || 'General Services'],
-        ['speed', 'Priority score', `${prio}/100`],
-        ['verified_user', 'Authenticity', authLabel],
-      ]
-      reasonEl.innerHTML =
-        `<div class="air-card">
-           <div class="air-head"><span class="material-symbols-outlined">smart_toy</span><span>How the AI decided</span>
-             <span class="air-badge">${isGemini ? 'Gemini · live' : 'Smart engine'}</span></div>
-           ${steps.map((s, i) => `<div class="air-step" style="animation-delay:${i * 90}ms">
-              <span class="air-ic material-symbols-outlined">${s[0]}</span>
-              <span class="air-label">${esc2(s[1])}</span>
-              <span class="air-val">${esc2(s[2])}</span>
-              <span class="air-check material-symbols-outlined">check_circle</span>
-            </div>`).join('')}
-         </div>`
-      reasonEl.classList.remove('hidden')
-    }
   }
 
   // --- Voice input (Web Speech API) — fills the description live ---
