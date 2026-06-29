@@ -1344,3 +1344,43 @@ main button[class*="rounded-xl"]:hover {
 /* Photo zone gets a gentle lift so it reads as the hero of the page. */
 #photo-zone { transition: box-shadow .2s ease, border-color .2s ease; }
 #photo-zone:hover { border-color: #1D9E75; box-shadow: 0 6px 22px rgba(29, 158, 117, 0.12); }
+
+/* =====================================================================
+   Report form — "How the AI decided" live reasoning reveal
+   Makes Gemini's autonomous decision chain visible & impressive.
+   ===================================================================== */
+.air-card {
+  background: linear-gradient(180deg, #F0FAF6 0%, #FFFFFF 100%);
+  border: 1px solid #1D9E75;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 6px 22px rgba(29, 158, 117, 0.10);
+}
+.air-head {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; font-size: 14px; color: #0F6E56; margin-bottom: 10px;
+}
+.air-head .material-symbols-outlined { font-size: 20px; color: #1D9E75; }
+.air-badge {
+  margin-left: auto; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  background: #1D9E75; color: #fff; border-radius: 999px; padding: 3px 9px;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.air-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: air-blink 1.2s infinite; }
+@keyframes air-blink { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+.air-step {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-top: 1px solid rgba(29, 158, 117, 0.12);
+  opacity: 0; transform: translateY(6px);
+  animation: air-rise .4s cubic-bezier(.22,.61,.36,1) forwards;
+}
+.air-step:first-of-type { border-top: none; }
+@keyframes air-rise { to { opacity: 1; transform: none; } }
+.air-ic { font-size: 19px; color: #1D9E75; width: 22px; text-align: center; }
+.air-label { font-size: 13px; font-weight: 600; color: #5A5A52; min-width: 96px; }
+.air-val { font-size: 13px; font-weight: 700; color: #1A1A1A; flex: 1; }
+.air-check { margin-left: auto; font-size: 18px; color: #1D9E75; font-variation-settings: 'FILL' 1; }
+@media (prefers-reduced-motion: reduce) {
+  .air-step { animation: none; opacity: 1; transform: none; }
+  .air-badge::before { animation: none; }
+}
