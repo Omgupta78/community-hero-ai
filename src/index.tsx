@@ -1031,7 +1031,7 @@ app.get('/contractor', async (c) => {
           <button class="ctr-tab" data-tab="jobs"><span class="material-symbols-outlined">assignment</span>My Jobs</button>
           <button class="ctr-tab" data-tab="board"><span class="material-symbols-outlined">work</span>Job Board</button>
           <button class="ctr-tab" data-tab="map"><span class="material-symbols-outlined">map</span>Map</button>
-          <button class="ctr-tab" data-tab="earnings"><span class="material-symbols-outlined">account_balance_wallet</span>Earnings</button>
+          <button class="ctr-tab" data-tab="earnings"><span class="material-symbols-outlined">account_balance_wallet</span>Earnings &amp; Ratings</button>
           <button class="ctr-tab" data-tab="profile"><span class="material-symbols-outlined">badge</span>Profile</button>
         </nav>
         <div class="ctr-topbar-right">
@@ -1111,7 +1111,7 @@ app.get('/contractor', async (c) => {
 
         {/* ===================== EARNINGS ===================== */}
         <section class="ctr-view hidden" id="cview-earnings">
-          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">account_balance_wallet</span> Earnings</h1></div>
+          <div class="ctr-view-head"><h1><span class="material-symbols-outlined">account_balance_wallet</span> Earnings &amp; Ratings</h1></div>
           <div class="ctr-wallet">
             <div class="ctr-wallet-main"><p class="ctr-earn-label"><span class="material-symbols-outlined">payments</span> Total earned</p>
               <p class="ctr-earn-val" id="ctr-earn-total">₹—</p>
