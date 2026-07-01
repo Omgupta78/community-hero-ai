@@ -15,9 +15,8 @@
     "db:setup": "npm run db:migrate:local && npm run db:seed",
     "db:reset": "node -e \"require('fs').rmSync('.wrangler/state/v3/d1',{recursive:true,force:true})\" && npm run db:migrate:local && npm run db:seed",
     "setup": "npm install && npm run build && npm run db:setup",
-    "start": "tsx src/server.node.ts",
-    "start:node": "tsx src/server.node.ts",
-    "start:dev": "node scripts/start.mjs"
+    "start": "node scripts/start.mjs",
+    "start:node": "tsx src/server.node.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.6",
