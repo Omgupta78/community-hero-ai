@@ -13,18 +13,38 @@ import app from './index'
 import { SqliteD1 } from './db/sqlite'
 
 const ROOT = process.cwd()
-const DB_PATH = process.env.DB_PATH || join(ROOT, 'data', 'community-hero.db')
+
+// Resolve a WRITABLE database path.
+//   • DB_PATH env wins (e.g. a mounted volume like /mnt/data/community-hero.db).
+//   • On Cloud Run (K_SERVICE is set) the container filesystem is READ-ONLY
+//     except /tmp — so default there, NOT the app dir (that caused the
+//     "container failed to start" deploy error under buildpacks, which ignore
+//     the Dockerfile's ENV DB_PATH).
+//   • Locally, use ./data.
+function resolveDbPath(): string {
+  if (process.env.DB_PATH) return process.env.DB_PATH
+  if (process.env.K_SERVICE) return '/tmp/community-hero.db' // Cloud Run
+  return join(ROOT, 'data', 'community-hero.db')
+}
+const DB_PATH = resolveDbPath()
 
 // Ensure the data dir exists for file-backed DBs (skip for :memory:).
-if (DB_PATH !== ':memory:') {
-  const dir = join(DB_PATH, '..')
-  if (!existsSync(dir)) {
-    const { mkdirSync } = await import('node:fs')
-    mkdirSync(dir, { recursive: true })
+// Wrapped so a read-only path can never crash startup — fall back to /tmp.
+let dbPath = DB_PATH
+if (dbPath !== ':memory:') {
+  try {
+    const dir = join(dbPath, '..')
+    if (!existsSync(dir)) {
+      const { mkdirSync } = await import('node:fs')
+      mkdirSync(dir, { recursive: true })
+    }
+  } catch (e) {
+    console.error(`⚠ Could not prepare ${dbPath} (${(e as Error).message}); falling back to /tmp.`)
+    dbPath = '/tmp/community-hero.db'
   }
 }
 
-const d1 = new SqliteD1(DB_PATH)
+const d1 = new SqliteD1(dbPath)
 
 // First-run: apply migrations + seed if the schema isn't there yet.
 function initialized(): boolean {
@@ -42,9 +62,9 @@ if (!initialized()) {
   }
   const seed = join(ROOT, 'seed.sql')
   if (existsSync(seed)) d1.exec(readFileSync(seed, 'utf8'))
-  console.log(`✓ Database initialized (${files.length} migrations + seed) at ${DB_PATH}`)
+  console.log(`✓ Database initialized (${files.length} migrations + seed) at ${dbPath}`)
 } else {
-  console.log(`✓ Using existing database at ${DB_PATH}`)
+  console.log(`✓ Using existing database at ${dbPath}`)
 }
 
 // Bindings the Workers app expects on `c.env`.
