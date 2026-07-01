@@ -13,14 +13,33 @@ import app from './index'
 import { SqliteD1 } from './db/sqlite'
 
 const ROOT = process.cwd()
-const DB_PATH = process.env.DB_PATH || join(ROOT, 'data', 'community-hero.db')
+
+// Resolve a WRITABLE database path.
+//   • DB_PATH env wins (e.g. a mounted volume like /mnt/data/community-hero.db).
+//   • On Cloud Run (K_SERVICE is set) the container filesystem is READ-ONLY
+//     except /tmp — so default there, NOT the app dir (that caused the
+//     "container failed to start" deploy error under buildpacks, which ignore
+//     the Dockerfile's ENV DB_PATH).
+//   • Locally, use ./data.
+function resolveDbPath(): string {
+  if (process.env.DB_PATH) return process.env.DB_PATH
+  if (process.env.K_SERVICE) return '/tmp/community-hero.db' // Cloud Run
+  return join(ROOT, 'data', 'community-hero.db')
+}
+let DB_PATH = resolveDbPath()
 
 // Ensure the data dir exists for file-backed DBs (skip for :memory:).
+// Wrapped so a read-only path can never crash startup — fall back to /tmp.
 if (DB_PATH !== ':memory:') {
-  const dir = join(DB_PATH, '..')
-  if (!existsSync(dir)) {
-    const { mkdirSync } = await import('node:fs')
-    mkdirSync(dir, { recursive: true })
+  try {
+    const dir = join(DB_PATH, '..')
+    if (!existsSync(dir)) {
+      const { mkdirSync } = await import('node:fs')
+      mkdirSync(dir, { recursive: true })
+    }
+  } catch (e) {
+    console.error(`⚠ Could not prepare ${DB_PATH} (${(e as Error).message}); falling back to /tmp.`)
+    DB_PATH = '/tmp/community-hero.db'
   }
 }
 
