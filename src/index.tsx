@@ -16,67 +16,9 @@ app.use(renderer)
 app.route('/api', api)
 
 // =============================================================
-// LANDING — role selection entry (The Civic Resolution Network)
+// LANDING removed — go straight to the citizen home.
 // =============================================================
-app.get('/', (c) => {
-  return c.render(
-    <div class="min-h-screen flex flex-col items-center justify-center px-container-margin py-12 bg-gradient-to-b from-primary-fixed/40 to-background">
-      <main class="w-full max-w-4xl mx-auto text-center">
-        <img src="/static/logo.svg" alt="TrustLens AI" class="w-20 h-20 mx-auto mb-3 drop-shadow tl-float" />
-        <h1 class="text-[36px] font-bold leading-none">
-          <span class="text-primary">Trust</span><span class="text-secondary">Lens</span>
-          <span class="align-middle text-[15px] font-bold text-on-primary bg-primary rounded-md px-1.5 py-0.5 ml-1">AI</span>
-        </h1>
-        <p class="text-sm font-bold tracking-[0.25em] text-on-surface-variant mt-3 uppercase">See · Verify · Solve</p>
-        <p class="text-on-surface-variant max-w-xl mx-auto mt-3">
-          AI-powered hyperlocal civic issue resolution platform — <b class="text-on-surface">one autonomous agent runs the whole loop, from a citizen's photo to a verified fix.</b>
-        </p>
-
-        <a href="/tour" class="group inline-flex items-center gap-2 mt-10 bg-on-surface text-surface-lowest rounded-full pl-5 pr-4 py-3 font-bold text-sm hover:shadow-lg transition active:scale-95">
-          <span class="material-symbols-outlined text-[20px]">play_circle</span>
-          Take the Guided Tour
-          <span class="text-[11px] font-medium opacity-70 hidden sm:inline">— see the full loop in ~90s</span>
-          <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-        </a>
-
-        <p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-8 mb-4">Or log in as</p>
-        <div class="grid md:grid-cols-3 gap-md text-left">
-          <a href="/home" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-primary hover:shadow-lg transition active:scale-[0.98]">
-            <div class="w-12 h-12 rounded-lg bg-primary text-on-primary flex items-center justify-center mb-3">
-              <span class="material-symbols-outlined text-[26px]">person</span>
-            </div>
-            <h2 class="font-bold text-[18px] text-on-surface">Citizen</h2>
-            <p class="text-sm text-on-surface-variant mt-1 mb-3">Report a problem and watch it get fixed.</p>
-            <span class="text-sm font-bold text-primary flex items-center gap-1">Log in as Citizen <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
-          </a>
-          <a href="/login?as=municipal" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-on-surface hover:shadow-lg transition active:scale-[0.98]">
-            <div class="w-12 h-12 rounded-lg bg-on-surface text-surface-lowest flex items-center justify-center mb-3">
-              <span class="material-symbols-outlined text-[26px]">apartment</span>
-            </div>
-            <h2 class="font-bold text-[18px] text-on-surface">Municipal Official</h2>
-            <p class="text-sm text-on-surface-variant mt-1 mb-3">Command the agent and clear the backlog.</p>
-            <span class="text-sm font-bold text-primary flex items-center gap-1">Log in as Official <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
-          </a>
-          <a href="/login?as=contractor" class="group bg-surface-lowest border border-outline-variant rounded-xl p-lg hover:border-secondary hover:shadow-lg transition active:scale-[0.98]">
-            <div class="w-12 h-12 rounded-lg bg-secondary text-white flex items-center justify-center mb-3">
-              <span class="material-symbols-outlined text-[26px]">construction</span>
-            </div>
-            <h2 class="font-bold text-[18px] text-on-surface">Contractor / Responder</h2>
-            <p class="text-sm text-on-surface-variant mt-1 mb-3">Win jobs, prove the fix, get paid.</p>
-            <span class="text-sm font-bold text-secondary flex items-center gap-1">Log in as Responder <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span></span>
-          </a>
-        </div>
-
-        <div class="flex items-center justify-center gap-lg mt-8 text-xs text-on-surface-variant flex-wrap">
-          <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-primary">shield</span><b class="text-on-surface">Trust</b> — transparency &amp; accountability</span>
-          <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-secondary">center_focus_strong</span><b class="text-on-surface">Lens</b> — AI analyzes every issue accurately</span>
-        </div>
-        <p class="text-xs text-on-surface-variant mt-4">You can switch roles anytime.</p>
-      </main>
-    </div>,
-    { title: 'TrustLens AI — See. Verify. Solve.' }
-  )
-})
+app.get('/', (c) => c.redirect('/home'))
 
 // =============================================================
 // GUIDED TOUR — interactive walkthrough of the full civic loop
@@ -1242,8 +1184,6 @@ app.get('/command', async (c) => {
           <button class="ctr-tab" data-tab="map"><span class="material-symbols-outlined">map</span>Map</button>
           <button class="ctr-tab" data-tab="contractors"><span class="material-symbols-outlined">engineering</span>Contractors</button>
           <button class="ctr-tab" data-tab="analytics"><span class="material-symbols-outlined">bar_chart</span>Analytics</button>
-          <button class="ctr-tab" data-tab="agentlog"><span class="material-symbols-outlined">smart_toy</span>Agent Log</button>
-          <button class="ctr-tab" data-tab="escalation"><span class="material-symbols-outlined">priority_high</span>Escalation</button>
           <button class="ctr-tab" data-tab="insights"><span class="material-symbols-outlined">lightbulb</span>AI Insights</button>
         </nav>
         <div class="ctr-topbar-right">
