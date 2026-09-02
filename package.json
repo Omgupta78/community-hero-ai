@@ -2,7 +2,7 @@
   "name": "community-hero-ai",
   "type": "module",
   "engines": {
-    "node": ">=22.5.0"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "vite",

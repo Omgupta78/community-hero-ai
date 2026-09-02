@@ -1,6 +1,7 @@
 {
   "version": 2,
   "outputDirectory": "public",
+  "nodeVersion": "22.x",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/index" }
   ],
