@@ -1,0 +1,20 @@
+# Cloudflare / Wrangler — not used by Vercel
+.wrangler
+wrangler.jsonc
+.dev.vars
+.dev.vars.example
+
+# Docker / Cloud Run — not used by Vercel
+Dockerfile
+.dockerignore
+.gcloudignore
+DEPLOY_GOOGLE_CLOUD.md
+ecosystem.config.cjs
+start.bat
+start.ps1
+
+# Cloudflare Pages build output — Vercel builds its own bundle
+dist
+
+# Local dev DB
+data
